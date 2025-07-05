@@ -1,24 +1,28 @@
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import AuthLoginCover from "./pages/auth-login-cover";
+import AuthRegister from "./pages/auth-register-cover";
+import Dashboard from "./pages/dashboards-crm";
+import ForgotPassword from "./pages/auth-forgot-password-cover";
+import CDRReport from "./pages/cdr-report";
+import Layout from "./layout/layout";
+
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+      <Router>
+        <Routes>
+
+          <Route path="/" element={<AuthLoginCover />} />
+          <Route path="/auth-register" element={<AuthRegister  />} />
+          <Route path="/forgot-password" element={<ForgotPassword  />} />
+
+
+          <Route path="/" element={<Layout />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/cdr-report" element={<CDRReport />} />
+          </Route>
+        </Routes>
+      </Router>
   );
 }
 
