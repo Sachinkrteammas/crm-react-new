@@ -52,8 +52,7 @@ const Layout = () => {
       <aside id="layout-menu" className="layout-menu menu-vertical menu">
         {/* Sidebar content using your snippet */}
         <div className="app-brand demo">
-          <a href="#" className="app-brand-link">
-            <Link  to="/dashboard">
+          <Link  to="/dashboard" className="app-brand-link">
             <span className="app-brand-logo demo">
               <span className="text-primary">
                 {/* SVG logo here */}
@@ -84,8 +83,7 @@ const Layout = () => {
               </span>
             </span>
             <span className="app-brand-text demo menu-text fw-bold ms-3">DialDesk</span>
-            </Link>
-          </a>
+          </Link>
 
           <a
             href="#"
@@ -195,27 +193,27 @@ const Layout = () => {
                   <li className="menu-item">
                     <Link  to="/cdr-report" className="menu-link">
                         <div data-i18n="CDR Report">CDR Report</div>
-                    </Link   >
+                    </Link>
                   </li>
                   <li className="menu-item">
-                    <a href="#" className="menu-link">
+                    <Link  to="/ob-cdr-report" className="menu-link">
                       <div data-i18n="OB CDR Report">OB CDR Report</div>
-                    </a>
+                    </Link>
                   </li>
                   <li className="menu-item">
-                    <a href="#" className="menu-link">
+                    <Link  to="/ivr-report" className="menu-link">
                       <div data-i18n="IVR Reports">IVR Reports</div>
-                    </a>
+                    </Link>
                   </li>
                   <li className="menu-item">
-                    <a href="#" className="menu-link">
+                    <Link to="/ob-shared-cdr-report" className="menu-link">
                       <div data-i18n="OB Shared CDR Report">OB Shared CDR Report</div>
-                    </a>
+                    </Link>
                   </li>
                   <li className="menu-item">
-                    <a href="#" className="menu-link">
+                    <Link to="/ivr-funnel-report" className="menu-link">
                       <div data-i18n="IVR Funnel Report">IVR Funnel Report</div>
-                    </a>
+                    </Link>
                   </li>
                 </ul>
               </li>
