@@ -53,7 +53,7 @@ const CDRReport = () => {
   ];
 
   return (
-    <div className="container mt-4">
+    <div className="row gy-4 gx-3">
       {/* CDR REPORT CARD */}
       <div className="card p-4 mb-4">
         <h5 className="mb-3">CDR REPORT</h5>

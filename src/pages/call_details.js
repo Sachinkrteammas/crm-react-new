@@ -18,7 +18,7 @@ function CallDetails() {
     <div class="card-body">
       <div class="row g-3">
 
-        <div style={customColStyle} className="col-md-6 col-sm-12">
+       <div style={customColStyle} className="col-md-6 col-sm-12">
         <label className="form-label" htmlFor="start-date">Start Date</label>
         <DatePicker
           selected={startDate}

@@ -45,7 +45,7 @@ const OBCDRReport = () => {
   };
 
   return (
-    <div className="container-xxl flex-grow-1 container-p-y">
+    <div className="row gy-4 gx-3">
       {/* OB CDR REPORT CARD */}
       <div className="card p-4 mb-4">
         <h5 className="mb-3">OB CDR REPORT</h5>

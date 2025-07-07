@@ -1,259 +1,224 @@
 import { Outlet } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 const Layout = () => {
-  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-  const [openSubMenus, setOpenSubMenus] = useState({});
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+//  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+//  const [openSubMenus, setOpenSubMenus] = useState({});
+//  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+//
+//  const toggleDashboard = () => {
+//    setIsDashboardOpen(!isDashboardOpen);
+//  };
+//
+//  const toggleSubMenu = (menuName) => {
+//    setOpenSubMenus((prev) => ({
+//      ...prev,
+//      [menuName]: !prev[menuName],
+//    }));
+//  };
+//
+//  const toggleSidebar = () => {
+//    setIsSidebarOpen((prev) => !prev);
+//  };
+//
+//  useEffect(() => {
+//    const wrapper = document.querySelector(".layout-wrapper");
+//    if (!wrapper) return;
+//
+//    if (isSidebarOpen) {
+//      wrapper.classList.remove("layout-menu-collapsed");
+//      wrapper.classList.remove("layout-menu-hover");
+//    } else {
+//      wrapper.classList.add("layout-menu-collapsed");
+//
+//      const handleMouseEnter = () => wrapper.classList.add("layout-menu-hover");
+//      const handleMouseLeave = () => wrapper.classList.remove("layout-menu-hover");
+//
+//      wrapper.addEventListener("mouseenter", handleMouseEnter);
+//      wrapper.addEventListener("mouseleave", handleMouseLeave);
+//
+//      return () => {
+//        wrapper.removeEventListener("mouseenter", handleMouseEnter);
+//        wrapper.removeEventListener("mouseleave", handleMouseLeave);
+//      };
+//    }
+//  }, [isSidebarOpen]);
 
-  const toggleDashboard = () => {
-    setIsDashboardOpen(!isDashboardOpen);
-  };
+    const location = useLocation();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
-  const toggleSubMenu = (menuName) => {
-    setOpenSubMenus((prev) => ({
-      ...prev,
-      [menuName]: !prev[menuName],
-    }));
-  };
+    const [openMenus, setOpenMenus] = useState({
+        inCall: false,
+        outCall: false,
+        misReports: false,
+        billing: false,
+    });
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen((prev) => !prev);
-  };
+    const toggleMenu = (menu) => {
+        setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
+    };
 
-  useEffect(() => {
-    const wrapper = document.querySelector(".layout-wrapper");
-    if (!wrapper) return;
+    const toggleSidebar = () => {
+        setIsSidebarOpen((prev) => !prev);
+    };
 
-    if (isSidebarOpen) {
-      wrapper.classList.remove("layout-menu-collapsed");
-      wrapper.classList.remove("layout-menu-hover");
-    } else {
-      wrapper.classList.add("layout-menu-collapsed");
-
-      const handleMouseEnter = () => wrapper.classList.add("layout-menu-hover");
-      const handleMouseLeave = () => wrapper.classList.remove("layout-menu-hover");
-
-      wrapper.addEventListener("mouseenter", handleMouseEnter);
-      wrapper.addEventListener("mouseleave", handleMouseLeave);
-
-      return () => {
-        wrapper.removeEventListener("mouseenter", handleMouseEnter);
-        wrapper.removeEventListener("mouseleave", handleMouseLeave);
-      };
-    }
-  }, [isSidebarOpen]);
+    useEffect(() => {
+        if (isSidebarOpen || isSidebarHovered) {
+            document.body.classList.remove("layout-menu-collapsed");
+        } else {
+            document.body.classList.add("layout-menu-collapsed");
+        }
+    }, [isSidebarOpen, isSidebarHovered]);
 
   return (
     <div className="layout-wrapper layout-content-navbar">
     <div className="layout-container">
       {/* Sidebar */}
-      <aside id="layout-menu" className="layout-menu menu-vertical menu">
-        {/* Sidebar content using your snippet */}
-        <div className="app-brand demo">
-          <Link  to="/dashboard" className="app-brand-link">
-            <span className="app-brand-logo demo">
-              <span className="text-primary">
-                {/* SVG logo here */}
-                <svg width="32" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M0.00172773 0V6.85398C0.00172773 6.85398 -0.133178 9.01207 1.98092 10.8388L13.6912 21.9964L19.7809 21.9181L18.8042 9.88248L16.4951 7.17289L9.23799 0H0.00172773Z"
-                      fill="currentColor" />
-                    <path
-                      opacity="0.06"
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M7.69824 16.4364L12.5199 3.23696L16.5541 7.25596L7.69824 16.4364Z"
-                      fill="#161616" />
-                    <path
-                      opacity="0.06"
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M8.07751 15.9175L13.9419 4.63989L16.5849 7.28475L8.07751 15.9175Z"
-                      fill="#161616" />
-                    <path
-                      fill-rule="evenodd"
-                      clip-rule="evenodd"
-                      d="M7.77295 16.3566L23.6563 0H32V6.88383C32 6.88383 31.8262 9.17836 30.6591 10.4057L19.7824 22H13.6938L7.77295 16.3566Z"
-                      fill="currentColor" />
-                  </svg>
-              </span>
-            </span>
-            <span className="app-brand-text demo menu-text fw-bold ms-3">DialDesk</span>
-          </Link>
-
-          <a
-            href="#"
-            className="layout-menu-toggle menu-link text-large ms-auto"
-            onClick={(e) => {
-              e.preventDefault();
-              toggleSidebar();
+      <aside id="layout-menu" className="layout-menu menu-vertical menu bg-menu-theme"
+          onMouseEnter={() => {
+                if (!isSidebarOpen) {
+                    setIsSidebarHovered(true);
+                }
             }}
-          >
-            <i className="icon-base ti menu-toggle-icon d-none d-xl-block"></i>
-            <i className="icon-base ti tabler-x d-block d-xl-none"></i>
-          </a>
-        </div>
-
-        <div className="menu-inner-shadow"></div>
-
-        <ul className="menu-inner py-1">
-          {/* Dashboard structure */}
-          <li className={`menu-item ${isDashboardOpen ? "active open" : ""}`}>
+            onMouseLeave={() => {
+                if (!isSidebarOpen) {
+                    setIsSidebarHovered(false);
+                }
+          }}>
+          <div className="app-brand demo">
+            <Link to="/dashboard" className="app-brand-link">
+              <span className="app-brand-logo demo">
+                <svg width="32" height="22" viewBox="0 0 32 22" fill="none">
+                  <path fillRule="evenodd" clipRule="evenodd" d="M0 0V6.85C0 6.85 -0.13 9.01 1.98 10.84L13.69 22L19.78 21.92L18.8 9.88L16.49 7.17L9.23 0H0Z" fill="currentColor" />
+                  <path opacity="0.06" fillRule="evenodd" clipRule="evenodd" d="M7.7 16.43L12.52 3.23L16.55 7.25L7.7 16.43Z" fill="#161616" />
+                  <path opacity="0.06" fillRule="evenodd" clipRule="evenodd" d="M8.07 15.91L13.94 4.63L16.58 7.28L8.07 15.91Z" fill="#161616" />
+                  <path fillRule="evenodd" clipRule="evenodd" d="M7.77 16.35L23.65 0H32V6.88C32 6.88 31.82 9.17 30.65 10.40L19.78 22H13.69L7.77 16.35Z" fill="currentColor" />
+                </svg>
+              </span>
+              <span className="app-brand-text demo menu-text fw-bold ms-3">DialDesk</span>
+            </Link>
             <a
-              href="#"
-              className="menu-link menu-toggle"
-              onClick={(e) => {
-                e.preventDefault();
-                toggleDashboard();
-              }}
+                href="#"
+                className="layout-menu-toggle menu-link text-large ms-auto"
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsSidebarOpen((prev) => !prev);
+                  if (isSidebarHovered) {
+                      setIsSidebarHovered(false);
+                  }
+                }}
             >
-              <i className="menu-icon icon-base ti tabler-smart-home"></i>
-              <div>Dashboards</div>
+                <i className="icon-base ti menu-toggle-icon d-none d-xl-block"></i>
+                <i className="icon-base ti tabler-x d-block d-xl-none"></i>
             </a>
+          </div>
 
-            <ul className="menu-sub" style={{ display: isDashboardOpen ? "block" : "none" }}>
-              {/* In Call Operations */}
-              <li className={`menu-item ${openSubMenus["inCall"] ? "active open" : ""}`}>
-                <a
-                  href="#"
-                  className="menu-link menu-toggle"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleSubMenu("inCall");
-                  }}
-                >
-                  <i className="menu-icon icon-base ti tabler-phone-incoming"></i>
-                  <div>In Call Operations</div>
-                </a>
-                <ul className="menu-sub" style={{ display: openSubMenus["inCall"] ? "block" : "none" }}>
-                  <li className="menu-item">
-                     <Link  to="/call_details" className="menu-link">
-                      <div>In Call Details</div>
-                      </Link>
-                  </li>
-                  <li className="menu-item">
-                    <a href="#" className="menu-link">
-                      <div>CSAT View</div>
-                    </a>
-                  </li>
-                </ul>
-              </li>
+          <div className="menu-inner-shadow"></div>
 
-              {/* Out Call Operations */}
-              <li className={`menu-item ${openSubMenus['outCall'] ? 'active open' : ''}`}>
-                <a
-                  href="#"
-                  className="menu-link menu-toggle"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleSubMenu('outCall');
-                  }}
-                >
-                  <i className="menu-icon icon-base ti tabler-phone-outgoing"></i>
-                  <div data-i18n="Out Call Operations">Out Call Operations</div>
-                </a>
-                <ul
-                  className="menu-sub"
-                  style={{ display: openSubMenus['outCall'] ? 'block' : 'none' }}
-                >
-                  <li className="menu-item">
-                    <a href="#" className="menu-link">
-                      <div data-i18n="Out Call Details">Out Call Details</div>
-                    </a>
-                  </li>
-                  <li className="menu-item">
-                    <a href="#" className="menu-link">
-                      <div data-i18n="Priority Calls via API">Priority Calls via API</div>
-                    </a>
-                  </li>
-                </ul>
-              </li>
+          <ul className="menu-inner py-1">
 
-              {/* MIS & Reports */}
-              <li className={`menu-item ${openSubMenus['misReports'] ? 'active open' : ''}`}>
-                <a
-                  href="#"
-                  className="menu-link menu-toggle"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleSubMenu('misReports');
-                  }}
-                >
-                  <i className="menu-icon icon-base ti tabler-file-report"></i>
-                  <div data-i18n="MIS & Reports">MIS & Reports</div>
-                </a>
-                <ul
-                  className="menu-sub"
-                  style={{ display: openSubMenus['misReports'] ? 'block' : 'none' }}
-                >
-                  <li className="menu-item">
-                    <Link  to="/cdr-report" className="menu-link">
-                        <div data-i18n="CDR Report">CDR Report</div>
-                    </Link>
-                  </li>
-                  <li className="menu-item">
-                    <Link  to="/ob-cdr-report" className="menu-link">
-                      <div data-i18n="OB CDR Report">OB CDR Report</div>
-                    </Link>
-                  </li>
-                  <li className="menu-item">
-                    <Link  to="/ivr-report" className="menu-link">
-                      <div data-i18n="IVR Reports">IVR Reports</div>
-                    </Link>
-                  </li>
-                  <li className="menu-item">
-                    <Link to="/ob-shared-cdr-report" className="menu-link">
-                      <div data-i18n="OB Shared CDR Report">OB Shared CDR Report</div>
-                    </Link>
-                  </li>
-                  <li className="menu-item">
-                    <Link to="/ivr-funnel-report" className="menu-link">
-                      <div data-i18n="IVR Funnel Report">IVR Funnel Report</div>
-                    </Link>
-                  </li>
-                </ul>
-              </li>
+            {/* Dashboard */}
+            <li className={`menu-item ${location.pathname === "/dashboard" ? "active" : ""}`}>
+              <Link to="/dashboard" className="menu-link">
+                <i className="menu-icon icon-base ti tabler-smart-home"></i>
+                <div>Dashboard</div>
+              </Link>
+            </li>
 
-              {/* Billing Statement */}
-              <li className={`menu-item ${openSubMenus['billing'] ? 'active open' : ''}`}>
-                <a
-                  href="#"
-                  className="menu-link menu-toggle"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    toggleSubMenu('billing');
-                  }}
-                >
-                  <i className="menu-icon icon-base ti tabler-receipt"></i>
-                  <div data-i18n="Billing Statement">Billing Statement</div>
-                </a>
-                <ul
-                  className="menu-sub"
-                  style={{ display: openSubMenus['billing'] ? 'block' : 'none' }}
-                >
-                  <li className="menu-item">
-                    <a href="#" className="menu-link">
-                      <div data-i18n="Statement New">Statement New</div>
-                    </a>
-                  </li>
-                </ul>
-              </li>
+            {/* In Call Operations */}
+            <li className={`menu-item ${openMenus.inCall ? "open active" : ""}`}>
+              <a href="#" className="menu-link menu-toggle" onClick={() => toggleMenu("inCall")}>
+                <i className="menu-icon icon-base ti tabler-phone-incoming"></i>
+                <div>In Call Operations</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.inCall ? "block" : "none" }}>
+                <li className="menu-item">
+                  <Link to="/call_details" className="menu-link">
+                    <div>In Call Details</div>
+                  </Link>
+                </li>
+                <li className="menu-item">
+                  <Link to="#" className="menu-link">
+                    <div>CSAT View</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
 
-            </ul>
-          </li>
-        </ul>
+            {/* Out Call Operations */}
+            <li className={`menu-item ${openMenus.outCall ? "open active" : ""}`}>
+              <a href="#" className="menu-link menu-toggle" onClick={() => toggleMenu("outCall")}>
+                <i className="menu-icon icon-base ti tabler-phone-outgoing"></i>
+                <div>Out Call Operations</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.outCall ? "block" : "none" }}>
+                <li className="menu-item">
+                  <Link to="#" className="menu-link">
+                    <div>Out Call Details</div>
+                  </Link>
+                </li>
+                <li className="menu-item">
+                  <Link to="#" className="menu-link">
+                    <div>Priority Calls via API</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
+            {/* MIS & Reports */}
+            <li className={`menu-item ${openMenus.misReports ? "open active" : ""}`}>
+              <a href="#" className="menu-link menu-toggle" onClick={() => toggleMenu("misReports")}>
+                <i className="menu-icon icon-base ti tabler-file-report"></i>
+                <div>MIS & Reports</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.misReports ? "block" : "none" }}>
+                <li className="menu-item">
+                  <Link to="/cdr-report" className="menu-link">
+                    <div>CDR Report</div>
+                  </Link>
+                </li>
+                <li className="menu-item">
+                  <Link to="/ob-cdr-report" className="menu-link">
+                    <div>OB CDR Report</div>
+                  </Link>
+                </li>
+                <li className="menu-item">
+                  <Link to="/ivr-report" className="menu-link">
+                    <div>IVR Report</div>
+                  </Link>
+                </li>
+                <li className="menu-item">
+                  <Link to="/ob-shared-cdr-report" className="menu-link">
+                    <div>OB Shared CDR Report</div>
+                  </Link>
+                </li>
+                <li className="menu-item">
+                  <Link to="/ivr-funnel-report" className="menu-link">
+                    <div>IVR Funnel Report</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
+            {/* Billing Statement */}
+            <li className={`menu-item ${openMenus.billing ? "open active" : ""}`}>
+              <a href="#" className="menu-link menu-toggle" onClick={() => toggleMenu("billing")}>
+                <i className="menu-icon icon-base ti tabler-receipt"></i>
+                <div>Billing Statement</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.billing ? "block" : "none" }}>
+                <li className="menu-item">
+                  <Link to="#" className="menu-link">
+                    <div>Statement New</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
+          </ul>
       </aside>
-
-      <div className="menu-mobile-toggler d-xl-none rounded-1">
-          <a href="#" className="layout-menu-toggle menu-link text-large text-bg-secondary p-2 rounded-1">
-            <i className="ti tabler-menu icon-base"></i>
-            <i className="ti tabler-chevron-right icon-base"></i>
-          </a>
-      </div>
 
       {/* Main Content */}
       <div className="layout-page">
@@ -781,10 +746,10 @@ const Layout = () => {
                     </li>
                     <li>
                       <div className="d-grid px-2 pt-2 pb-1">
-                        <a className="btn btn-sm btn-danger d-flex" href="#" target="_blank">
+                        <Link to="/logout" className="btn btn-sm btn-danger d-flex" target="_blank">
                           <small className="align-middle">Logout</small>
                           <i className="icon-base ti tabler-logout ms-2 icon-14px"></i>
-                        </a>
+                        </Link>
                       </div>
                     </li>
                   </ul>

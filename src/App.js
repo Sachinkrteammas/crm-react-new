@@ -9,6 +9,7 @@ import IVRReport from "./pages/ivr-report";
 import OBSharedCDRReport from "./pages/ob-shared-cdr-report";
 import IVRFunnelReport from "./pages/ivr-funnel-report";
 import CallDetails from "./pages/call_details";
+import Logout from "./pages/logout";
 import Layout from "./layout/layout";
 
 
@@ -20,6 +21,7 @@ function App() {
           <Route path="/" element={<AuthLoginCover />} />
           <Route path="/auth-register" element={<AuthRegister  />} />
           <Route path="/forgot-password" element={<ForgotPassword  />} />
+          <Route path="/logout" element={<Logout />} />
 
 
           <Route path="/" element={<Layout />}>

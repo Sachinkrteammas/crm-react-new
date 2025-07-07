@@ -41,3 +41,7 @@ export const getCurrentUser = async () => {
     throw error.response?.data?.detail || "Unable to fetch user";
   }
 };
+
+export const logout = () => {
+  localStorage.removeItem("token");
+};
