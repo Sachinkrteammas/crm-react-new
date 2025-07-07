@@ -764,34 +764,6 @@ const Layout = () => {
           <div className="container-xxl flex-grow-1 container-p-y">
             <Outlet /> {/* Routes will render here */}
           </div>
-
-          {/* Footer */}
-          <footer className="content-footer footer bg-footer-theme">
-            <div className="container-xxl">
-              <div className="footer-container d-flex align-items-center justify-content-between py-4 flex-md-row flex-column">
-                <div className="text-body">
-                  © {new Date().getFullYear()}, made with ❤️ by
-                  <a href="https://pixinvent.com" target="_blank" className="footer-link" rel="noreferrer">
-                    Pixinvent
-                  </a>
-                </div>
-                <div className="d-none d-lg-inline-block">
-                  <a href="https://themeforest.net/licenses/standard" className="footer-link me-4" target="_blank" rel="noreferrer">
-                    License
-                  </a>
-                  <a href="https://themeforest.net/user/pixinvent/portfolio" target="_blank" className="footer-link me-4" rel="noreferrer">
-                    More Themes
-                  </a>
-                  <a href="https://demos.pixinvent.com/vuexy-html-admin-template/documentation/" target="_blank" className="footer-link me-4" rel="noreferrer">
-                    Documentation
-                  </a>
-                  <a href="https://pixinvent.ticksy.com/" target="_blank" className="footer-link d-none d-sm-inline-block" rel="noreferrer">
-                    Support
-                  </a>
-                </div>
-              </div>
-            </div>
-          </footer>
         </div>
       </div>
       </div>
