@@ -10,6 +10,8 @@ import OBSharedCDRReport from "./pages/ob-shared-cdr-report";
 import IVRFunnelReport from "./pages/ivr-funnel-report";
 import CallDetails from "./pages/call_details";
 import Logout from "./pages/logout";
+import OutCallDetails from "./pages/OutCallDetails";
+import PriorityCalls from "./pages/PriorityCalls";
 import Layout from "./layout/layout";
 
 
@@ -32,6 +34,8 @@ function App() {
               <Route path="/ob-shared-cdr-report" element={<OBSharedCDRReport />} />
               <Route path="/ivr-funnel-report" element={<IVRFunnelReport />} />
               <Route path="/call_details" element={<CallDetails />} />
+              <Route path="/out_call_details" element={<OutCallDetails />} />
+              <Route path="/priority_calls" element={<PriorityCalls />} />
           </Route>
         </Routes>
       </Router>

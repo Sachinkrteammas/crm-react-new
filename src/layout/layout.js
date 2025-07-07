@@ -155,12 +155,12 @@ const Layout = () => {
               </a>
               <ul className="menu-sub" style={{ display: openMenus.outCall ? "block" : "none" }}>
                 <li className="menu-item">
-                  <Link to="#" className="menu-link">
+                  <Link to="/out_call_details" className="menu-link">
                     <div>Out Call Details</div>
                   </Link>
                 </li>
                 <li className="menu-item">
-                  <Link to="#" className="menu-link">
+                  <Link to="/priority_calls" className="menu-link">
                     <div>Priority Calls via API</div>
                   </Link>
                 </li>
