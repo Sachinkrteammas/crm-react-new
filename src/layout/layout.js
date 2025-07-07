@@ -131,9 +131,9 @@ const Layout = () => {
                 </a>
                 <ul className="menu-sub" style={{ display: openSubMenus["inCall"] ? "block" : "none" }}>
                   <li className="menu-item">
-                    <a href="#" className="menu-link">
+                     <Link  to="/call_details" className="menu-link">
                       <div>In Call Details</div>
-                    </a>
+                      </Link>
                   </li>
                   <li className="menu-item">
                     <a href="#" className="menu-link">
@@ -320,6 +320,7 @@ const Layout = () => {
                     className="nav-link dropdown-toggle hide-arrow btn btn-icon btn-text-secondary rounded-pill"
                     id="nav-theme"
                     href="#"
+                    onClick={e => e.preventDefault()}
                     data-bs-toggle="dropdown">
                     <i className="icon-base ti tabler-sun icon-22px theme-icon-active text-heading"></i>
                     <span className="d-none ms-2" id="nav-theme-text">Toggle theme</span>
