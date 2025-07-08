@@ -27,14 +27,20 @@ const CurrentBillStatement = () => {
       <h5 className="mb-8">CURRENT BILL STATEMENT</h5>
       <div className="d-flex flex-wrap align-items-center gap-2">
         <div style={{ minWidth: '200px' }}>
-          <Select
-            options={clientOptions}
-            placeholder="Select Client"
+          <select
+            className="form-select"
             value={selectedClient}
-            onChange={setSelectedClient}
-            isClearable
-          />
+            onChange={(e) => setSelectedClient(e.target.value)}
+          >
+            <option value="">Select Client</option>
+            {clientOptions.map(opt => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
+
         <DatePicker
           selected={startDate}
           onChange={setStartDate}
