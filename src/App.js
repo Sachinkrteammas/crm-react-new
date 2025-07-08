@@ -38,6 +38,7 @@ function App() {
                   <Route path="/call_details" element={<CallDetails />} />
                   <Route path="/out_call_details" element={<OutCallDetails />} />
                   <Route path="/priority_calls" element={<PriorityCalls />} />
+                  <Route path="/csat_view" element={<CsatView />} />
               </Route>
           </Route>
         </Routes>
