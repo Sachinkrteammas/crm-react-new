@@ -142,7 +142,7 @@ export default function OutCallDetails() {
           />
         </div>
         <div className="col-md-6 d-flex gap-2">
-          <button className="btn btn-secondary" onClick={handleExport}>
+          <button className="btn btn-primary" onClick={handleExport}>
             Export
           </button>
           <button className="btn btn-primary" onClick={handleView}>
