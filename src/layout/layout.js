@@ -746,7 +746,7 @@ const Layout = () => {
                     </li>
                     <li>
                       <div className="d-grid px-2 pt-2 pb-1">
-                        <Link to="/logout" className="btn btn-sm btn-danger d-flex" target="_blank">
+                        <Link to="/logout" className="btn btn-sm btn-danger d-flex">
                           <small className="align-middle">Logout</small>
                           <i className="icon-base ti tabler-logout ms-2 icon-14px"></i>
                         </Link>
