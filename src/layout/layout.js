@@ -3,47 +3,18 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const Layout = () => {
-//  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
-//  const [openSubMenus, setOpenSubMenus] = useState({});
-//  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-//
-//  const toggleDashboard = () => {
-//    setIsDashboardOpen(!isDashboardOpen);
-//  };
-//
-//  const toggleSubMenu = (menuName) => {
-//    setOpenSubMenus((prev) => ({
-//      ...prev,
-//      [menuName]: !prev[menuName],
-//    }));
-//  };
-//
-//  const toggleSidebar = () => {
-//    setIsSidebarOpen((prev) => !prev);
-//  };
-//
-//  useEffect(() => {
-//    const wrapper = document.querySelector(".layout-wrapper");
-//    if (!wrapper) return;
-//
-//    if (isSidebarOpen) {
-//      wrapper.classList.remove("layout-menu-collapsed");
-//      wrapper.classList.remove("layout-menu-hover");
-//    } else {
-//      wrapper.classList.add("layout-menu-collapsed");
-//
-//      const handleMouseEnter = () => wrapper.classList.add("layout-menu-hover");
-//      const handleMouseLeave = () => wrapper.classList.remove("layout-menu-hover");
-//
-//      wrapper.addEventListener("mouseenter", handleMouseEnter);
-//      wrapper.addEventListener("mouseleave", handleMouseLeave);
-//
-//      return () => {
-//        wrapper.removeEventListener("mouseenter", handleMouseEnter);
-//        wrapper.removeEventListener("mouseleave", handleMouseLeave);
-//      };
-//    }
-//  }, [isSidebarOpen]);
+const [theme, setTheme] = useState('dark');
+
+useEffect(() => {
+
+    document.documentElement.setAttribute('data-bs-theme', theme);
+  }, [theme]);
+
+  const handleThemeChange = (selectedTheme) => {
+    setTheme(selectedTheme);
+  };
+
+
 
     const location = useLocation();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -285,49 +256,36 @@ const Layout = () => {
                     className="nav-link dropdown-toggle hide-arrow btn btn-icon btn-text-secondary rounded-pill"
                     id="nav-theme"
                     href="#"
-                    onClick={e => e.preventDefault()}
-                    data-bs-toggle="dropdown">
-                    <i className="icon-base ti tabler-sun icon-22px theme-icon-active text-heading"></i>
+                    onClick={(e) => e.preventDefault()}
+                    data-bs-toggle="dropdown"
+                  >
+                    <i className={`icon-base ti icon-22px theme-icon-active text-heading tabler-${theme === 'light' ? 'sun' : theme === 'dark' ? 'moon-stars' : 'device-desktop-analytics'}`}></i>
                     <span className="d-none ms-2" id="nav-theme-text">Toggle theme</span>
                   </a>
                   <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="nav-theme-text">
-                    <li>
-                      <button
-                        type="button"
-                        className="dropdown-item align-items-center active"
-                        data-bs-theme-value="light"
-                        aria-pressed="false">
-                        <span><i className="icon-base ti tabler-sun icon-22px me-3" data-icon="sun"></i>Light</span>
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        className="dropdown-item align-items-center"
-                        data-bs-theme-value="dark"
-                        aria-pressed="true">
-                        <span
-                          ><i className="icon-base ti tabler-moon-stars icon-22px me-3" data-icon="moon-stars"></i
-                          >Dark</span
+                    {['light', 'dark', 'system'].map((t) => (
+                      <li key={t}>
+                        <button
+                          type="button"
+                          className={`dropdown-item align-items-center ${theme === t ? 'active' : ''}`}
+                          data-bs-theme-value={t}
+                          aria-pressed={theme === t}
+                          onClick={() => handleThemeChange(t)}
                         >
-                      </button>
-                    </li>
-                    <li>
-                      <button
-                        type="button"
-                        className="dropdown-item align-items-center"
-                        data-bs-theme-value="system"
-                        aria-pressed="false">
-                        <span
-                          ><i
-                            className="icon-base ti tabler-device-desktop-analytics icon-22px me-3"
-                            data-icon="device-desktop-analytics"></i
-                          >System</span
-                        >
-                      </button>
-                    </li>
+                          <span>
+                            <i
+                              className={`icon-base ti icon-22px me-3 ${
+                                t === 'light' ? 'tabler-sun' : t === 'dark' ? 'tabler-moon-stars' : 'tabler-device-desktop-analytics'
+                              }`}
+                            ></i>
+                            {t.charAt(0).toUpperCase() + t.slice(1)}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
                   </ul>
                 </li>
+
                 {/* / Style Switcher*/}
 
                 {/* Quick links  */}
