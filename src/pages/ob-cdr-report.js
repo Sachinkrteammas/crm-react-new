@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import DatePicker from "react-datepicker";
-import Select from "react-select";
 import "react-datepicker/dist/react-datepicker.css";
 
 // Sample clients for dropdown
@@ -51,13 +50,18 @@ const OBCDRReport = () => {
         <h5 className="mb-3">OB CDR REPORT</h5>
         <div className="d-flex flex-wrap align-items-center gap-2">
           <div style={{ minWidth: "200px" }}>
-            <Select
-              options={clientOptions}
-              placeholder="Select Client"
+            <select
+              className="form-select"
               value={selectedClient}
-              onChange={setSelectedClient}
-              isClearable
-            />
+              onChange={(e) => setSelectedClient(e.target.value)}
+            >
+              <option value="">Select Client</option>
+              {clientOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+              ))}
+            </select>
           </div>
           <DatePicker
             selected={startDate}
