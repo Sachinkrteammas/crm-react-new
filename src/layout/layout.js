@@ -181,7 +181,7 @@ useEffect(() => {
               </a>
               <ul className="menu-sub" style={{ display: openMenus.billing ? "block" : "none" }}>
                 <li className="menu-item">
-                  <Link to="#" className="menu-link">
+                  <Link to="/bill_statement" className="menu-link">
                     <div>Statement New</div>
                   </Link>
                 </li>

@@ -13,6 +13,7 @@ import Logout from "./pages/logout";
 import OutCallDetails from "./pages/OutCallDetails";
 import PriorityCalls from "./pages/PriorityCalls";
 import CsatView from "./pages/csat_view";
+import CurrentBillStatement from "./pages/CurrentBillStatement";
 import Layout from "./layout/layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -39,6 +40,7 @@ function App() {
                   <Route path="/out_call_details" element={<OutCallDetails />} />
                   <Route path="/priority_calls" element={<PriorityCalls />} />
                   <Route path="/csat_view" element={<CsatView />} />
+                  <Route path="/bill_statement" element={<CurrentBillStatement />} />
               </Route>
           </Route>
         </Routes>
