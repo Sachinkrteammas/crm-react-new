@@ -140,7 +140,7 @@ const Layout = () => {
                   </Link>
                 </li>
                 <li className="menu-item">
-                  <Link to="#" className="menu-link">
+                  <Link to="/csat_view" className="menu-link">
                     <div>CSAT View</div>
                   </Link>
                 </li>
