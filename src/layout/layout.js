@@ -40,12 +40,24 @@ useEffect(() => {
     });
 
     const toggleMenu = (menu) => {
-        setOpenMenus((prev) => ({ ...prev, [menu]: !prev[menu] }));
+        setOpenMenus((prev) => {
+            const updatedMenus = Object.keys(prev).reduce((acc, key) => {
+                acc[key] = key === menu ? !prev[key] : false;
+                return acc;
+            }, {});
+            return updatedMenus;
+        });
     };
 
     const toggleSidebar = () => {
         setIsSidebarOpen((prev) => !prev);
     };
+
+    const isActiveMenu = (paths) => {
+        return paths.some(path => location.pathname === path || location.pathname.startsWith(path + "/"));
+    };
+
+
 
     useEffect(() => {
         if (isSidebarOpen || isSidebarHovered) {
@@ -111,18 +123,21 @@ useEffect(() => {
             </li>
 
             {/* In Call Operations */}
-            <li className={`menu-item ${openMenus.inCall ? "open active" : ""}`}>
-              <a href="#" className="menu-link menu-toggle" onClick={() => toggleMenu("inCall")}>
+            <li className={`menu-item ${openMenus.inCall ? "open" : ""} ${isActiveMenu(["/call_details", "/csat_view"]) ? "active" : ""}`}>
+              <a href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("inCall")}
+              >
                 <i className="menu-icon icon-base ti tabler-phone-incoming"></i>
                 <div>In Call Operations</div>
               </a>
               <ul className="menu-sub" style={{ display: openMenus.inCall ? "block" : "none" }}>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/call_details" ? "active" : ""}`}>
                   <Link to="/call_details" className="menu-link">
                     <div>In Call Details</div>
                   </Link>
                 </li>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/csat_view" ? "active" : ""}`}>
                   <Link to="/csat_view" className="menu-link">
                     <div>CSAT View</div>
                   </Link>
@@ -131,18 +146,21 @@ useEffect(() => {
             </li>
 
             {/* Out Call Operations */}
-            <li className={`menu-item ${openMenus.outCall ? "open active" : ""}`}>
-              <a href="#" className="menu-link menu-toggle" onClick={() => toggleMenu("outCall")}>
+            <li className={`menu-item ${openMenus.outCall ? "open" : ""} ${isActiveMenu(["/out_call_details", "/priority_calls"]) ? "active" : ""}`}>
+              <a href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("outCall")}
+              >
                 <i className="menu-icon icon-base ti tabler-phone-outgoing"></i>
                 <div>Out Call Operations</div>
               </a>
               <ul className="menu-sub" style={{ display: openMenus.outCall ? "block" : "none" }}>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/out_call_details" ? "active" : ""}`}>
                   <Link to="/out_call_details" className="menu-link">
                     <div>Out Call Details</div>
                   </Link>
                 </li>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/priority_calls" ? "active" : ""}`}>
                   <Link to="/priority_calls" className="menu-link">
                     <div>Priority Calls via API</div>
                   </Link>
@@ -151,33 +169,37 @@ useEffect(() => {
             </li>
 
             {/* MIS & Reports */}
-            <li className={`menu-item ${openMenus.misReports ? "open active" : ""}`}>
-              <a href="#" className="menu-link menu-toggle" onClick={() => toggleMenu("misReports")}>
+            <li className={`menu-item ${openMenus.misReports ? "open" : ""} ${isActiveMenu(["/cdr-report", "/ob-cdr-report", "/ivr-report", "/ob-shared-cdr-report", "/ivr-funnel-report"]) ? "active" : ""}`}>
+              <a
+                href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("misReports")}
+              >
                 <i className="menu-icon icon-base ti tabler-file-report"></i>
                 <div>MIS & Reports</div>
               </a>
               <ul className="menu-sub" style={{ display: openMenus.misReports ? "block" : "none" }}>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/cdr-report" ? "active" : ""}`}>
                   <Link to="/cdr-report" className="menu-link">
                     <div>CDR Report</div>
                   </Link>
                 </li>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/ob-cdr-report" ? "active" : ""}`}>
                   <Link to="/ob-cdr-report" className="menu-link">
                     <div>OB CDR Report</div>
                   </Link>
                 </li>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/ivr-report" ? "active" : ""}`}>
                   <Link to="/ivr-report" className="menu-link">
                     <div>IVR Report</div>
                   </Link>
                 </li>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/ob-shared-cdr-report" ? "active" : ""}`}>
                   <Link to="/ob-shared-cdr-report" className="menu-link">
                     <div>OB Shared CDR Report</div>
                   </Link>
                 </li>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/ivr-funnel-report" ? "active" : ""}`}>
                   <Link to="/ivr-funnel-report" className="menu-link">
                     <div>IVR Funnel Report</div>
                   </Link>
@@ -186,13 +208,17 @@ useEffect(() => {
             </li>
 
             {/* Billing Statement */}
-            <li className={`menu-item ${openMenus.billing ? "open active" : ""}`}>
-              <a href="#" className="menu-link menu-toggle" onClick={() => toggleMenu("billing")}>
+            <li className={`menu-item ${openMenus.billing ? "open" : ""} ${isActiveMenu(["/bill_statement"]) ? "active" : ""}`}>
+              <a
+                href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("billing")}
+              >
                 <i className="menu-icon icon-base ti tabler-receipt"></i>
                 <div>Billing Statement</div>
               </a>
               <ul className="menu-sub" style={{ display: openMenus.billing ? "block" : "none" }}>
-                <li className="menu-item">
+                <li className={`menu-item ${location.pathname === "/bill_statement" ? "active" : ""}`}>
                   <Link to="/bill_statement" className="menu-link">
                     <div>Statement New</div>
                   </Link>
