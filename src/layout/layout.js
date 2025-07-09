@@ -4,6 +4,16 @@ import { Link, useLocation } from "react-router-dom";
 
 const Layout = () => {
 const [theme, setTheme] = useState('dark');
+const [username, setUsername] = useState("");
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
+
+
 
 useEffect(() => {
 
@@ -19,6 +29,8 @@ useEffect(() => {
     const location = useLocation();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isSidebarHovered, setIsSidebarHovered] = useState(false);
+
+
 
     const [openMenus, setOpenMenus] = useState({
         inCall: false,
@@ -286,7 +298,7 @@ useEffect(() => {
                             </div>
                           </div>
                           <div className="flex-grow-1">
-                            <h6 className="mb-0">John Doe</h6>
+                            <h6 className="mb-0">{username}</h6>
                             <small className="text-body-secondary">Admin</small>
                           </div>
                         </div>
