@@ -20,7 +20,7 @@ import { useState } from "react";
           const user = await signup(username, email, password);
           console.log("User registered:", user);
           // Optional: show success toast here
-          navigate("/login"); // Navigate to login page after registration
+          navigate("/"); // Navigate to login page after registration
         } catch (err) {
           console.error(err);
           setError(err);
