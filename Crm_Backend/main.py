@@ -6,6 +6,7 @@ from models import User
 from schemas import UserCreate, UserOut, Token
 from auth import get_db, get_password_hash, verify_password, create_access_token, get_current_user
 from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime
 
 Base.metadata.create_all(bind=engine)
 
@@ -25,7 +26,13 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter((User.email == user.email) | (User.username == user.username)).first():
         raise HTTPException(status_code=400, detail="Email or username already registered")
     hashed_password = get_password_hash(user.password)
-    db_user = User(username=user.username, email=user.email, hashed_password=hashed_password)
+    db_user = User(
+        username=user.username,
+        email=user.email,
+        hashed_password=hashed_password,
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
