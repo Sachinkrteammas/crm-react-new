@@ -1,56 +1,71 @@
 import React, { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { fetchCDRReport } from '../services/authService';
 
 const CDRReport = () => {
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const companyId = localStorage.getItem("company_id");
 
-  const sampleData = [
-    {
-      agent: "IDC55739",
-      phone: "7000227274",
-      callDate: "2025-07-04",
-      queueTime: "00:00:00.00",
-      startTimeQueue: "2025-07-04 00:03:53.00",
-      startTime: "2025-07-04 00:03:53",
-      endTime: "2025-07-04 00:04:26",
-      endTimeWrap: "2025-07-04 00:04:31.0000",
-      callDurationSec: 32,
-      callDurationTime: "00:00:32",
-      wrapTime: "00:00:05.0000",
-      holdTime: "-",
-      scenario: "Enquiry",
-      subScenario1: "Other",
-      subScenario2: "",
-      subScenario3: "",
-      subScenario4: "",
-      source: "",
-      recording: "#",
-    },
-    {
-      agent: "IDC59501",
-      phone: "9324240613",
-      callDate: "2025-07-04",
-      queueTime: "00:00:00.00",
-      startTimeQueue: "2025-07-04 00:08:21.00",
-      startTime: "2025-07-04 00:08:21",
-      endTime: "2025-07-04 00:09:31",
-      endTimeWrap: "2025-07-04 00:09:36.0000",
-      callDurationSec: 69,
-      callDurationTime: "00:01:09",
-      wrapTime: "00:00:05.0000",
-      holdTime: "-",
-      scenario: "Enquiry",
-      subScenario1: "Outlet Related",
-      subScenario2: "",
-      subScenario3: "",
-      subScenario4: "",
-      source: "Other",
-      recording: "#",
-    },
-    // Add additional rows as needed...
-  ];
+
+  const [sampleData, setSampleData] = useState([]);
+
+
+
+    const formatDate = (date) => {
+      if (!date) return "";
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+const handleStartDateChange = (date) => {
+  setStartDate(formatDate(date));
+};
+
+const handleEndDateChange = (date) => {
+  setEndDate(formatDate(date));
+};
+
+  const handleViewClick = async () => {
+    try {
+      const payload = {
+        from_date: startDate,
+        to_date: endDate,
+        company_id: companyId,
+      };
+
+      const response = await fetchCDRReport(payload);
+
+      const formatted = response.map((row) => ({
+        agent: row.agent,
+        phone: row.phone_number,
+        callDate: row.call_date,
+        queueTime: row.queuetime,
+        startTimeQueue: row.queue_start,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        endTimeWrap: row.wrap_end_time,
+        callDurationSec: row.call_duration1,
+        callDurationTime: row.call_duration,
+        wrapTime: row.wrap_time,
+        holdTime: row.parked_time,
+        scenario: row.status,
+        subScenario1: row.sub_status,
+        subScenario2: "",
+        subScenario3: "",
+        subScenario4: "",
+        source: row.campaign_id,
+        recording: `http://your-server.com/recordings/${row.uniqueid}.wav`,
+      }));
+
+      setSampleData(formatted);
+    } catch (err) {
+      console.error("Failed to fetch report", err);
+    }
+  };
 
   return (
     <div className="row gy-4 gx-3">
@@ -59,19 +74,22 @@ const CDRReport = () => {
         <h5 className="mb-3">CDR REPORT</h5>
         <div className="d-flex flex-wrap align-items-center gap-2">
           <DatePicker
-            selected={startDate}
-            onChange={(date) => setStartDate(date)}
-            placeholderText="Start Date"
-            className="form-control"
-          />
-          <DatePicker
-            selected={endDate}
-            onChange={(date) => setEndDate(date)}
-            placeholderText="End Date"
-            className="form-control"
-          />
+          selected={startDate ? new Date(startDate) : null}
+          onChange={handleStartDateChange}
+          placeholderText="Start Date"
+          className="form-control"
+        />
+
+        <DatePicker
+          selected={endDate ? new Date(endDate) : null}
+          onChange={handleEndDateChange}
+          placeholderText="End Date"
+          className="form-control"
+        />
           <button className="btn btn-primary">EXPORT</button>
-          <button className="btn btn-primary">VIEW</button>
+          <button className="btn btn-primary" onClick={handleViewClick}>
+  VIEW
+</button>
         </div>
       </div>
 

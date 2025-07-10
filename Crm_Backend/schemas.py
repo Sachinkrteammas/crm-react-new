@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, EmailStr
@@ -184,4 +185,35 @@ class CallMasterRecord(BaseModel):
     cat5: Optional[str] = None
 
 
+
+class CDRReportRequest(BaseModel):
+    from_date: date
+    to_date: date
+    company_id: int
+
+class CDRReportResponse(BaseModel):
+    uniqueid: Optional[str]
+    parked_time: Optional[timedelta]
+    campaign_id: Optional[str]
+
+    call20: Optional[int]
+    call60: Optional[int]
+    call90: Optional[int]
+    agent: Optional[str]
+    full_name: Optional[str]
+    leadid: Optional[int]
+    phone_number: Optional[str]
+    call_date: Optional[date]  # <- fix
+    queuetime: Optional[timedelta]  # <- fix
+    queue_start: Optional[datetime]  # <- fix
+    start_time: Optional[datetime]  # <- fix
+    end_time: Optional[datetime]
+    call_duration: Optional[timedelta]
+    call_duration1: Optional[Decimal]
+    wrap_end_time: Optional[datetime]
+    wrap_time: Optional[timedelta]  # <- fix
+    sub_status: Optional[str]
+    status: Optional[str]
+    term_reason: Optional[str]
+    xfercallid: Optional[int]
 

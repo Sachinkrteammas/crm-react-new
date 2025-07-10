@@ -20,3 +20,16 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+
+SQL_DB_URL2 = "mysql+pymysql://root:vicidialnow@192.168.10.5/asterisk?charset=utf8mb4"
+engine2 = create_engine(SQL_DB_URL2)
+SessionLocal2 = sessionmaker(bind=engine2)
+
+def get_db2():
+    db = SessionLocal2()
+    try:
+        yield db
+    finally:
+        db.close()

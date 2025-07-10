@@ -35,6 +35,11 @@ export const login = async (email, password) => {
 };
 
 
+export const fetchCDRReport = async (payload) => {
+  const response = await api.post("/report/cdr_report", payload);
+  return response.data;
+};
+
 
 
 export const getCurrentUser = async () => {
