@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas import LoginRequest, LoginResponse
+from schemas import LoginRequest, LoginResponse, CallMasterRecord
 from passlib.context import CryptContext
 from jose import jwt
 from datetime import datetime, timedelta
@@ -44,6 +46,15 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
     }
     return response_data
 
+
+@router.get("/call-master/", response_model=List[CallMasterRecord])
+def get_calls_by_client(client_id: int = Query(...), db: Session = Depends(get_db)):
+    try:
+        query = text("SELECT * FROM call_master WHERE client_id = :client_id LIMIT 3")
+        result = db.execute(query, {"client_id": client_id}).mappings().fetchall()
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/profile")
 def get_profile(current_user: str = Depends(get_current_user)):
