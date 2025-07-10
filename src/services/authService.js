@@ -14,24 +14,27 @@ export const signup = async (username, email, password) => {
 };
 
 
-export const login = async (usernameOrEmail, password) => {
+export const login = async (email, password) => {
   try {
-    const formData = new FormData();
-    formData.append("username", usernameOrEmail);
-    formData.append("password", password);
-
-    const response = await api.post("/login", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+    const response = await api.post("auth/login", {
+      email: email,         // must match FastAPI model field
+      password: password
     });
 
-    const { access_token } = response.data;
-    localStorage.setItem("token", access_token);
-    localStorage.setItem("username", response.data.username);
-    return access_token;
+    console.log(response, "response==");
+
+    // Save values returned from FastAPI
+    localStorage.setItem("token", response.data.access_token);
+    localStorage.setItem("username", response.data.auth_person);  // change key if needed
+    localStorage.setItem("company_id", response.data.company_id);
+
+    return response.data;
   } catch (error) {
     throw error.response?.data?.detail || "Login failed";
   }
 };
+
+
 
 
 export const getCurrentUser = async () => {
