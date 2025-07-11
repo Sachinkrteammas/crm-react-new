@@ -33,3 +33,11 @@ def get_db2():
         yield db
     finally:
         db.close()
+
+
+# ---------- Raw Access (Better than yield-based) ----------
+def get_engine():
+    return engine
+
+def get_engine2():
+    return engine2
