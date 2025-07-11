@@ -54,3 +54,42 @@ export const getCurrentUser = async () => {
 export const logout = () => {
   localStorage.removeItem("token");
 };
+
+
+
+export const getOBCDRReport = async (payload) => {
+  try {
+    const response = await api.post("report/ob_cdr_report", payload);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    throw error.response?.data?.detail || "Error fetching OB CDR Report";
+  }
+};
+
+
+export const getOBSharedCDRReport = async (payload) => {
+  try {
+    const response = await api.post("/report/ob_shared_cdr_report", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching OB Shared CDR report:", error);
+    throw error.response?.data?.detail || "Failed to fetch report";
+  }
+};
+
+
+export const getIVRReport = async (payload) => {
+  const response = await api.post("/report/ivr_report", payload);
+  return response.data;
+};
+
+export const getIVRFunnelReport = async (payload) => {
+  try {
+    const response = await api.post("/report/ivr_funnel_report", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching IVR Funnel Report:", error);
+    throw error;
+  }
+};

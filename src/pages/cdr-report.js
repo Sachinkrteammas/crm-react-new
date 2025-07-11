@@ -2,12 +2,15 @@ import React, { useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { fetchCDRReport } from '../services/authService';
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
 
 const CDRReport = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const companyId = localStorage.getItem("company_id");
-
+  const [showTable, setShowTable] = useState(false);
 
   const [sampleData, setSampleData] = useState([]);
 
@@ -62,9 +65,36 @@ const handleEndDateChange = (date) => {
       }));
 
       setSampleData(formatted);
+      setShowTable(true);
     } catch (err) {
       console.error("Failed to fetch report", err);
     }
+  };
+
+  const handleExport = () => {
+      if (sampleData.length === 0) {
+        alert("No data to export.");
+        return;
+      }
+
+      // Create a worksheet
+      const worksheet = XLSX.utils.json_to_sheet(sampleData);
+
+      // Create a new workbook and append the worksheet
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+
+      // Generate a buffer
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+
+      // Save file
+      const file = new Blob([excelBuffer], {
+        type: "application/octet-stream",
+      });
+      saveAs(file, "cdr_report.xlsx");
   };
 
   return (
@@ -86,14 +116,15 @@ const handleEndDateChange = (date) => {
           placeholderText="End Date"
           className="form-control"
         />
-          <button className="btn btn-primary">EXPORT</button>
+          <button className="btn btn-primary" onClick={handleExport}>EXPORT</button>
           <button className="btn btn-primary" onClick={handleViewClick}>
-  VIEW
-</button>
+          VIEW
+        </button>
         </div>
       </div>
 
       {/* VIEW CDR REPORT CARD */}
+      {showTable && (
       <div className="card p-4">
         <h6 className="mb-3">VIEW CDR REPORT</h6>
         <div className="table-responsive">
@@ -153,6 +184,7 @@ const handleEndDateChange = (date) => {
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 };

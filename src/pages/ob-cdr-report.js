@@ -1,47 +1,74 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import { getOBCDRReport } from '../services/authService';
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
-// Sample clients for dropdown
-const clientOptions = [
-  { value: "client1", label: "Tipping Mr. Pink Pvt. Ltd. (Burger)" },
-  { value: "client2", label: "ABC Pvt. Ltd." },
-];
-
-// Sample OB data
-const sampleOBData = [
-  {
-    agent: "VDAD",
-    phone: "7041795988",
-    callDate: "2025-07-05",
-    startTime: "2025-07-05 10:17:00",
-    endTime: "2025-07-05 10:17:30",
-    callDuration: 30,
-    wrapTime: 2,
-    recording: "#",
-    scenario: "Connected",
-    subScenario1: "Need Call Back",
-    subScenario2: "",
-    subScenario3: "",
-    subScenario4: "",
-  },
-  // Add more rows as needed
-];
 
 const OBCDRReport = () => {
-  const [selectedClient, setSelectedClient] = useState(null);
+
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const companyId = localStorage.getItem("company_id");
+  const [selectedClient, setSelectedClient] = useState(companyId);
+  const [obCdrData, setObCdrData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showTable, setShowTable] = useState(false);
+
+  const handleView = async () => {
+      setLoading(true);
+      try {
+        const payload = {
+          company_id: companyId,
+          from_date: startDate.toISOString().split("T")[0],
+          to_date: endDate.toISOString().split("T")[0],
+        };
+
+        const data = await getOBCDRReport(payload);
+
+        // Optional: console.log(data, "OB CDR DATA==");
+        setObCdrData(data);
+        setShowTable(true);
+      } catch (error) {
+          console.error(error);
+      } finally {
+          setLoading(false);
+      }
+  };
 
   const handleExport = () => {
-    // Handle export logic here
-    console.log("Export clicked", selectedClient, startDate, endDate);
+      if (obCdrData.length === 0) {
+        alert("No data to export.");
+        return;
+      }
+
+      // Create a worksheet
+      const worksheet = XLSX.utils.json_to_sheet(obCdrData);
+
+      // Create a new workbook and append the worksheet
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+
+      // Generate a buffer
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+
+      // Save file
+      const file = new Blob([excelBuffer], {
+        type: "application/octet-stream",
+      });
+      saveAs(file, "ob_cdr_report.xlsx");
   };
 
-  const handleView = () => {
-    // Fetch & display filtered data here
-    console.log("View clicked", selectedClient, startDate, endDate);
-  };
+  useEffect(() => {
+  // If companyId is present, ensure it is set if user refreshes the page
+  if (companyId) {
+    setSelectedClient(companyId);
+  }
+}, [companyId]);
 
   return (
     <div className="row gy-4 gx-3">
@@ -55,12 +82,7 @@ const OBCDRReport = () => {
               value={selectedClient}
               onChange={(e) => setSelectedClient(e.target.value)}
             >
-              <option value="">Select Client</option>
-              {clientOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-              ))}
+              <option value={companyId}>{companyId ? `Selected Client (${companyId})` : "Select Client"}</option>
             </select>
           </div>
           <DatePicker
@@ -85,6 +107,7 @@ const OBCDRReport = () => {
       </div>
 
       {/* VIEW OB CDR REPORT TABLE */}
+      {showTable && (
       <div className="card p-4">
         <h6 className="mb-3">VIEW OB CDR REPORT</h6>
         <div className="table-responsive">
@@ -107,31 +130,36 @@ const OBCDRReport = () => {
               </tr>
             </thead>
             <tbody>
-              {sampleOBData.map((row, idx) => (
+              {obCdrData.map((row, idx) => (
                 <tr key={idx}>
-                  <td>{row.agent}</td>
-                  <td>{row.phone}</td>
-                  <td>{row.callDate}</td>
-                  <td>{row.startTime}</td>
-                  <td>{row.endTime}</td>
-                  <td>{row.callDuration}</td>
-                  <td>{row.wrapTime}</td>
+                  <td>{row.Agent || "-"}</td>
+                  <td>{row.PhoneNumber || "-"}</td>
+                  <td>{row.CallDate || "-"}</td>
+                  <td>{row.StartTime ? row.StartTime.slice(0, 19).replace("T", " ") : "-"}</td>
+                  <td>{row.Endtime ? row.Endtime.slice(0, 19).replace("T", " ") : "-"}</td>
+                  <td>{row.CallDuration || "-"}</td>
+                  <td>{row.WrapTime || "-"}</td>
                   <td>
-                    <a href={row.recording} className="text-primary">
-                      <i className="ti ti-download"></i>
-                    </a>
+                    {row.recording ? (
+                      <a href={row.recording} className="text-primary">
+                        <i className="ti ti-download"></i>
+                      </a>
+                    ) : (
+                      "-"
+                    )}
                   </td>
-                  <td>{row.scenario}</td>
-                  <td>{row.subScenario1}</td>
-                  <td>{row.subScenario2}</td>
-                  <td>{row.subScenario3}</td>
-                  <td>{row.subScenario4}</td>
+                  <td>{row.scenario || "-"}</td>
+                  <td>{row.subScenario1 || "-"}</td>
+                  <td>{row.subScenario2 || "-"}</td>
+                  <td>{row.subScenario3 || "-"}</td>
+                  <td>{row.subScenario4 || "-"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 };

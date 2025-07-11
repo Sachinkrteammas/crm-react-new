@@ -217,3 +217,14 @@ class CDRReportResponse(BaseModel):
     term_reason: Optional[str]
     xfercallid: Optional[int]
 
+
+class OBCDRReportRequest(BaseModel):
+    from_date: date
+    to_date: date
+    company_id: int
+
+
+class IVRFunnelReportRequest(BaseModel):
+    from_date: date
+    to_date: date
+    company_id: int
