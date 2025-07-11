@@ -20,20 +20,27 @@ def get_call_master_data(
 ):
     engine = get_engine()
     with engine.connect() as conn:
-        # Step 1: Fetch active fields
+        # Step 1: Fetch field mappings
         field_meta_query = """
             SELECT fieldNumber, FieldName 
             FROM field_master 
-            WHERE ClientId = :client_id AND (FieldStatus IS NULL OR FieldStatus != 'D')
+            WHERE client_id = :client_id 
+              AND (FieldStatus IS NULL OR FieldStatus != 'D')
             ORDER BY fieldNumber
         """
         field_meta = conn.execute(text(field_meta_query), {"client_id": client_id}).mappings().all()
+
+        # Early return if no fields configured
+        if not field_meta:
+            return []
+
+        # Build column list
         field_map = {f["fieldNumber"]: f["FieldName"] for f in field_meta}
-        columns = [f"field{fnum}" for fnum in field_map.keys()]
+        columns = [f"field{fnum}" for fnum in field_map]
         columns += ["CallDate", "Category1", "Category2", "Category3", "Category4", "Category5"]
 
-        # Step 2: Build WHERE clause
-        where_clauses = ["ClientId = :client_id"]
+        # Step 2: WHERE clause setup
+        where_clauses = ["client_id = :client_id"]
         params = {"client_id": client_id}
 
         if from_date:
@@ -43,22 +50,12 @@ def get_call_master_data(
             where_clauses.append("CallDate <= :to_date")
             params["to_date"] = to_date
 
+        # Optional category filters (OR inside group)
         category_conditions = []
-        if Category1:
-            category_conditions.append("Category1 = :Category1")
-            params["Category1"] = Category1
-        if Category2:
-            category_conditions.append("Category2 = :Category2")
-            params["Category2"] = Category2
-        if Category3:
-            category_conditions.append("Category3 = :Category3")
-            params["Category3"] = Category3
-        if Category4:
-            category_conditions.append("Category4 = :Category4")
-            params["Category4"] = Category4
-        if Category5:
-            category_conditions.append("Category5 = :Category5")
-            params["Category5"] = Category5
+        for i, val in enumerate([Category1, Category2, Category3, Category4, Category5], start=1):
+            if val:
+                category_conditions.append(f"Category{i} = :Category{i}")
+                params[f"Category{i}"] = val
 
         if category_conditions:
             where_clauses.append(f"({' OR '.join(category_conditions)})")
@@ -70,7 +67,7 @@ def get_call_master_data(
         query = f"SELECT {select_cols} FROM call_master WHERE {where_clause}"
         result = conn.execute(text(query), params).mappings().all()
 
-        # Step 4: Map fieldX to FieldName
+        # Step 4: Format response
         response = []
         for row in result:
             record = {}
