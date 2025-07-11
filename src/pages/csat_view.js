@@ -115,7 +115,7 @@ const handleExportToExcel = () => {
   <div className="col-md-3 col-sm-6">
     <button
               type="button"
-              className="btn btn-primary me-2 px-4 py-2"
+              className="btn btn-primary w-75 px-4 py-2"
               onClick={handleExportToExcel}
             >
               Export
