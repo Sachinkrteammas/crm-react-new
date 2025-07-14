@@ -1,8 +1,54 @@
-import React from 'react';
+import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 const Dashboard = () => {
+
+    const [dateRange, setDateRange] = useState("today");
+    const [fromDate, setFromDate] = useState("");
+    const [toDate, setToDate] = useState("");
+
+
+    useEffect(() => {
+    const today = new Date();
+    const format = (date) => date.toISOString().split("T")[0];
+
+    switch (dateRange) {
+      case "today":
+        setFromDate(format(today));
+        setToDate(format(today));
+        break;
+      case "yesterday":
+        const yest = new Date(today);
+        yest.setDate(yest.getDate() - 1);
+        setFromDate(format(yest));
+        setToDate(format(yest));
+        break;
+      case "weekly":
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        setFromDate(format(weekAgo));
+        setToDate(format(today));
+        break;
+      case "monthly":
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(monthAgo.getMonth() - 1);
+        setFromDate(format(monthAgo));
+        setToDate(format(today));
+        break;
+      case "custom":
+        // allow user input
+        break;
+      default:
+        break;
+    }
+  }, [dateRange]);
+
+  const handleDateRangeChange = (e) => {
+    setDateRange(e.target.value);
+  };
+
+
 
     const data = [
     { name: 'Abandon', value: 10 },
@@ -122,47 +168,61 @@ const Dashboard = () => {
             <div className="card-body">
               <h5 className="card-title mb-3">Call Filters</h5>
               <form className="row gx-2 gy-2 align-items-center">
-                {/* Date Range Selection */}
-                <div className="col-12 d-flex flex-wrap gap-2 mb-3">
-                  {['Today', 'Yesterday', 'Weekly', 'Monthly', 'Custom'].map((label, idx) => (
-                    <div className="form-check form-check-inline mb-0" key={idx}>
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="dateRange"
-                        id={`range-${label}`}
-                        value={label.toLowerCase()}
-                      />
-                      <label className="form-check-label" htmlFor={`range-${label}`}>
-                        {label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
+      {/* Date Range Selection */}
+      <div className="col-12 d-flex flex-wrap gap-2 mb-3">
+        {["Today", "Yesterday", "Weekly", "Monthly", "Custom"].map((label, idx) => (
+          <div className="form-check form-check-inline mb-0" key={idx}>
+            <input
+              className="form-check-input"
+              type="radio"
+              name="dateRange"
+              id={`range-${label}`}
+              value={label.toLowerCase()}
+              checked={dateRange === label.toLowerCase()}
+              onChange={handleDateRangeChange}
+            />
+            <label className="form-check-label" htmlFor={`range-${label}`}>
+              {label}
+            </label>
+          </div>
+        ))}
+      </div>
 
-                {/* Call Type */}
-                <div className="col-sm">
-                  <select className="form-select">
-                    <option value="inbounds">Inbounds</option>
-                    <option value="outbounds">Outbounds</option>
-                  </select>
-                </div>
+      {/* Call Type */}
+      <div className="col-sm">
+        <select className="form-select">
+          <option value="inbounds">Inbounds</option>
+          <option value="outbounds">Outbounds</option>
+        </select>
+      </div>
 
-                {/* Date Pickers */}
-                <div className="col-sm">
-                  <input type="date" className="form-control" placeholder="From" />
-                </div>
-                <div className="col-sm">
-                  <input type="date" className="form-control" placeholder="To" />
-                </div>
+      {/* Date Pickers */}
+      <div className="col-sm">
+        <input
+          type="date"
+          className="form-control"
+          value={fromDate}
+          readOnly={dateRange !== "custom"}
+          onChange={(e) => setFromDate(e.target.value)}
+        />
+      </div>
+      <div className="col-sm">
+        <input
+          type="date"
+          className="form-control"
+          value={toDate}
+          readOnly={dateRange !== "custom"}
+          onChange={(e) => setToDate(e.target.value)}
+        />
+      </div>
 
-                {/* Search Button */}
-                <div className="col-sm">
-                  <button type="submit" className="btn btn-primary w-100">
-                    Search
-                  </button>
-                </div>
-              </form>
+      {/* Search Button */}
+      <div className="col-sm">
+        <button type="submit" className="btn btn-primary w-100">
+          Search
+        </button>
+      </div>
+    </form>
             </div>
           </div>
         </div>
