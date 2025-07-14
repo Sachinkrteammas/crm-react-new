@@ -33,43 +33,47 @@ const handleEndDateChange = (date) => {
 };
 
   const handleViewClick = async () => {
-    try {
-      const payload = {
-        from_date: startDate,
-        to_date: endDate,
-        company_id: companyId,
-      };
+        try {
+            const payload = {
+                from_date: startDate,
+                to_date: endDate,
+                company_id: companyId,
+            };
 
-      const response = await fetchCDRReport(payload);
+            const response = await fetchCDRReport(payload);
 
-      const formatted = response.map((row) => ({
-        agent: row.agent,
-        phone: row.phone_number,
-        callDate: row.call_date,
-        queueTime: row.queuetime,
-        startTimeQueue: row.queue_start,
-        startTime: row.start_time,
-        endTime: row.end_time,
-        endTimeWrap: row.wrap_end_time,
-        callDurationSec: row.call_duration1,
-        callDurationTime: row.call_duration,
-        wrapTime: row.wrap_time,
-        holdTime: row.parked_time,
-        scenario: row.status,
-        subScenario1: row.sub_status,
-        subScenario2: "",
-        subScenario3: "",
-        subScenario4: "",
-        source: row.campaign_id,
-        recording: `http://your-server.com/recordings/${row.uniqueid}.wav`,
-      }));
+            const formatted = response.map((row) => ({
+                agent: row.agent,
+                phone: row.phone_number,
+                callDate: row.call_date,
+                queueTime: row.queuetime,
+                startTimeQueue: row.queue_start,
+                startTime: row.start_time,
+                endTime: row.end_time,
+                endTimeWrap: row.wrap_end_time,
+                callDurationSec: row.call_duration1,
+                callDurationTime: row.call_duration,
+                wrapTime: row.wrap_time,
+                holdTime: row.parked_time,
 
-      setSampleData(formatted);
-      setShowTable(true);
-    } catch (err) {
-      console.error("Failed to fetch report", err);
-    }
+                scenario: row.scenario,
+                subScenario1: row.sub_scenario_1,
+                subScenario2: row.sub_scenario_2,
+                subScenario3: row.sub_scenario_3,
+                subScenario4: row.sub_scenario_4,
+                source: row.source ?? row.campaign_id,
+                recording: row.recording
+                    ? row.recording
+                    : `http://your-server.com/recordings/${row.uniqueid}.wav`,
+            }));
+
+            setSampleData(formatted);
+            setShowTable(true);
+        } catch (err) {
+            console.error("Failed to fetch report", err);
+        }
   };
+
 
   const handleExport = () => {
       if (sampleData.length === 0) {
@@ -127,7 +131,7 @@ const handleEndDateChange = (date) => {
       {showTable && (
       <div className="card p-4">
         <h6 className="mb-3">VIEW CDR REPORT</h6>
-        <div className="table-responsive">
+        <div className="table-responsive" style={{ maxHeight: "500px", overflow: "auto" }}>
           <table className="table table-bordered table-sm">
             <thead className="table-light">
               <tr>

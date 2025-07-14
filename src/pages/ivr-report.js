@@ -92,7 +92,7 @@ const IVRReport = () => {
       {showTable && (
       <div className="card p-4">
         <h6 className="mb-3">VIEW IVR LOG REPORT</h6>
-        <div className="table-responsive">
+        <div className="table-responsive" style={{ maxHeight: "500px", overflow: "auto" }}>
           <table className="table table-bordered table-sm">
             <thead className="table-light">
               <tr>

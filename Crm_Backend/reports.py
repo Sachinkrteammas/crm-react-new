@@ -17,7 +17,7 @@ router = APIRouter()
 
 
 @router.post("/cdr_report", response_model=List[CDRReportResponse])
-def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db),db2: Session = Depends(get_db2)):
+def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db), db2: Session = Depends(get_db2)):
     # Step 1: Get campaign ID from registration_master
     campaign_query = text("SELECT campaignid FROM registration_master WHERE company_id = :company_id")
     campaign_result = db.execute(campaign_query, {"company_id": request.company_id}).mappings().fetchone()
@@ -25,7 +25,8 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db),db2:
     if not campaign_result:
         raise HTTPException(status_code=404, detail="Company ID not found")
 
-
+    raw_campaign = campaign_result["campaignid"]
+    campaign_list = [c.strip().strip("'") for c in raw_campaign.split(",")]
 
     # Step 2: Build report query
     report_query = f"""
@@ -79,19 +80,60 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db),db2:
         AND t2.lead_id IS NOT NULL
     """
 
-    raw_campaign = campaign_result["campaignid"]
-    campaign_list = [c.strip().strip("'") for c in raw_campaign.split(",")]
-
-    print("Campaigns:", campaign_list)
-    print("From:", request.from_date, "To:", request.to_date)
-
+    # Execute main report query
     result = db2.execute(text(report_query), {
         "from_date": request.from_date,
         "to_date": request.to_date,
         "campaign_ids": tuple(campaign_list)
     }).mappings().fetchall()
 
-    return result
+    enriched_result = []
+
+    if result:
+        # Fetch scenario tagging from call_master
+        scenario_query = text("""
+            SELECT *
+            FROM call_master cm
+            WHERE DATE(cm.calldate) BETWEEN :from_date AND :to_date
+        """)
+        scenario_data = db.execute(scenario_query, {
+            "from_date": request.from_date,
+            "to_date": request.to_date
+        }).mappings().fetchall()
+
+        scenario_map = {str(row["LeadId"]): row for row in scenario_data if row["LeadId"]}
+
+        # Enrich each row with scenario data if LeadId matches
+        for row in result:
+            lead_id = str(row.get("leadid"))
+            scenario = scenario_map.get(lead_id)
+            enriched_row = dict(row)
+
+            if scenario:
+                enriched_row.update({
+                    "scenario": scenario.get("Scenario"),
+                    "sub_scenario_1": scenario.get("SubScenario1"),
+                    "sub_scenario_2": scenario.get("SubScenario2"),
+                    "sub_scenario_3": scenario.get("SubScenario3"),
+                    "sub_scenario_4": scenario.get("SubScenario4"),
+                    "source": scenario.get("Source"),
+                    "recording": scenario.get("Recording")
+                })
+            else:
+                enriched_row.update({
+                    "scenario": None,
+                    "sub_scenario_1": None,
+                    "sub_scenario_2": None,
+                    "sub_scenario_3": None,
+                    "sub_scenario_4": None,
+                    "source": None,
+                    "recording": None
+                })
+
+            enriched_result.append(enriched_row)
+
+    return enriched_result
+
 
 
 
@@ -230,7 +272,7 @@ def get_ob_shared_cdr_report(request: OBCDRReportRequest, db: Session = Depends(
 @router.post("/ivr_report")
 def get_ivr_report(
     request: OBCDRReportRequest,  # reuse your schema expecting from_date, to_date, company_id
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db2)
 ):
     """
     Returns IVR report for the requested company_id and date range.
