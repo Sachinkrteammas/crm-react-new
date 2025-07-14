@@ -1,9 +1,13 @@
 # Crm_Backend/call_master.py
+from http.client import HTTPException
 
 from fastapi import APIRouter, Query
 from sqlalchemy import text
 from typing import List, Dict, Optional
-from database import get_engine
+
+from sqlalchemy.exc import SQLAlchemyError
+
+from database import get_engine, get_engine2, SessionLocal2
 
 router = APIRouter(tags=["Call Master"])
 
@@ -84,3 +88,35 @@ def get_call_master_data(
             response.append(record)
 
         return response
+
+
+@router.get("/csat-report/{client_id}", response_model=List[Dict])
+def get_csat_report(
+    client_id: int,
+    from_date: str = Query(...),
+    to_date: str = Query(...),
+):
+    query = text("""
+        SELECT vl.*, vcl.user, vu.full_name
+        FROM csat_data vl
+        INNER JOIN vicidial_closer_log vcl ON vl.uniqueid = vcl.uniqueid
+        INNER JOIN vicidial_users vu ON vcl.user = vu.user
+        WHERE vl.dtmf < 4
+          AND vl.client_id = :client_id
+          AND DATE(vl.call_date) BETWEEN :from_date AND :to_date
+    """)
+
+    try:
+        engine = get_engine2()
+        with engine.connect() as conn:
+            result = conn.execute(query, {
+                "client_id": client_id,
+                "from_date": from_date,
+                "to_date": to_date,
+            }).mappings().all()
+
+        return [dict(row) for row in result]
+
+    except SQLAlchemyError as e:
+        print("SQLAlchemy Error:", str(e))  # Good for local debugging
+        raise HTTPException(status_code=500, detail="Database query failed.")
