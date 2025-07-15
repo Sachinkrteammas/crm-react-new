@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { getDashboardReport, getActiveServices } from '../services/authService';
 
 const Dashboard = () => {
 
     const [dateRange, setDateRange] = useState("today");
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
+    const companyId = localStorage.getItem("company_id");
 
+    const [dashboardData, setDashboardData] = useState({
+        answered: 0,
+        abandon: 0,
+        tagged: 0,
+        abandon_callback: 0,
+    });
+
+    const [plan, setPlan] = useState(null);
+    const [planLoading, setPlanLoading] = useState(true);
 
     useEffect(() => {
     const today = new Date();
@@ -95,6 +106,57 @@ const Dashboard = () => {
         { source: 'Whatsapp', total: 0, open: 0, close: 0, asOnDate: 0 },
     ];
 
+    const fetchDashboardData = async () => {
+    try {
+        const payload = {
+            from_date: fromDate,
+            to_date: toDate,
+            company_id: companyId,
+        };
+
+        const { days, total_tagged, total_abandon_cb } = await getDashboardReport(payload);
+        const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
+        const abandon  = days.reduce((sum, d) => sum + (d.Abandon  ?? 0), 0);
+        setDashboardData({
+          answered,
+          abandon,
+          tagged: total_tagged,
+          abandon_callback: total_abandon_cb,
+        });
+    } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+    }
+};
+
+useEffect(() => {
+    fetchDashboardData();
+}, [fromDate, toDate, companyId]);
+
+useEffect(() => {
+    if (!companyId) {
+      setPlanLoading(false);
+      return;
+    }
+    (async () => {
+      try {
+        const data = await getActiveServices(parseInt(companyId, 10));
+        setPlan(data);
+      } catch (err) {
+        console.error("Failed to load active services", err);
+      } finally {
+        setPlanLoading(false);
+      }
+    })();
+  }, [companyId]);
+
+  if (planLoading) {
+       return <div className="card h-100"><div className="card-body">Loading active services…</div></div>;
+     }
+     if (!plan) {
+       return <div className="card h-100"><div className="card-body">No active plan found.</div></div>;
+  }
+
+
    return (
    <div>
       <div className="row gy-4 gx-3">
@@ -109,7 +171,7 @@ const Dashboard = () => {
                 <small className="text-success fw-medium">+12.6%</small>
               </div>
               <h5 className="card-title mb-1">Total Answered Calls</h5>
-              <h4 className="mb-0">124k</h4>
+              <h4 className="mb-0">{dashboardData.answered.toLocaleString()}</h4>
             </div>
           </div>
         </div>
@@ -125,7 +187,7 @@ const Dashboard = () => {
                 <small className="text-danger fw-medium">-16.2%</small>
               </div>
               <h5 className="card-title mb-1">Total Abandon Calls</h5>
-              <h4 className="mb-0">175k</h4>
+              <h4 className="mb-0">{dashboardData.abandon.toLocaleString()}</h4>
             </div>
           </div>
         </div>
@@ -141,7 +203,7 @@ const Dashboard = () => {
                 <small className="text-danger fw-medium">-12.2%</small>
               </div>
               <h5 className="card-title mb-1">Total Tagged Calls</h5>
-              <h4 className="mb-0">1.28k</h4>
+              <h4 className="mb-0">{dashboardData.tagged.toLocaleString()}</h4>
             </div>
           </div>
         </div>
@@ -157,7 +219,7 @@ const Dashboard = () => {
                 <small className="text-success fw-medium">+24.5%</small>
               </div>
               <h5 className="card-title mb-1">Total Abandon Call Back</h5>
-              <h4 className="mb-0">24.67k</h4>
+              <h4 className="mb-0">{dashboardData.abandon_callback.toLocaleString()}</h4>
             </div>
           </div>
         </div>
@@ -168,61 +230,61 @@ const Dashboard = () => {
             <div className="card-body">
               <h5 className="card-title mb-3">Call Filters</h5>
               <form className="row gx-2 gy-2 align-items-center">
-      {/* Date Range Selection */}
-      <div className="col-12 d-flex flex-wrap gap-2 mb-3">
-        {["Today", "Yesterday", "Weekly", "Monthly", "Custom"].map((label, idx) => (
-          <div className="form-check form-check-inline mb-0" key={idx}>
-            <input
-              className="form-check-input"
-              type="radio"
-              name="dateRange"
-              id={`range-${label}`}
-              value={label.toLowerCase()}
-              checked={dateRange === label.toLowerCase()}
-              onChange={handleDateRangeChange}
-            />
-            <label className="form-check-label" htmlFor={`range-${label}`}>
-              {label}
-            </label>
-          </div>
-        ))}
-      </div>
+              {/* Date Range Selection */}
+              <div className="col-12 d-flex flex-wrap gap-2 mb-3">
+                {["Today", "Yesterday", "Weekly", "Monthly", "Custom"].map((label, idx) => (
+                  <div className="form-check form-check-inline mb-0" key={idx}>
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="dateRange"
+                      id={`range-${label}`}
+                      value={label.toLowerCase()}
+                      checked={dateRange === label.toLowerCase()}
+                      onChange={handleDateRangeChange}
+                    />
+                    <label className="form-check-label" htmlFor={`range-${label}`}>
+                      {label}
+                    </label>
+                  </div>
+                ))}
+              </div>
 
-      {/* Call Type */}
-      <div className="col-sm">
-        <select className="form-select">
-          <option value="inbounds">Inbounds</option>
-          <option value="outbounds">Outbounds</option>
-        </select>
-      </div>
+              {/* Call Type */}
+              <div className="col-sm">
+                <select className="form-select">
+                  <option value="inbounds">Inbounds</option>
+                  <option value="outbounds">Outbounds</option>
+                </select>
+              </div>
 
-      {/* Date Pickers */}
-      <div className="col-sm">
-        <input
-          type="date"
-          className="form-control"
-          value={fromDate}
-          readOnly={dateRange !== "custom"}
-          onChange={(e) => setFromDate(e.target.value)}
-        />
-      </div>
-      <div className="col-sm">
-        <input
-          type="date"
-          className="form-control"
-          value={toDate}
-          readOnly={dateRange !== "custom"}
-          onChange={(e) => setToDate(e.target.value)}
-        />
-      </div>
+              {/* Date Pickers */}
+              <div className="col-sm">
+                <input
+                  type="date"
+                  className="form-control"
+                  value={fromDate}
+                  readOnly={dateRange !== "custom"}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+              </div>
+              <div className="col-sm">
+                <input
+                  type="date"
+                  className="form-control"
+                  value={toDate}
+                  readOnly={dateRange !== "custom"}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+              </div>
 
-      {/* Search Button */}
-      <div className="col-sm">
-        <button type="submit" className="btn btn-primary w-100">
-          Search
-        </button>
-      </div>
-    </form>
+              {/* Search Button */}
+              <div className="col-sm">
+                <button type="submit" className="btn btn-primary w-100">
+                  Search
+                </button>
+              </div>
+            </form>
             </div>
           </div>
         </div>
@@ -275,15 +337,15 @@ const Dashboard = () => {
                   </thead>
                   <tbody className="text-center align-middle">
                     <tr>
-                      <td className="fw-semibold">Tipping Mr. Pink Pvt. Ltd. (Burger Singh) Test</td>
-                      <td>Monthly</td>
-                      <td>Rs. 18,000.00</td>
-                      <td>Rs. 120,000.00</td>
-                      <td>Rs. 4.50 / Min.</td>
-                      <td>Rs. 4.50 / Min.</td>
-                      <td>Rs. 6.00 / Min.</td>
-                      <td>0.25</td>
-                      <td>0.25</td>
+                      <td className="fw-semibold">{plan.plan_name}</td>
+                      <td>{plan.period_type}</td>
+                      <td>Rs. {plan.credit_value.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                      <td>Rs. {plan.subscription_value.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                      <td>Rs. {plan.inbound_call_day_charge.toFixed(2)} / Min.</td>
+                      <td>Rs. {plan.inbound_call_night_charge.toFixed(2)} / Min.</td>
+                      <td>Rs. {plan.outbound_call_charge.toFixed(2)} / Min.</td>
+                      <td>{plan.sms_charge.toFixed(2)}</td>
+                      <td>{plan.email_charge.toFixed(2)}</td>
                     </tr>
                   </tbody>
                 </table>

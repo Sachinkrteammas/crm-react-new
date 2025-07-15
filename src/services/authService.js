@@ -93,3 +93,24 @@ export const getIVRFunnelReport = async (payload) => {
     throw error;
   }
 };
+
+export const getDashboardReport = async (payload) => {
+    try {
+        const response = await api.post("/dashboard/dashboard_report", payload);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching dashboard report:", error);
+        throw error;
+    }
+};
+
+
+export const getActiveServices = async (companyId) => {
+    try{
+        const response = await api.post("/dashboard/active_services", { company_id: companyId });
+        return response.data;
+    } catch(error){
+        console.error("Error fetching dashboard active services:", error);
+        throw error;
+    }
+};

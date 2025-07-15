@@ -1,6 +1,6 @@
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, EmailStr
 
@@ -228,3 +228,37 @@ class IVRFunnelReportRequest(BaseModel):
     from_date: date
     to_date: date
     company_id: int
+
+class DashboardReq(BaseModel):
+    company_id: int
+    view_type: Optional[str] = "Today"
+    from_date: Optional[date] = None
+    to_date:   Optional[date] = None
+
+
+class DashboardDay(BaseModel):
+    Total:    int
+    Answered: int
+    Abandon:  int
+    gdate:    str
+
+class DashboardFullResp(BaseModel):
+    days:             List[DashboardDay]
+    total_tagged:     int
+    total_abandon_cb: int
+
+
+class ActiveServicesRequest(BaseModel):
+    company_id: int
+
+
+class ActiveService(BaseModel):
+    plan_name: str
+    period_type: str
+    credit_value: float
+    subscription_value: float
+    inbound_call_day_charge: float
+    inbound_call_night_charge: float
+    outbound_call_charge: float
+    sms_charge: float
+    email_charge: float
