@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { getDashboardReport, getActiveServices, getCallAnalysisReport, getCallDistributionReport } from '../services/authService';
+import { getDashboardReport, getActiveServices, getCallAnalysisReport, getCallDistributionReport, getTicketCaseAnalysis, getTicketBySource } from '../services/authService';
 import api from "../api";
 
 const Dashboard = () => {
@@ -26,6 +26,11 @@ const Dashboard = () => {
 
     const [plan, setPlan] = useState(null);
     const [planLoading, setPlanLoading] = useState(true);
+
+    const [ticketCaseData, setTicketCaseData] = useState([]);
+    const [openCloseTicketData, setOpenCloseTicketData] = useState([]);
+
+    const [ticketSourceData, setTicketSourceData] = useState([]);
 
     useEffect(() => {
   const today = new Date();
@@ -106,6 +111,8 @@ const Dashboard = () => {
         fetchDashboardData();
         fetchCallAnalysis();
         fetchCallDistribution();
+        fetchData();
+        fetchTicketBySource();
       }
     }, [fromDate, toDate]);
 
@@ -129,63 +136,120 @@ const Dashboard = () => {
 //      },
 //    ];
 
-    const ticketCaseData = [
-      {
-        name: 'JUL-25-WK1',
-        Enquiry: 300,
-        Complaint: 80,
-        BulkOrder: 15,
-        Request: 90,
-        Other: 30,
-      },
-      {
-        name: 'MTD',
-        Enquiry: 310,
-        Complaint: 78,
-        BulkOrder: 12,
-        Request: 85,
-        Other: 28,
-      },
-    ];
+//    const ticketCaseData = [
+//      {
+//        name: 'JUL-25-WK1',
+//        Enquiry: 300,
+//        Complaint: 80,
+//        BulkOrder: 15,
+//        Request: 90,
+//        Other: 30,
+//      },
+//      {
+//        name: 'MTD',
+//        Enquiry: 310,
+//        Complaint: 78,
+//        BulkOrder: 12,
+//        Request: 85,
+//        Other: 28,
+//      },
+//    ];
+//
+//    const openCloseTicketData = [
+//      { name: 'Open', InTAT: 70, OutOfTAT: 30 },
+//      { name: 'Close', InTAT: 85, OutOfTAT: 15 },
+//    ];
 
-    const openCloseTicketData = [
-      { name: 'Open', InTAT: 70, OutOfTAT: 30 },
-      { name: 'Close', InTAT: 85, OutOfTAT: 15 },
-    ];
-
-    const ticketSourceData = [
-        { source: 'Call', total: 0, open: 0, close: 0, asOnDate: 0 },
-        { source: 'Email', total: 0, open: 0, close: 0, asOnDate: 0 },
-        { source: 'Whatsapp', total: 0, open: 0, close: 0, asOnDate: 0 },
-    ];
+//    const ticketSourceData = [
+//        { source: 'Call', total: 0, open: 0, close: 0, asOnDate: 0 },
+//        { source: 'Email', total: 0, open: 0, close: 0, asOnDate: 0 },
+//        { source: 'Whatsapp', total: 0, open: 0, close: 0, asOnDate: 0 },
+//    ];
 
     const fetchDashboardData = async () => {
-  try {
-    const payload = {
-      company_id: Number(companyId),
-      view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
-      from_date: fromDate,
-      to_date: toDate
+      try {
+        const payload = {
+          company_id: Number(companyId),
+          view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
+          from_date: fromDate,
+          to_date: toDate
+        };
+
+        const response = await api.post("/dashboard/dashboard_report", payload);
+
+        const { days, total_tagged, total_abandon_cb } = response.data;
+
+        const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
+        const abandon  = days.reduce((sum, d) => sum + (d.Abandon  ?? 0), 0);
+
+        setDashboardData({
+          answered,
+          abandon,
+          tagged: total_tagged,
+          abandon_callback: total_abandon_cb,
+        });
+
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+      }
     };
 
-    const response = await api.post("/dashboard/dashboard_report", payload);
 
-    const { days, total_tagged, total_abandon_cb } = response.data;
+      const fetchData = async () => {
+        if (!companyId) return;
 
-    const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
-    const abandon  = days.reduce((sum, d) => sum + (d.Abandon  ?? 0), 0);
+        // Build view_type from your dateRange radio (e.g. "today" → "Today")
+        const viewType =
+          dateRange.charAt(0).toUpperCase() + dateRange.slice(1);
 
-    setDashboardData({
-      answered,
-      abandon,
-      tagged: total_tagged,
-      abandon_callback: total_abandon_cb,
-    });
+        const payload = {
+          company_id: companyId,
+          view_type:  dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
+          from_date:  fromDate || null,
+          to_date:    toDate   || null,
+        };
 
-  } catch (error) {
-    console.error("Error fetching dashboard data:", error);
-  }
-};
+        try {
+          const { cases, open_tat, close_tat } =
+            await getTicketCaseAnalysis(payload);
+
+          setTicketCaseData(cases);
+          setOpenCloseTicketData([
+            {
+              name:    "Open",
+              InTAT:   open_tat[0]?.InTAT   ?? 0,
+              OutOfTAT: open_tat[0]?.OutOfTAT ?? 0,
+            },
+            {
+              name:    "Close",
+              InTAT:   close_tat[0]?.InTAT   ?? 0,
+              OutOfTAT: close_tat[0]?.OutOfTAT ?? 0,
+            },
+          ]);
+        } catch (err) {
+          console.error("Failed to load Ticket Case Analysis", err);
+        }
+      };
+
+
+
+    const fetchTicketBySource = async () => {
+        if (!companyId) return;
+
+        try {
+            const payload = {
+                company_id: companyId,
+                view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
+                from_date: fromDate || null,
+                to_date: toDate || null,
+            };
+            const data = await getTicketBySource(payload);
+            setTicketSourceData(data);
+        } catch (err) {
+            console.error("Failed to load Ticket By Source", err);
+        }
+    };
+
 
 
 
@@ -219,23 +283,13 @@ useEffect(() => {
 
 
 
-//    const [viewType, setViewType] = useState("Today");
-
-
-
-
-
-
-
-
-
-
-
 const handleSubmit = (e) => {
   e.preventDefault();
   fetchDashboardData();
   fetchCallAnalysis();
   fetchCallDistribution();
+  fetchData();
+  fetchTicketBySource();
 };
 
 

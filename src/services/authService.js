@@ -136,3 +136,24 @@ export const getCallDistributionReport = async (payload) => {
         throw error;
     }
 };
+
+
+export const getTicketCaseAnalysis = async (payload) => {
+    try{
+        const response = await api.post(`/dashboard/ticket_case_analysis?company_id=${payload.company_id}`, payload);
+        return response.data;
+    } catch(error){
+        console.error("Error fetching dashboard ticket case analysis:", error);
+        throw error;
+    }
+};
+
+export const getTicketBySource = async (payload) => {
+    try {
+        const response = await api.post("/dashboard/ticket_by_source", payload);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching dashboard ticket by source report:", error);
+        throw error;
+    }
+};

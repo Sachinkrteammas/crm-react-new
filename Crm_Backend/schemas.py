@@ -278,3 +278,32 @@ class CallDistributionResponse(BaseModel):
     date: str
     Answered: float
     Abandon: float
+
+
+
+class TicketCaseBreakdown(BaseModel):
+    name: str
+    Enquiry: int
+    Complaint: int
+    BulkOrder: int
+    Request: int
+    Other: int
+
+class TicketTATBreakdown(BaseModel):
+    name: str
+    InTAT: int
+    OutOfTAT: int
+
+class TicketCaseAnalysisResponse(BaseModel):
+    cases: List[TicketCaseBreakdown]
+    open_tat: List[TicketTATBreakdown]
+    close_tat: List[TicketTATBreakdown]
+
+
+
+class TicketSourceResponse(BaseModel):
+    source: str
+    total: int
+    open: int
+    close: int
+    as_on_date: str

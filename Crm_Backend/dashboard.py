@@ -314,3 +314,155 @@ def get_call_distribution_report(
         })
 
     return result
+
+
+
+@router.post("/ticket_case_analysis", response_model=TicketCaseAnalysisResponse)
+def get_ticket_case_analysis(
+    company_id: int,
+    req: DashboardReq,
+    db: Session = Depends(get_db),
+):
+    # Build date condition exactly as in PHP
+    vt = req.view_type or "Today"
+    if vt == "Today":
+        cond = "DATE(CallDate) = CURDATE()"
+    elif vt == "Yesterday":
+        cond = "DATE(CallDate) = SUBDATE(CURDATE(),INTERVAL 1 DAY)"
+    elif vt == "Weekly":
+        cond = "DATE(CallDate) BETWEEN SUBDATE(CURDATE(),INTERVAL 6 DAY) AND CURDATE()"
+    elif vt == "Monthly":
+        cond = "DATE(CallDate) BETWEEN SUBDATE(CURDATE(),INTERVAL 30 DAY) AND CURDATE()"
+    else: # Custom
+        cond = "DATE(CallDate) BETWEEN :from_date AND :to_date"
+
+    params = {"cid": company_id}
+    if vt == "Custom":
+        params["from_date"] = req.from_date
+        params["to_date"]   = req.to_date
+
+    # --- 1) Case distribution by Category1 ---
+    sql_cases = text(f"""
+        SELECT 
+          SUM(CASE WHEN Category1 = 'Enquiry' THEN 1 ELSE 0 END)    AS Enquiry,
+          SUM(CASE WHEN Category1 = 'Complaint' THEN 1 ELSE 0 END)  AS Complaint,
+          SUM(CASE WHEN Category1 = 'BulkOrder' THEN 1 ELSE 0 END)  AS BulkOrder,
+          SUM(CASE WHEN Category1 = 'Request' THEN 1 ELSE 0 END)    AS Request,
+          SUM(CASE WHEN Category1 NOT IN 
+              ('Enquiry','Complaint','BulkOrder','Request') 
+            THEN 1 ELSE 0 END)                                    AS Other
+        FROM call_master 
+        WHERE client_id = :cid AND {cond}
+    """)
+    row = db.execute(sql_cases, params).mappings().first()
+
+    case_data = [TicketCaseBreakdown(
+        name="Cases",
+        Enquiry=row["Enquiry"] or 0,
+        Complaint=row["Complaint"] or 0,
+        BulkOrder=row["BulkOrder"] or 0,
+        Request=row["Request"] or 0,
+        Other=row["Other"] or 0,
+    )]
+
+    # --- 2) Open ticket TAT ---
+    # PHP uses tbl_time table to define TAT per category, but for simplicity
+    # we’ll count “In TAT” vs “OutOfTAT” by comparing CloseLoopingDate vs CallDate hours
+    sql_open = text(f"""
+        SELECT
+          SUM(CASE 
+                WHEN CloseLoopingDate IS NOT NULL 
+                     AND TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) 
+                         <= tt.time_Hours
+                THEN 1 ELSE 0 END) AS InTAT,
+          SUM(CASE 
+                WHEN (CloseLoopingDate IS NULL 
+                        AND TIMESTAMPDIFF(HOUR, CallDate, NOW()) > tt.time_Hours)
+                     OR (CloseLoopingDate IS NOT NULL
+                        AND TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) > tt.time_Hours)
+                THEN 1 ELSE 0 END) AS OutOfTAT
+        FROM call_master cm
+        JOIN tbl_time tt 
+          ON cm.client_id = tt.clientId 
+         AND CONCAT_WS('',cm.Category1,cm.Category2,cm.Category3,
+                       cm.Category4,cm.Category5) = 
+             CONCAT_WS('',tt.Category1,tt.Category2,tt.Category3,
+                       tt.Category4,tt.Category5)
+        WHERE cm.client_id = :cid 
+          AND {cond}
+          AND cm.CloseLoopingDate IS NULL  -- Open tickets only
+    """)
+    open_row = db.execute(sql_open, params).mappings().first()
+    open_tat = [TicketTATBreakdown(
+        name="Open",
+        InTAT=open_row["InTAT"] or 0,
+        OutOfTAT=open_row["OutOfTAT"] or 0,
+    )]
+
+    # --- 3) Close ticket TAT ---
+    sql_close = text(f"""
+        SELECT
+          SUM(CASE 
+                WHEN TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) 
+                         <= tt.time_Hours
+                THEN 1 ELSE 0 END) AS InTAT,
+          SUM(CASE 
+                WHEN TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) 
+                         > tt.time_Hours
+                THEN 1 ELSE 0 END) AS OutOfTAT
+        FROM call_master cm
+        JOIN tbl_time tt 
+          ON cm.client_id = tt.clientId 
+         AND CONCAT_WS('',cm.Category1,cm.Category2,cm.Category3,
+                       cm.Category4,cm.Category5) = 
+             CONCAT_WS('',tt.Category1,tt.Category2,tt.Category3,
+                       tt.Category4,tt.Category5)
+        WHERE cm.client_id = :cid 
+          AND {cond}
+          AND cm.CloseLoopingDate IS NOT NULL  -- Closed tickets only
+    """)
+    close_row = db.execute(sql_close, params).mappings().first()
+    close_tat = [TicketTATBreakdown(
+        name="Close",
+        InTAT=close_row["InTAT"] or 0,
+        OutOfTAT=close_row["OutOfTAT"] or 0,
+    )]
+
+    return TicketCaseAnalysisResponse(
+        cases=case_data,
+        open_tat=open_tat,
+        close_tat=close_tat
+    )
+
+
+
+@router.post("/ticket_by_source", response_model=List[TicketSourceResponse])
+def get_ticket_by_source(
+    req: DashboardReq,
+    db: Session = Depends(get_db),
+):
+    cond = "DATE(CallDate) = CURDATE()"  # adjust with view_type logic if needed
+    params = {"cid": req.company_id}
+
+    query = text(f"""
+        SELECT
+            CallType AS source,
+            COUNT(*) AS total,
+            SUM(CASE WHEN CloseLoopingDate IS NULL THEN 1 ELSE 0 END) AS open,
+            SUM(CASE WHEN CloseLoopingDate IS NOT NULL THEN 1 ELSE 0 END) AS close,
+            DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS as_on_date
+        FROM call_master
+        WHERE client_id = :cid AND {cond}
+        GROUP BY CallType
+        ORDER BY total DESC
+    """)
+
+    rows = db.execute(query, params).mappings().all()
+
+    return [TicketSourceResponse(
+        source=row["source"] or "Unknown",
+        total=row["total"] or 0,
+        open=row["open"] or 0,
+        close=row["close"] or 0,
+        as_on_date=row["as_on_date"]
+    ) for row in rows]
