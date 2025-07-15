@@ -175,9 +175,9 @@ const Dashboard = () => {
           to_date: toDate
         };
 
-        const response = await api.post("/dashboard/dashboard_report", payload);
+        const { days, total_tagged, total_abandon_cb } = await getDashboardReport(payload);
 
-        const { days, total_tagged, total_abandon_cb } = response.data;
+//        const { days, total_tagged, total_abandon_cb } = response.data;
 
         const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
         const abandon  = days.reduce((sum, d) => sum + (d.Abandon  ?? 0), 0);
