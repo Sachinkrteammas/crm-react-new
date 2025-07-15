@@ -190,3 +190,127 @@ def get_active_services(
         email_charge=pm["email"],
     )
 
+
+@router.post("/call_analysis_report", response_model=CallAnalysisResponse)
+def get_call_analysis_report(
+    req: CallAnalysisRequest,
+    db: Session = Depends(get_db2),
+    db_main: Session = Depends(get_db),
+):
+    # Fetch campaign ids
+    camp = db_main.execute(
+        text("SELECT campaignid FROM registration_master WHERE company_id=:cid"),
+        {"cid": req.company_id}
+    ).scalar_one_or_none()
+    if not camp:
+        raise HTTPException(404, "Company ID not found")
+
+    campaign_list = [c.strip().strip("'") for c in camp.split(",")]
+
+    camp_clause = "AND t2.campaign_id IN :cids"
+
+    # Date filter
+    vt = req.view_type
+    if vt == "Today":
+        date_cond = "DATE(t2.call_date) = CURDATE()"
+    elif vt == "Yesterday":
+        date_cond = "DATE(t2.call_date) = SUBDATE(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Weekly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 6 DAY) AND CURDATE()"
+    elif vt == "Monthly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 30 DAY) AND CURDATE()"
+    elif vt == "Custom":
+        if not (req.from_date and req.to_date):
+            raise HTTPException(400, "from_date and to_date required for Custom")
+        date_cond = "DATE(t2.call_date) BETWEEN :from_date AND :to_date"
+    else:
+        raise HTTPException(400, f"Unknown view_type {vt}")
+
+    sql = f"""
+        SELECT
+            SUM(IF(t2.user <> 'VDCL',1,0)) AS answered,
+            SUM(IF(t2.user =  'VDCL',1,0)) AS abandon
+        FROM asterisk.vicidial_closer_log t2
+        WHERE {date_cond}
+          {camp_clause}
+          AND t2.term_reason <> 'AFTERHOURS'
+          AND t2.lead_id IS NOT NULL
+    """
+
+    params = {"cids": tuple(campaign_list)}
+    if vt == "Custom":
+        params["from_date"] = req.from_date
+        params["to_date"] = req.to_date
+
+    row = db.execute(text(sql), params).mappings().first()
+    return CallAnalysisResponse(
+        answered=row["answered"] or 0,
+        abandon=row["abandon"] or 0
+    )
+
+
+
+@router.post("/call_distribution_report", response_model=List[CallDistributionResponse])
+def get_call_distribution_report(
+    req: DashboardReq,
+    db: Session = Depends(get_db2),
+    db_main: Session = Depends(get_db),
+):
+    camp = db_main.execute(
+        text("SELECT campaignid FROM registration_master WHERE company_id=:cid"),
+        {"cid": req.company_id}
+    ).scalar_one_or_none()
+
+    if not camp:
+        raise HTTPException(404, "Company ID not found")
+    campaign_list = [c.strip().strip("'") for c in camp.split(",")]
+
+    if req.view_type == "Today":
+        date_cond = "DATE(t2.call_date) = CURDATE()"
+    elif req.view_type == "Yesterday":
+        date_cond = "DATE(t2.call_date) = SUBDATE(CURDATE(), INTERVAL 1 DAY)"
+    elif req.view_type == "Weekly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 6 DAY) AND CURDATE()"
+    elif req.view_type == "Monthly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 30 DAY) AND CURDATE()"
+    elif req.view_type == "Custom":
+        if not (req.from_date and req.to_date):
+            raise HTTPException(400, "from_date and to_date are required for Custom")
+        date_cond = "DATE(t2.call_date) BETWEEN :from_date AND :to_date"
+    else:
+        raise HTTPException(400, f"Unknown view_type {req.view_type}")
+
+    sql = f"""
+        SELECT
+            DATE(t2.call_date) AS call_date,
+            COUNT(*) AS total_calls,
+            SUM(IF(t2.user <> 'VDCL', 1, 0)) AS answered_calls,
+            SUM(IF(t2.user = 'VDCL', 1, 0)) AS abandon_calls
+        FROM asterisk.vicidial_closer_log t2
+        WHERE {date_cond}
+          AND t2.campaign_id IN :campaign_ids
+          AND t2.term_reason != 'AFTERHOURS'
+          AND t2.lead_id IS NOT NULL
+        GROUP BY DATE(t2.call_date)
+        ORDER BY DATE(t2.call_date)
+    """
+
+    params = {"campaign_ids": tuple(campaign_list)}
+    if req.view_type == "Custom":
+        params["from_date"] = req.from_date
+        params["to_date"] = req.to_date
+
+    rows = db.execute(text(sql), params).mappings().fetchall()
+
+    result = []
+    for row in rows:
+        total = row["total_calls"] or 1
+        answered_pct = round((row["answered_calls"] / total) * 100, 2)
+        abandon_pct = round((row["abandon_calls"] / total) * 100, 2)
+        result.append({
+            "date": row["call_date"].isoformat() if isinstance(row["call_date"], date) else row["call_date"],
+            "Answered": answered_pct,
+            "Abandon": abandon_pct,
+        })
+
+    return result

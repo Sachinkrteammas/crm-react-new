@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { getDashboardReport, getActiveServices } from '../services/authService';
+import { getDashboardReport, getActiveServices, getCallAnalysisReport, getCallDistributionReport } from '../services/authService';
 import api from "../api";
 
 const Dashboard = () => {
@@ -17,6 +17,12 @@ const Dashboard = () => {
     });
     const companyId = localStorage.getItem("company_id");
 
+    const [data, setData] = useState([
+        { name: "Answered", value: 0 },
+        { name: "Abandon", value: 0 },
+    ]);
+
+    const [callData, setCallData] = useState([]);
 
     const [plan, setPlan] = useState(null);
     const [planLoading, setPlanLoading] = useState(true);
@@ -59,9 +65,47 @@ const Dashboard = () => {
   setDateRange(e.target.value); // e.g., "today", "custom"
 };
 
+    const fetchCallAnalysis = async () => {
+        if (!companyId) return;
+
+        try {
+            const payload = {
+                company_id: companyId,
+                view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
+                from_date: fromDate || null,
+                to_date: toDate || null,
+            };
+            const res = await getCallAnalysisReport(payload);
+            setData([
+                { name: "Answered", value: res.answered },
+                { name: "Abandon", value: res.abandon },
+            ]);
+        } catch (err) {
+            console.error("Failed to load call analysis", err);
+        }
+    };
+
+    const fetchCallDistribution = async () => {
+            if (!companyId) return;
+            try {
+                const payload = {
+                    company_id: companyId,
+                    view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
+                    from_date: fromDate || null,
+                    to_date: toDate || null,
+                };
+                const data = await getCallDistributionReport(payload);
+                setCallData(data);
+            } catch (err) {
+                console.error("Failed to fetch call distribution report", err);
+            }
+        };
+
     useEffect(() => {
       if (fromDate && toDate) {
         fetchDashboardData();
+        fetchCallAnalysis();
+        fetchCallDistribution();
       }
     }, [fromDate, toDate]);
 
@@ -70,20 +114,20 @@ const Dashboard = () => {
 
 
 
-    const data = [
-    { name: 'Abandon', value: 10 },
-    { name: 'Total Answered', value: 90 },
-    ];
-
-    const COLORS = ['#36A2EB', '#4BC0C0'];
-
-    const callData = [
-      {
-        date: '03-Jul-2025',
-        Answered: 95,
-        Abandon: 5,
-      },
-    ];
+//    const data = [
+//    { name: 'Abandon', value: 10 },
+//    { name: 'Total Answered', value: 90 },
+//    ];
+//
+//    const COLORS = ['#36A2EB', '#4BC0C0'];
+//
+//    const callData = [
+//      {
+//        date: '03-Jul-2025',
+//        Answered: 95,
+//        Abandon: 5,
+//      },
+//    ];
 
     const ticketCaseData = [
       {
@@ -145,9 +189,6 @@ const Dashboard = () => {
 
 
 
-
-
-
 useEffect(() => {
     if (!companyId) {
       setPlanLoading(false);
@@ -173,9 +214,28 @@ useEffect(() => {
   }
 
 
+
+    const COLORS = ['#36A2EB', '#4BC0C0'];
+
+
+
+//    const [viewType, setViewType] = useState("Today");
+
+
+
+
+
+
+
+
+
+
+
 const handleSubmit = (e) => {
   e.preventDefault();
   fetchDashboardData();
+  fetchCallAnalysis();
+  fetchCallDistribution();
 };
 
 

@@ -1,6 +1,6 @@
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 from pydantic import BaseModel, EmailStr
 
@@ -262,3 +262,19 @@ class ActiveService(BaseModel):
     outbound_call_charge: float
     sms_charge: float
     email_charge: float
+
+
+class CallAnalysisRequest(BaseModel):
+    company_id: int
+    view_type: Literal["Today", "Yesterday", "Weekly", "Monthly", "Custom"] = "Today"
+    from_date: date | None = None
+    to_date: date | None = None
+
+class CallAnalysisResponse(BaseModel):
+    answered: int
+    abandon: int
+
+class CallDistributionResponse(BaseModel):
+    date: str
+    Answered: float
+    Abandon: float

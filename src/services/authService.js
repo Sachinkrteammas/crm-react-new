@@ -114,3 +114,25 @@ export const getActiveServices = async (companyId) => {
         throw error;
     }
 };
+
+
+export const getCallAnalysisReport = async (payload) => {
+    try {
+        const response = await api.post("/dashboard/call_analysis_report", payload);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching dashboard call analysis report:", error);
+        throw error;
+    }
+};
+
+
+export const getCallDistributionReport = async (payload) => {
+    try {
+        const response = await api.post("/dashboard/call_distribution_report", payload);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching dashboard call distribution report:", error);
+        throw error;
+    }
+};
