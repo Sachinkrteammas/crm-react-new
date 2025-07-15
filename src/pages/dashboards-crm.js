@@ -2,62 +2,71 @@ import React, { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { getDashboardReport, getActiveServices } from '../services/authService';
+import api from "../api";
 
 const Dashboard = () => {
 
     const [dateRange, setDateRange] = useState("today");
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
-    const companyId = localStorage.getItem("company_id");
-
     const [dashboardData, setDashboardData] = useState({
         answered: 0,
         abandon: 0,
         tagged: 0,
         abandon_callback: 0,
     });
+    const companyId = localStorage.getItem("company_id");
+
 
     const [plan, setPlan] = useState(null);
     const [planLoading, setPlanLoading] = useState(true);
 
     useEffect(() => {
-    const today = new Date();
-    const format = (date) => date.toISOString().split("T")[0];
+  const today = new Date();
+  const format = (date) => date.toISOString().split("T")[0];
 
-    switch (dateRange) {
-      case "today":
-        setFromDate(format(today));
-        setToDate(format(today));
-        break;
-      case "yesterday":
-        const yest = new Date(today);
-        yest.setDate(yest.getDate() - 1);
-        setFromDate(format(yest));
-        setToDate(format(yest));
-        break;
-      case "weekly":
-        const weekAgo = new Date(today);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        setFromDate(format(weekAgo));
-        setToDate(format(today));
-        break;
-      case "monthly":
-        const monthAgo = new Date(today);
-        monthAgo.setMonth(monthAgo.getMonth() - 1);
-        setFromDate(format(monthAgo));
-        setToDate(format(today));
-        break;
-      case "custom":
-        // allow user input
-        break;
-      default:
-        break;
-    }
-  }, [dateRange]);
+  switch (dateRange) {
+    case "today":
+      setFromDate(format(today));
+      setToDate(format(today));
+      break;
+    case "yesterday":
+      const y = new Date(today);
+      y.setDate(today.getDate() - 1);
+      setFromDate(format(y));
+      setToDate(format(y));
+      break;
+    case "weekly":
+      const w = new Date(today);
+      w.setDate(today.getDate() - 6);
+      setFromDate(format(w));
+      setToDate(format(today));
+      break;
+    case "monthly":
+      const m = new Date(today);
+      m.setDate(today.getDate() - 30);
+      setFromDate(format(m));
+      setToDate(format(today));
+      break;
+    case "custom":
+      // Let user manually input
+      break;
+  }
+}, [dateRange]);
+
 
   const handleDateRangeChange = (e) => {
-    setDateRange(e.target.value);
-  };
+  setDateRange(e.target.value); // e.g., "today", "custom"
+};
+
+    useEffect(() => {
+      if (fromDate && toDate) {
+        fetchDashboardData();
+      }
+    }, [fromDate, toDate]);
+
+
+
 
 
 
@@ -107,30 +116,37 @@ const Dashboard = () => {
     ];
 
     const fetchDashboardData = async () => {
-    try {
-        const payload = {
-            from_date: fromDate,
-            to_date: toDate,
-            company_id: companyId,
-        };
+  try {
+    const payload = {
+      company_id: Number(companyId),
+      view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
+      from_date: fromDate,
+      to_date: toDate
+    };
 
-        const { days, total_tagged, total_abandon_cb } = await getDashboardReport(payload);
-        const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
-        const abandon  = days.reduce((sum, d) => sum + (d.Abandon  ?? 0), 0);
-        setDashboardData({
-          answered,
-          abandon,
-          tagged: total_tagged,
-          abandon_callback: total_abandon_cb,
-        });
-    } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-    }
+    const response = await api.post("/dashboard/dashboard_report", payload);
+
+    const { days, total_tagged, total_abandon_cb } = response.data;
+
+    const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
+    const abandon  = days.reduce((sum, d) => sum + (d.Abandon  ?? 0), 0);
+
+    setDashboardData({
+      answered,
+      abandon,
+      tagged: total_tagged,
+      abandon_callback: total_abandon_cb,
+    });
+
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error);
+  }
 };
 
-useEffect(() => {
-    fetchDashboardData();
-}, [fromDate, toDate, companyId]);
+
+
+
+
 
 useEffect(() => {
     if (!companyId) {
@@ -155,6 +171,13 @@ useEffect(() => {
      if (!plan) {
        return <div className="card h-100"><div className="card-body">No active plan found.</div></div>;
   }
+
+
+const handleSubmit = (e) => {
+  e.preventDefault();
+  fetchDashboardData();
+};
+
 
 
    return (
@@ -225,69 +248,74 @@ useEffect(() => {
         </div>
 
         {/* Revenue Growth */}
+
         <div className="col-xxl-4 col-xl-5 col-md-6 col-sm-8 col-12 mb-md-0 order-xxl-0 order-2">
-          <div className="card h-100">
-            <div className="card-body">
-              <h5 className="card-title mb-3">Call Filters</h5>
-              <form className="row gx-2 gy-2 align-items-center">
-              {/* Date Range Selection */}
-              <div className="col-12 d-flex flex-wrap gap-2 mb-3">
-                {["Today", "Yesterday", "Weekly", "Monthly", "Custom"].map((label, idx) => (
-                  <div className="form-check form-check-inline mb-0" key={idx}>
-                    <input
-                      className="form-check-input"
-                      type="radio"
-                      name="dateRange"
-                      id={`range-${label}`}
-                      value={label.toLowerCase()}
-                      checked={dateRange === label.toLowerCase()}
-                      onChange={handleDateRangeChange}
-                    />
-                    <label className="form-check-label" htmlFor={`range-${label}`}>
-                      {label}
-                    </label>
-                  </div>
-                ))}
-              </div>
+  <form onSubmit={handleSubmit}>
+    <div className="card h-100">
+      <div className="card-body">
+        <h5 className="card-title mb-3">Call Filters</h5>
 
-              {/* Call Type */}
-              <div className="col-sm">
-                <select className="form-select">
-                  <option value="inbounds">Inbounds</option>
-                  <option value="outbounds">Outbounds</option>
-                </select>
-              </div>
-
-              {/* Date Pickers */}
-              <div className="col-sm">
+        <div className="row gx-2 gy-2 align-items-center">
+          {/* Date Range Selection */}
+          <div className="col-12 d-flex flex-wrap gap-2 mb-3">
+            {["Today", "Yesterday", "Weekly", "Monthly", "Custom"].map((label, idx) => (
+              <div className="form-check form-check-inline mb-0" key={idx}>
                 <input
-                  type="date"
-                  className="form-control"
-                  value={fromDate}
-                  readOnly={dateRange !== "custom"}
-                  onChange={(e) => setFromDate(e.target.value)}
+                  className="form-check-input"
+                  type="radio"
+                  name="dateRange"
+                  id={`range-${label}`}
+                  value={label.toLowerCase()}
+                  checked={dateRange === label.toLowerCase()}
+                  onChange={handleDateRangeChange}
                 />
+                <label className="form-check-label" htmlFor={`range-${label}`}>
+                  {label}
+                </label>
               </div>
-              <div className="col-sm">
-                <input
-                  type="date"
-                  className="form-control"
-                  value={toDate}
-                  readOnly={dateRange !== "custom"}
-                  onChange={(e) => setToDate(e.target.value)}
-                />
-              </div>
+            ))}
+          </div>
 
-              {/* Search Button */}
-              <div className="col-sm">
-                <button type="submit" className="btn btn-primary w-100">
-                  Search
-                </button>
-              </div>
-            </form>
-            </div>
+          {/* Call Type */}
+          <div className="col-sm">
+            <select className="form-select">
+              <option value="inbounds">Inbounds</option>
+              <option value="outbounds">Outbounds</option>
+            </select>
+          </div>
+
+          {/* Date Pickers */}
+          <div className="col-sm">
+            <input
+              type="date"
+              className="form-control"
+              value={fromDate}
+              readOnly={dateRange !== "custom"}
+              onChange={(e) => setFromDate(e.target.value)}
+            />
+          </div>
+          <div className="col-sm">
+            <input
+              type="date"
+              className="form-control"
+              value={toDate}
+              readOnly={dateRange !== "custom"}
+              onChange={(e) => setToDate(e.target.value)}
+            />
+          </div>
+
+          {/* Search Button */}
+          <div className="col-sm">
+            <button type="submit" className="btn btn-primary w-100">
+              Search
+            </button>
           </div>
         </div>
+      </div>
+    </div>
+  </form>
+</div>
+
 
 
         {/* Earning Reports Tabs*/}
