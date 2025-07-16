@@ -1,78 +1,62 @@
 import React, { useState } from "react";
-import DataTable from "react-data-table-component";
 import { Card, CardHeader, CardBody, Button, Input } from "reactstrap";
+import api from "../api";
+import { format } from "date-fns";
 
 const PriorityCalls = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [data, setData] = useState([]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    // TODO: Replace with your API call:
-    setData([
-      {
-        id: 1,
-        recording: "Download Recording",
-        fullName: "John Doe",
-        email: "john@example.com",
-        mobile: "9999601467",
-        company: "ABC Ltd",
-        city: "Delhi",
-        deliveryDate: "2025-07-07",
-        entryDate: "2025-07-07 08:06:10",
-      },
-      {
-        id: 2,
-        recording: "Download Recording",
-        fullName: "Jane Doe",
-        email: "jane@example.com",
-        mobile: "9999601467",
-        company: "XYZ Pvt",
-        city: "Mumbai",
-        deliveryDate: "2025-07-07",
-        entryDate: "2025-07-07 08:07:20",
-      },
-    ]);
-  };
+  const companyId = localStorage.getItem("company_id");
 
-  const columns = [
-    { name: "S.NO", selector: (row) => row.id, sortable: true, width: "70px" },
-    {
-      name: "RECORDING",
-      cell: (row) => (
-        <a href="#" onClick={(e) => e.preventDefault()}>
-          {row.recording}
-        </a>
-      ),
-      sortable: false,
-    },
-    { name: "FULL NAME", selector: (row) => row.fullName },
-    { name: "EMAIL", selector: (row) => row.email },
-    { name: "MOBILE NO.", selector: (row) => row.mobile },
-    { name: "COMPANY", selector: (row) => row.company },
-    { name: "CITY", selector: (row) => row.city },
-    { name: "DELIVERY DATE", selector: (row) => row.deliveryDate },
-    { name: "ENTRY DATE", selector: (row) => row.entryDate },
-  ];
+  const handleViewClick = async (e) => {
+    e.preventDefault();
+
+    if (!startDate || !endDate) {
+      alert("Please select both start and end dates.");
+      return;
+    }
+
+    try {
+      const formattedStart = format(new Date(startDate), "yyyy-MM-dd");
+      const formattedEnd = format(new Date(endDate), "yyyy-MM-dd");
+
+      const response = await api.get("/call/priority_calls", {
+        params: {
+          client_id: companyId,
+          start_time: formattedStart,
+          end_time: formattedEnd,
+        },
+      });
+
+      setData(response.data);
+      console.log("Priority Call Data:", response.data);
+    } catch (error) {
+      console.error("Failed to fetch priority calls:", error);
+      alert("Error fetching priority calls");
+    }
+  };
 
   return (
     <div className="row gy-4 gx-3">
       <h4 className="fw-bold py-2">Priority Calls</h4>
+
       <Card>
         <CardHeader>Priority Calls Filter</CardHeader>
         <CardBody>
-          <form onSubmit={handleSubmit} className="d-flex flex-wrap gap-2 align-items-center">
+          <form
+            className="d-flex flex-wrap gap-2 align-items-center"
+            onSubmit={handleViewClick}
+          >
             <Input
               type="date"
-              placeholder="Select Start Time"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               style={{ maxWidth: "200px" }}
             />
             <Input
               type="date"
-              placeholder="Select End Time"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               style={{ maxWidth: "200px" }}
@@ -85,19 +69,34 @@ const PriorityCalls = () => {
       </Card>
 
       {data.length > 0 && (
-        <Card className="mt-3">
-          <CardHeader>Priority Calls List</CardHeader>
-          <CardBody>
-            <DataTable
-              columns={columns}
-              data={data}
-              pagination
-              highlightOnHover
-              responsive
-              dense
-            />
-          </CardBody>
-        </Card>
+        <div className="col-12 mt-4">
+          <div
+            className="table-responsive"
+            style={{ maxHeight: "600px", overflowX: "auto", overflowY: "auto" }}
+          >
+            <table className="table table-bordered table-striped">
+              <thead
+                className="table-dark"
+                style={{ position: "sticky", top: 0, zIndex: 2 }}
+              >
+                <tr>
+                  {Object.keys(data[0]).map((key) => (
+                    <th key={key}>{key}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.map((row, index) => (
+                  <tr key={index}>
+                    {Object.values(row).map((val, idx) => (
+                      <td key={idx}>{val ?? "-"}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );

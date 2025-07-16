@@ -1,13 +1,15 @@
 # Crm_Backend/call_master.py
 from http.client import HTTPException
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from sqlalchemy import text
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
-from database import get_engine, get_engine2, SessionLocal2
+
+from database import get_engine, get_engine2, SessionLocal2, get_db, get_db2
 
 router = APIRouter(tags=["Call Master"])
 
@@ -120,3 +122,36 @@ def get_csat_report(
     except SQLAlchemyError as e:
         print("SQLAlchemy Error:", str(e))  # Good for local debugging
         raise HTTPException(status_code=500, detail="Database query failed.")
+
+from datetime import datetime
+@router.get("/priority_calls", response_model=List[Dict[str, Any]])
+def get_priority_calls(
+    client_id: int = Query(...),
+    start_time: str = Query(...),
+    end_time: str = Query(...),
+    db: Session = Depends(get_db2)
+):
+    try:
+        # Convert to date objects
+        start_date = datetime.strptime(start_time, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_time, "%Y-%m-%d").date()
+
+        # Raw SQL query
+        sql = text("""
+            SELECT *
+            FROM vicidial_list
+            WHERE vendor_lead_code = :client_id
+              AND DATE(entry_date) BETWEEN :start_date AND :end_date
+        """)
+
+        result = db.execute(sql, {
+            "client_id": client_id,
+            "start_date": start_date,
+            "end_date": end_date
+        })
+
+        # Convert SQLAlchemy Row to dict using .mappings()
+        return [dict(row) for row in result.mappings().all()]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
