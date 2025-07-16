@@ -157,3 +157,56 @@ export const getTicketBySource = async (payload) => {
         throw error;
     }
 };
+
+
+// Get Out Call Details (GET with params)
+export const getOutCallDetails = async (company_id, payload) => {
+    try {
+        const response = await api.get("/call/outcalls", {
+            params: { CLIENT_ID: company_id, ...payload },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching out call details:", error);
+        throw error;
+    }
+};
+
+// Get Campaign Types
+export const getCampaignTypes = async (company_id) => {
+    try {
+        const response = await api.get("/call/types", {
+            params: { CLIENT_ID: company_id },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching campaign types:", error);
+        throw error;
+    }
+};
+
+// Get Campaigns for a given parent (campaign type)
+export const getCampaigns = async (company_id, parentId) => {
+    try {
+        const response = await api.get("/call/campaigns", {
+            params: { CLIENT_ID: company_id, type: parentId },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching campaigns:", error);
+        throw error;
+    }
+};
+
+// Get Allocations for a given campaign
+export const getAllocations = async (company_id, campaignId) => {
+    try {
+        const response = await api.get("/call/allocations", {
+            params: { CLIENT_ID: company_id, campaign: campaignId },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching allocations:", error);
+        throw error;
+    }
+};

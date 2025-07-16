@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from database import get_db
+from database import get_db, get_db3
 from schemas import LoginRequest, LoginResponse, CallMasterRecord
 from passlib.context import CryptContext
 from jose import jwt

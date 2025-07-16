@@ -4,12 +4,12 @@ from http.client import HTTPException
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy import text
 from typing import List, Dict, Optional, Any
-
+from schemas import *
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 
-from database import get_engine, get_engine2, SessionLocal2, get_db, get_db2
+from database import get_engine, get_engine2, SessionLocal2, get_db, get_db2, get_db3
 
 router = APIRouter(tags=["Call Master"])
 
@@ -155,3 +155,96 @@ def get_priority_calls(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+
+# CLIENT_ID = 301  # replace with real auth-based value
+
+@router.get("/types", response_model=List[TypeItem])
+def get_types(
+        CLIENT_ID: int = Query(...), db: Session = Depends(get_db3)):
+    sql = text("""
+        SELECT DISTINCT CampaignParentName AS id,
+               CampaignParentName AS name
+        FROM ob_campaign
+        WHERE ClientId = :cid AND CampaignStatus = 'A'
+        ORDER BY CampaignParentName
+    """)
+    rows = db.execute(sql, {"cid": CLIENT_ID}).fetchall()
+    return [dict(r) for r in rows]
+
+@router.get("/campaigns", response_model=List[CampaignItem])
+def get_campaigns(
+        CLIENT_ID: int = Query(...), type: str = Query(...), db: Session = Depends(get_db3)):
+    sql = text("""
+        SELECT id, CampaignName
+        FROM ob_campaign
+        WHERE ClientId = :cid
+          AND CampaignParentName = :type
+          AND CampaignStatus = 'A'
+    """)
+    rows = db.execute(sql, {"cid": CLIENT_ID, "type": type}).fetchall()
+    return [dict(r) for r in rows]
+
+@router.get("/allocations", response_model=List[AllocationItem])
+def get_allocations(
+        CLIENT_ID: int = Query(...), campaign: int = Query(...), db: Session = Depends(get_db3)):
+    sql = text("""
+        SELECT id, AllocationName
+        FROM ob_allocation_name
+        WHERE ClientId = :cid
+          AND CampaignId = :camp
+    """)
+    rows = db.execute(sql, {"cid": CLIENT_ID, "camp": campaign}).fetchall()
+    return [dict(r) for r in rows]
+
+@router.get("/outcalls", response_model=List[OutcallItem])
+def get_outcalls(
+    CLIENT_ID: int = Query(...),
+    campaignType: Optional[str] = None,
+    campaign: Optional[int] = None,
+    allocation: Optional[int] = None,
+    scenario: Optional[str] = None,
+    subScenario1: Optional[str] = None,
+    msisdn: Optional[str] = None,
+    startDate: Optional[str] = None,
+    endDate: Optional[str] = None,
+    db: Session = Depends(get_db3)
+):
+    base_sql = [
+        "SELECT o.id, o.Category1 AS scenario, o.Category2 AS subScenario1,",
+        "       o.MSISDN AS contactNumber",
+        "FROM call_master_out o",
+        "JOIN ob_campaign c ON o.AllocationId = c.id",
+        "WHERE o.ClientId = :cid"
+    ]
+    params = {"cid": CLIENT_ID}
+    if campaignType:
+        base_sql.append("AND c.CampaignParentName = :ctype")
+        params["ctype"] = campaignType
+    if campaign:
+        base_sql.append("AND o.campaign_id = :camp")
+        params["camp"] = campaign
+    if allocation:
+        base_sql.append("AND o.AllocationId = :alloc")
+        params["alloc"] = allocation
+    if scenario:
+        base_sql.append("AND o.Category1 = :scn")
+        params["scn"] = scenario
+    if subScenario1:
+        base_sql.append("AND o.Category2 = :sub1")
+        params["sub1"] = subScenario1
+    if msisdn:
+        base_sql.append("AND o.MSISDN LIKE :msisdn")
+        params["msisdn"] = f"%{msisdn}%"
+    if startDate:
+        base_sql.append("AND DATE(o.CallDate) >= :sd")
+        params["sd"] = startDate
+    if endDate:
+        base_sql.append("AND DATE(o.CallDate) <= :ed")
+        params["ed"] = endDate
+    base_sql.append("ORDER BY o.CallDate DESC LIMIT 100")
+
+    sql = text("\n".join(base_sql))
+    rows = db.execute(sql, params).fetchall()
+    return [dict(r) for r in rows]

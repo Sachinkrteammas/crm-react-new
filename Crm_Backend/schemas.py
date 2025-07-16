@@ -307,3 +307,28 @@ class TicketSourceResponse(BaseModel):
     open: int
     close: int
     as_on_date: str
+
+
+class TypeItem(BaseModel):
+    id: str
+    name: str
+    class Config: orm_mode = True
+
+class CampaignItem(BaseModel):
+    id: int
+    CampaignName: str
+    class Config: orm_mode = True
+
+class AllocationItem(BaseModel):
+    id: int
+    AllocationName: str
+    class Config: orm_mode = True
+
+class OutcallItem(BaseModel):
+    id: int
+    callFrom: Optional[str]
+    scenario: Optional[str]
+    subScenario1: Optional[str]
+    name: Optional[str]
+    contactNumber: Optional[str]
+    class Config: orm_mode = True

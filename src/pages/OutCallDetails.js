@@ -1,71 +1,124 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import {
+  getCampaignTypes,
+  getCampaigns,
+  getAllocations,
+  getOutCallDetails
+} from '../services/authService'
 
 export default function OutCallDetails() {
   const [form, setForm] = useState({
-    campaignType: "",
-    campaign: "",
-    allocation: "",
-    scenario: "",
-    subScenario1: "",
-    subScenario2: "",
-    subScenario3: "",
-    startDate: "",
-    endDate: "",
-    msisdn: "",
-  });
+        campaignType: "",
+        campaign: "",
+        allocation: "",
+        scenario: "",
+        subScenario1: "",
+        subScenario2: "",
+        subScenario3: "",
+        msisdn: "",
+        startDate: "",
+        endDate: ""
+    });
 
-  const [data, setData] = useState([]);
+    const [types, setTypes] = useState([]);
+    const [campaigns, setCampaigns] = useState([]);
+    const [allocs, setAllocs] = useState([]);
+    const [data, setData] = useState([]);
+    const [showTable, setShowTable] = useState(false);
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+    const company_id = localStorage.getItem('company_id');
 
-  const handleView = () => {
-    // Example: Fetch from FastAPI
-   console.log("View clicked");
-  };
+    useEffect(() => {
+        if (company_id) {
+            getCampaignTypes(company_id)
+                .then(res => setTypes(res.data))
+                .catch(err => console.error(err));
+        }
+    }, [company_id]);
 
-  const handleExport = () => {
-    // Example: Export logic
-    console.log("Export clicked");
-  };
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setForm((prev) => ({ ...prev, [name]: value }));
+
+        if (name === "campaignType") {
+            setCampaigns([]);
+            setAllocs([]);
+            if (value) {
+                getCampaigns(company_id, value)
+                    .then(res => setCampaigns(res.data))
+                    .catch(err => console.error(err));
+            }
+        }
+        if (name === "campaign") {
+            setAllocs([]);
+            if (value) {
+                getAllocations(company_id, value)
+                    .then(res => setAllocs(res.data))
+                    .catch(err => console.error(err));
+            }
+        }
+    };
+
+    const handleView = (e) => {
+        e.preventDefault();
+        if (company_id) {
+            getOutCallDetails(company_id, form)
+                .then(res => setData(res.data))
+                .catch(err => console.error(err));
+        }
+        setShowTable(true);
+    };
+
+    const handleExport = (e) => {
+        e.preventDefault();
+        alert('Export functionality to be implemented');
+    };
 
   return (
     <div className="card p-4">
       <h5 className="mb-4">Out Call Details</h5>
-
+      <form onSubmit={handleView}>
       <div className="row mb-3">
         <div className="col-md-3 mb-2">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Select Campaign Type"
-            name="campaignType"
-            value={form.campaignType}
-            onChange={handleChange}
-          />
-        </div>
-        <div className="col-md-3 mb-2">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Select Campaign"
-            name="campaign"
-            value={form.campaign}
-            onChange={handleChange}
-          />
+          <select
+              className="form-select"
+              name="campaignType"
+              value={form.campaignType}
+              onChange={handleChange}
+            >
+              <option value="">Select Campaign Type</option>
+              {Array.isArray(types) && types.map(t => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
         </div>
         <div className="col-md-3 mb-2">
           <select
-            className="form-select"
-            name="allocation"
-            value={form.allocation}
-            onChange={handleChange}
-          >
-            <option>Select Allocation</option>
-            <option>Burger Sing OB</option>
-            <option>12 Call Back Data</option>
-          </select>
+              className="form-select"
+              name="campaign"
+              value={form.campaign}
+              onChange={handleChange}
+              disabled={!campaigns.length}
+            >
+              <option value="">Select Campaign</option>
+              {campaigns.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+        </div>
+        <div className="col-md-3 mb-2">
+          <select
+              className="form-select"
+              name="allocation"
+              value={form.allocation}
+              onChange={handleChange}
+              disabled={!allocs.length}
+            >
+              <option value="">Select Allocation</option>
+              {allocs.map(a => (
+                <option key={a.id} value={a.id}>{a.name}</option>
+              ))}
+            </select>
         </div>
         <div className="col-md-3 mb-2">
           <input
@@ -145,12 +198,14 @@ export default function OutCallDetails() {
           <button className="btn btn-primary" onClick={handleExport}>
             Export
           </button>
-          <button className="btn btn-primary" onClick={handleView}>
+          <button type="submit" className="btn btn-primary">
             View
           </button>
         </div>
       </div>
+      </form>
 
+      {showTable && (
       <div className="table-responsive">
         <table className="table table-bordered">
           <thead>
@@ -167,7 +222,7 @@ export default function OutCallDetails() {
             </tr>
           </thead>
           <tbody>
-            {data.map((row, idx) => (
+            {Array.isArray(data) && data.map((row, idx) => (
               <tr key={idx}>
                 <td>
                   <button className="btn btn-sm btn-outline-primary">
@@ -191,6 +246,7 @@ export default function OutCallDetails() {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }
