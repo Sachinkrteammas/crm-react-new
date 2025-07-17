@@ -4,7 +4,10 @@ import {
   getCampaigns,
   getAllocations,
   getOutCallDetails
-} from '../services/authService'
+} from '../services/authService';
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
 
 export default function OutCallDetails() {
   const [form, setForm] = useState({
@@ -24,7 +27,6 @@ export default function OutCallDetails() {
     const [campaigns, setCampaigns] = useState([]);
     const [allocs, setAllocs] = useState([]);
     const [data, setData] = useState([]);
-    const [showTable, setShowTable] = useState(false);
 
     const company_id = localStorage.getItem('company_id');
 
@@ -62,16 +64,45 @@ export default function OutCallDetails() {
     const handleView = (e) => {
         e.preventDefault();
         if (company_id) {
-            getOutCallDetails(company_id, form)
-                .then(res => setData(res.data))
+            // Create a sanitized filter object without empty strings
+            const sanitizedFilters = {};
+            for (const key in form) {
+                if (form[key] !== "") {
+                    sanitizedFilters[key] = form[key];
+                }
+            }
+
+            getOutCallDetails(company_id, sanitizedFilters)
+                .then(res => setData(res))
                 .catch(err => console.error(err));
         }
-        setShowTable(true);
     };
 
     const handleExport = (e) => {
         e.preventDefault();
-        alert('Export functionality to be implemented');
+        if (data.length === 0) {
+            alert("No data to export.");
+            return;
+        }
+
+          // Create a worksheet
+        const worksheet = XLSX.utils.json_to_sheet(data);
+
+          // Create a new workbook and append the worksheet
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+
+          // Generate a buffer
+        const excelBuffer = XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "array",
+        });
+
+          // Save file
+        const file = new Blob([excelBuffer], {
+            type: "application/octet-stream",
+        });
+        saveAs(file, "out_call_details.xlsx");
     };
 
   return (
@@ -205,7 +236,7 @@ export default function OutCallDetails() {
       </div>
       </form>
 
-      {showTable && (
+      {data.length > 0 && (
       <div className="table-responsive">
         <table className="table table-bordered">
           <thead>

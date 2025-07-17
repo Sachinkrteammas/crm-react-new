@@ -206,6 +206,8 @@ def get_outcalls(
     allocation: Optional[int] = None,
     scenario: Optional[str] = None,
     subScenario1: Optional[str] = None,
+    subScenario2: Optional[str] = None,
+    subScenario3: Optional[str] = None,
     msisdn: Optional[str] = None,
     startDate: Optional[str] = None,
     endDate: Optional[str] = None,
@@ -213,7 +215,7 @@ def get_outcalls(
 ):
     base_sql = [
         "SELECT o.id, o.Category1 AS scenario, o.Category2 AS subScenario1,",
-        "       o.MSISDN AS contactNumber",
+        "       o.MSISDN AS contactNumber, c.CampaignParentName AS campaignType, c.CampaignName AS campaignName",
         "FROM call_master_out o",
         "JOIN ob_campaign c ON o.AllocationId = c.id",
         "WHERE o.ClientId = :cid"
@@ -234,6 +236,13 @@ def get_outcalls(
     if subScenario1:
         base_sql.append("AND o.Category2 = :sub1")
         params["sub1"] = subScenario1
+    if subScenario2:
+        base_sql.append("AND o.Category3 = :sub2")
+        params["sub2"] = subScenario2
+
+    if subScenario3:
+        base_sql.append("AND o.Category4 = :sub3")
+        params["sub3"] = subScenario3
     if msisdn:
         base_sql.append("AND o.MSISDN LIKE :msisdn")
         params["msisdn"] = f"%{msisdn}%"
