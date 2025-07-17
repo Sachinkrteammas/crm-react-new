@@ -6,6 +6,7 @@ import api from "../api";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import "../styles/loader.css";
 
 
 
@@ -29,6 +30,8 @@ function CallDetails() {
   const [selectedScenario3, setSelectedScenario3] = useState(""); // Level 4
   const companyId = localStorage.getItem("company_id");
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
 
     const customColStyle = {
         flex: "0 0 auto",
@@ -121,6 +124,7 @@ function CallDetails() {
       alert("Please select both start and end dates.");
       return;
     }
+    setLoading(true);
 
     const formattedStart = format(startDate, "yyyy-MM-dd");
     const formattedEnd = format(endDate, "yyyy-MM-dd");
@@ -140,6 +144,9 @@ function CallDetails() {
       console.log("API Response:", response.data);
     } catch (error) {
       console.error("API call failed:", error);
+    }
+    finally {
+      setLoading(false);
     }
   };
 
@@ -173,6 +180,19 @@ function CallDetails() {
 
 
   return (
+  <>
+      {/* Full-screen loader */}
+      {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+   <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
+
     <div class="col-12">
   <div class="card">
     <h5 class="card-header">In Call Details</h5>
@@ -308,7 +328,7 @@ function CallDetails() {
         </div>
 
         {/* Optional: Render response */}
-      {data.length > 0 && (
+      {!loading && data.length > 0 && (
       <div className="col-12 mt-4">
         <div
           className="table-responsive"
@@ -335,6 +355,7 @@ function CallDetails() {
         </div>
       </div>
     )}
+    </div>
 
 
 
@@ -343,6 +364,7 @@ function CallDetails() {
     </div>
   </div>
 </div>
+</>
 
   );
 }
