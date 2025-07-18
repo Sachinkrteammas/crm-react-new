@@ -13,13 +13,40 @@ const CurrentBillStatement = () => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
 
-  const handleSubmit = () => {
-    console.log('Submit:', {
-      client: selectedClient,
-      startDate,
-      endDate,
+  const handleSubmit = async () => {
+  const clientId = localStorage.getItem("company_id");
+  const fromDate = startDate;
+  const toDate = endDate;
+
+  const url = `/call/download_excel_raw?client_id=${clientId}&from_date=${fromDate}&to_date=${toDate}`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
     });
-  };
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    // Download Excel file
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+
+    // Optional: Set a filename
+    link.download = `report_${clientId}_${fromDate}_to_${toDate}.xlsx`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  } catch (error) {
+    console.error('Download failed:', error);
+    alert('Download failed. See console for details.');
+  }
+};
+
 
   return (
     <div className="card p-4 mb-4">

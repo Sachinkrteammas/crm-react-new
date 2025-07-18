@@ -1,9 +1,13 @@
 # Crm_Backend/call_master.py
 from http.client import HTTPException
+from io import BytesIO
 
 from fastapi import APIRouter, Query, Depends
 from sqlalchemy import text
 from typing import List, Dict, Optional, Any
+
+from starlette.responses import StreamingResponse
+
 from schemas import *
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -257,3 +261,506 @@ def get_outcalls(
     sql = text("\n".join(base_sql))
     rows = db.execute(sql, params).fetchall()
     return [dict(r) for r in rows]
+
+
+@router.get("/download_excel_raw")
+def download_excel_raw(
+        client_id: int,
+        from_date: date = Query(...),
+        to_date: date = Query(...),
+        db=Depends(get_db),
+        db2=Depends(get_db2),
+        db3=Depends(get_db3),
+):
+    # Step 1: Client Info
+    client_result = db.execute(text("""
+        SELECT company_name, reg_office_address1, phone_no, email, auth_person
+        FROM registration_master
+        WHERE company_id = :client_id
+    """), {"client_id": client_id}).fetchone()
+
+    balance_result = db.execute(text("""
+        SELECT * FROM balance_master
+        WHERE client_id = :client_id
+        LIMIT 1
+    """), {"client_id": client_id}).fetchone()
+
+    plan_result = None
+    if balance_result and balance_result.PlanId:
+        plan_result = db.execute(text("""
+            SELECT * FROM plan_master
+            WHERE Id = :plan_id
+            LIMIT 1
+        """), {"plan_id": balance_result.PlanId}).fetchone()
+
+    used_amount = sum([
+        balance_result[key] if key in balance_result and balance_result[key] else 0
+        for key in [
+            "TinAmount", "TinAmountNight", "TouAmount", "TMinAmount",
+            "TMouAmount", "TvfAmount", "TsmAmount", "TemAmount",
+            "TivAmount", "TWhatsAppAmount", "TBoatAmount"
+        ]
+    ]) if balance_result else 0
+
+    # Step 2: Call log data from vicidial DB
+    call_data = db2.execute(text(f"""
+        SELECT 
+            IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
+            t2.phone_number,
+            t2.call_date,
+            t2.user
+        FROM vicidial_closer_log t2
+        LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+        WHERE t2.user != 'VDCL'
+          AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
+    """), {"from_date": from_date, "to_date": to_date}).fetchall()
+
+    multilang_call_data = db2.execute(text(f"""
+        SELECT 
+            IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
+            t2.phone_number,
+            t2.call_date,
+            t2.user
+        FROM vicidial_closer_log t2
+        LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+        WHERE t2.user != 'VDCL'
+          AND t2.campaign_id IN ('ML01', 'ML02', 'ML03')  -- replace with your actual multi-language campaign_ids
+          AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
+    """), {"from_date": from_date, "to_date": to_date}).fetchall()
+
+    # --- OUTBOUND (Vicidial Log) Section ---
+    outbound_data = db2.execute(text(f"""
+            SELECT 
+                (va.talk_sec - va.dead_sec) AS length_in_sec,
+                v.phone_number,
+                v.call_date,
+                v.user
+            FROM vicidial_log v
+            JOIN vicidial_agent_log va ON v.uniqueid = va.uniqueid
+            WHERE (va.talk_sec - va.dead_sec) != 0
+              AND v.user != 'VDAD'
+              AND DATE(v.call_date) BETWEEN :from_date AND :to_date
+        """), {"client_id": client_id, "from_date": from_date, "to_date": to_date}).fetchall()
+
+    query = text("""
+                SELECT 
+                    t2.list_id,
+                    t2.call_date AS CallDate,
+                    FROM_UNIXTIME(t2.start_epoch) AS StartTime,
+                    FROM_UNIXTIME(t2.end_epoch) AS Endtime,
+                    LEFT(t2.phone_number,10) AS PhoneNumber,
+                    t2.user AS Agent,
+                    vu.full_name as full_name,
+                    IF(t2.user='VDAD','Not Connected','Connected') calltype,
+                    t2.status as status,
+                    IF(t2.list_id='998','Mannual','Auto') dialmode,
+                    t2.campaign_id as campaign_id,
+                    t2.lead_id as lead_id,
+                    t2.length_in_sec AS LengthInSec,
+                    SEC_TO_TIME(t2.length_in_sec) AS LengthInMin,
+                    t2.length_in_sec AS CallDuration,
+                    t2.status AS CallStatus,
+                    t3.pause_sec AS PauseSec,
+                    t3.wait_sec AS WaitSec,
+                    t3.talk_sec AS TalkSec,
+                    t3.dispo_sec AS DispoSec
+                FROM vicidial_log t2
+                LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
+                LEFT JOIN vicidial_users vu ON t2.user = vu.user
+                WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
+                  AND t2.campaign_id = 'dialdesk'
+                  AND t2.lead_id IS NOT NULL
+            """)
+
+    ab_data = db2.execute(query, {"from_date": from_date, "to_date": to_date}).fetchall()
+
+    sms_query = text("""
+        SELECT 
+            DATE_FORMAT(CallDate,'%d %b %y') AS CallDate1,
+            CallDate,
+            CallTime,
+            CallFrom,
+            Unit,
+            AlertTo
+        FROM billing_master
+        WHERE clientId = :client_id
+          AND DedType = 'SMS'
+          AND DATE(CallDate) BETWEEN :from_date AND :to_date
+    """)
+
+    sms_data = db.execute(sms_query, {
+        "client_id": client_id,
+        "from_date": from_date,
+        "to_date": to_date
+    }).fetchall()
+
+    email_query = text("""
+        SELECT 
+            DATE_FORMAT(CallDate,'%d %b %y') AS CallDate1,
+            CallDate,
+            CallTime,
+            CallFrom,
+            Unit
+        FROM billing_master
+        WHERE clientId = :client_id
+          AND DedType = 'Email'
+          AND DATE(CallDate) BETWEEN :from_date AND :to_date
+    """)
+
+    email_data = db.execute(email_query, {
+        "client_id": client_id,
+        "from_date": from_date,
+        "to_date": to_date
+    }).fetchall()
+
+    rx_query = text("""
+        SELECT 
+            DATE_FORMAT(call_time,'%d %b %y') AS CallDate1,
+            call_time AS CallDate,
+            TIME(call_time) AS CallTime,
+            1 AS Unit,
+            source_number AS CallFrom
+        FROM rx_log
+        WHERE clientId = :client_id
+          AND DATE(call_time) BETWEEN :from_date AND :to_date
+    """)
+
+    rx_data = db3.execute(rx_query, {
+        "client_id": client_id,
+        "from_date": from_date,
+        "to_date": to_date
+    }).fetchall()
+
+    total_talk_time = 0
+    total_pulse = 0
+    total_rate = 0.0
+
+    total_talk_time2 = 0
+    total_pulse2 = 0
+    total_rate2 = 0.0
+
+    total_talk_time3 = 0
+    total_pulse3 = 0
+    total_rate3 = 0.0
+
+    total_talk_time4 = 0
+    total_pulse4 = 0
+    total_rate4 = 0.0
+
+    total_pulse5 = 0
+    total_rate5 = 0.0
+
+    total_pulse6 = 0
+    total_rate6 = 0.0
+
+    total_pulse7 = 0
+    total_rate7 = 0.0
+
+    # Step 3: Build HTML for Excel
+    html = f"""
+    <html><head><meta http-equiv="Content-Type" content="application/vnd.ms-excel; charset=utf-8" /></head><body>
+    <table border='0' width='600' cellpadding='2' cellspacing='2'>
+        <tr><td colspan='6' align='center'>
+            <img src='http://dialdesk.co.in/dialdesk/app/webroot/billing_statement/logo.jpg' height='80'><br>
+            <strong style='font-size:16pt;'>A UNIT OF ISPARK DATA CONNECT PVT LTD</strong>
+        </td></tr>
+    </table>
+
+    <table border='1' width='600' cellpadding='2' cellspacing='2'>
+        <tr><td colspan='7' style='font-size:15pt;background-color:#607d8b;color:#fff;'>Client Details</td></tr>
+        <tr><th>Company</th><th colspan='3'>Address</th><th>Mobile No</th><th>Email</th><th>Authorised Person</th></tr>
+        <tr>
+            <td>{client_result.company_name if client_result else ''}</td>
+            <td colspan='3'>{client_result.reg_office_address1 if client_result else ''}</td>
+            <td>{client_result.phone_no if client_result else ''}</td>
+            <td>{client_result.email if client_result else ''}</td>
+            <td>{client_result.auth_person if client_result else ''}</td>
+        </tr>
+    </table>
+
+    <table><tr><td>&nbsp;</td></tr></table>
+
+    <table border='1' width='600' cellpadding='2' cellspacing='2'>
+        <tr><td colspan='5' style='font-size:15pt;background-color:#607d8b;color:#fff;'>Plan Details</td></tr>
+        <tr><th>Plan Name</th><th>Start Date</th><th>End Date</th><th>Validity</th><th>Used</th></tr>
+        <tr>
+            <td>{plan_result.PlanName if plan_result else ''}</td>
+            <td>{balance_result.start_date if balance_result else ''}</td>
+            <td>{balance_result.end_date if balance_result else ''}</td>
+            <td>{f"{plan_result.RentalPeriod} {plan_result.PeriodType}" if plan_result else ''}</td>
+            <td>{used_amount}</td>
+        </tr>
+    </table>
+
+    <table><tr><td>&nbsp;</td></tr></table>
+
+
+
+    <table border='1' width='600' cellpadding='2' cellspacing='2'>
+        <tr><td colspan='7' style='font-size:15pt;background-color:#607d8b;color:#fff;'>{client_result.company_name if client_result else ''} (INBOUND)</td></tr>
+        <tr><th>Date</th><th>Time</th><th>Call From</th><th>Agent</th><th>Talk Time</th><th>Pulse</th><th>Rate</th></tr>
+    """
+
+    for row in call_data:
+        dt = row.call_date
+        talk_time = int(row.length_in_sec)
+        pulse = (talk_time // 60) + (1 if talk_time % 60 else 0)
+        rate = pulse * 0.5  # Replace with actual rate
+
+        total_talk_time += talk_time
+        total_pulse += pulse
+        total_rate += rate  # Example rate, replace with actual
+        html += f"<tr><td>{dt.date()}</td><td>{dt.time()}</td><td>{row.phone_number}</td><td>{row.user}</td><td>{talk_time}</td><td>{pulse}</td><td>{rate:.2f}</td></tr>"
+
+    html += f"""
+        <tr style='font-weight:bold; background-color:#e0e0e0;'>
+            <td colspan='4' align='right'>Total</td>
+            <td>{total_talk_time}</td>
+            <td>{total_pulse}</td>
+            <td>{total_rate:.2f}</td>
+        </tr>
+    """
+
+    html += """
+        <table><tr><td>&nbsp;</td></tr></table>
+
+        <table border='1' width='600' cellpadding='2' cellspacing='2'>
+            <tr><td colspan='7' style='font-size:15pt;background-color:#607d8b;color:#fff;'>""" + \
+            f"""{client_result.company_name if client_result else ''} (Multi Language INBOUND)</td></tr>
+            <tr><th>Date</th><th>Time</th><th>Call From</th><th>Agent</th><th>Talk Time</th><th>Pulse</th><th>Rate</th></tr>
+        """
+
+    for row in multilang_call_data:
+        dt = row.call_date
+        talk_time = int(row.length_in_sec)
+        pulse = (talk_time // 60) + (1 if talk_time % 60 else 0)
+        rate = pulse * 0.5  # Adjust if multi-lang rate is different
+
+        total_talk_time2 += talk_time
+        total_pulse2 += pulse
+        total_rate2 += rate
+
+        html += f"<tr><td>{dt.date()}</td><td>{dt.time()}</td><td>{row.phone_number}</td><td>{row.user}</td><td>{talk_time}</td><td>{pulse}</td><td>{rate:.2f}</td></tr>"
+
+    html += f"""
+            <tr style='font-weight:bold; background-color:#e0e0e0;'>
+                <td colspan='4' align='right'>Total</td>
+                <td>{total_talk_time2}</td>
+                <td>{total_pulse2}</td>
+                <td>{total_rate2:.2f}</td>
+            </tr>
+        """
+
+    html += f"""
+        <table><tr><td>&nbsp;</td></tr></table>
+        <table border="1" width="600" cellpadding="2" cellspacing="2" style="font-size:11pt;">
+            <tr><td colspan="7" style="font-size:15pt;background-color:#607d8b;color:#fff;">{client_result.company_name if client_result else ''} (OUTBOUND)</td></tr>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Call From</th>
+                <th>Agent</th>
+                <th>Talk Time</th>
+                <th>Pulse</th>
+                <th>Rate</th>
+            </tr>
+        """
+
+    for row in outbound_data:
+        dt = row.call_date
+        talk_time = int(row.length_in_sec)
+        pulse = (talk_time // 60) + (1 if talk_time % 60 else 0)
+        rate = pulse * 0.5  # You can replace with actual per-minute rate
+
+        total_talk_time3 += talk_time
+        total_pulse3 += pulse
+        total_rate3 += rate
+
+        html += f"<tr><td>{dt.date()}</td><td>{dt.time()}</td><td>{row.phone_number}</td><td>{row.user}</td><td>{talk_time}</td><td>{pulse}</td><td>{rate:.2f}</td></tr>"
+
+    html += f"""
+            <tr style='font-weight:bold; background-color:#e0e0e0;'>
+                <td colspan='4' align='right'>Total</td>
+                <td>{total_talk_time3}</td>
+                <td>{total_pulse3}</td>
+                <td>{total_rate3:.2f}</td>
+            </tr>
+        """
+
+    html += f"""
+        <table><tr><td>&nbsp;</td></tr></table>
+        <table border="1" width="600" cellpadding="2" cellspacing="2" style="font-size:11pt;">
+            <tr><td colspan="7" style="font-size:15pt;background-color:#607d8b;color:#fff;">{client_result.company_name if client_result else ''} (OUTBOUND ABANDCALL)</td></tr>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Call From</th>
+                <th>Agent</th>
+                <th>Talk Time</th>
+                <th>Pulse</th>
+                <th>Rate</th>
+            </tr>
+    """
+
+    for row in ab_data:
+        call_date = row.CallDate
+        talk_time = int(row.TalkSec) if row.TalkSec else 0
+        pulse = (talk_time // 60) + (1 if talk_time % 60 else 0)
+        rate = pulse * 0.5  # You can replace this with actual billing logic
+
+        total_talk_time4 += talk_time
+        total_pulse4 += pulse
+        total_rate4 += rate
+
+        html += f"""
+            <tr>
+                <td>{call_date.date()}</td>
+                <td>{call_date.time()}</td>
+                <td>{row.PhoneNumber}</td>
+                <td>{row.Agent}</td>
+                <td>{talk_time}</td>
+                <td>{pulse}</td>
+                <td>{rate:.2f}</td>
+            </tr>
+        """
+
+    html += f"""
+            <tr style='font-weight:bold; background-color:#e0e0e0;'>
+                <td colspan='4' align='right'>Total</td>
+                <td>{total_talk_time4}</td>
+                <td>{total_pulse4}</td>
+                <td>{total_rate4:.2f}</td>
+            </tr>
+        """
+
+    html += f"""
+        <table><tr><td>&nbsp;</td></tr></table>
+        <table border="1" width="600" cellpadding="2" cellspacing="2" style="font-size:11pt;">
+            <tr><td colspan="7" style="font-size:15pt;background-color:#607d8b;color:#fff;">{client_result.company_name if client_result else ''} (SMS)</td></tr>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Call From</th>
+                <th>Alert To</th>
+                <th>Pulse</th>
+                <th>Rate</th>
+            </tr>
+    """
+
+    for row in sms_data:
+        pulse = int(row.Unit) if row.Unit else 0
+        rate = pulse * 0.2  # Set your actual rate here
+
+        total_pulse5 += pulse
+        total_rate5 += rate
+
+        html += f"""
+            <tr>
+                <td>{row.CallDate1}</td>
+                <td>{row.CallTime}</td>
+                <td>{row.CallFrom}</td>
+                <td>{row.AlertTo}</td>
+                <td>{pulse}</td>
+                <td>{rate:.2f}</td>
+            </tr>
+        """
+
+    html += f"""
+            <tr style='font-weight:bold; background-color:#e0e0e0;'>
+                <td colspan='4' align='right'>Total</td>
+                <td>{total_pulse5}</td>
+                <td>{total_rate5:.2f}</td>
+            </tr>
+        """
+
+    html += f"""
+        <table><tr><td>&nbsp;</td></tr></table>
+        <table border="1" width="600" cellpadding="2" cellspacing="2" style="font-size:11pt;">
+            <tr><td colspan="6" style="font-size:15pt;background-color:#607d8b;color:#fff;">{client_result.company_name if client_result else ''} (EMAIL)</td></tr>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Call From</th>
+                <th>Pulse</th>
+                <th>Rate</th>
+            </tr>
+    """
+
+    for row in email_data:
+        pulse = int(row.Unit) if row.Unit else 0
+        rate = pulse * 0.25  # Replace with actual per-email rate
+
+        total_pulse6 += pulse
+        total_rate6 += rate
+
+        html += f"""
+            <tr>
+                <td>{row.CallDate1}</td>
+                <td>{row.CallTime}</td>
+                <td>{row.CallFrom}</td>
+                <td>{pulse}</td>
+                <td>{rate:.2f}</td>
+            </tr>
+        """
+
+    html += f"""
+            <tr style='font-weight:bold; background-color:#e0e0e0;'>
+                <td colspan='4' align='right'>Total</td>
+                <td>{total_pulse6}</td>
+                <td>{total_rate6:.2f}</td>
+            </tr>
+        """
+
+    html += f"""
+        <table><tr><td>&nbsp;</td></tr></table>
+        <table border="1" width="600" cellpadding="2" cellspacing="2" style="font-size:11pt;">
+            <tr><td colspan="6" style="font-size:15pt;background-color:#607d8b;color:#fff;">{client_result.company_name if client_result else ''} (RX LOG)</td></tr>
+            <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Call From</th>
+                <th>Pulse</th>
+                <th>Rate</th>
+            </tr>
+    """
+
+    for row in rx_data:
+        pulse = 1
+        rate = pulse * 0.20  # Adjust this rate as per your business logic
+
+        total_pulse7 += pulse
+        total_rate7 += rate
+
+        html += f"""
+            <tr>
+                <td>{row.CallDate1}</td>
+                <td>{row.CallTime}</td>
+                <td>{row.CallFrom}</td>
+                <td>{pulse}</td>
+                <td>{rate:.2f}</td>
+            </tr>
+        """
+
+    html += f"""
+            <tr style='font-weight:bold; background-color:#e0e0e0;'>
+                <td colspan='4' align='right'>Total</td>
+                <td>{total_pulse7}</td>
+                <td>{total_rate7:.2f}</td>
+            </tr>
+        """
+
+    html += "</table></body></html>"
+
+    # Step 4: Return as Excel
+    buffer = BytesIO(html.encode('utf-8'))
+    filename = f"statement_{datetime.now().strftime('%d_%m_%y_%H_%M_%S')}.xls"
+    headers = {
+        "Content-Disposition": f"attachment; filename={filename}",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
+
+    return StreamingResponse(buffer, media_type="application/vnd.ms-excel", headers=headers)
+
+
+
