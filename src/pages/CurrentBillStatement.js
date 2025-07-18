@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import { format } from "date-fns";
 
 const CurrentBillStatement = () => {
   const clientOptions = [
@@ -13,39 +14,44 @@ const CurrentBillStatement = () => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
 
+  const formattedStart = format(startDate, "yyyy-MM-dd");
+  const formattedEnd = format(endDate, "yyyy-MM-dd");
+
   const handleSubmit = async () => {
   const clientId = localStorage.getItem("company_id");
-  const fromDate = startDate;
-  const toDate = endDate;
+  const fromDate = formattedStart;
+  const toDate = formattedEnd;
 
-  const url = `/call/download_excel_raw?client_id=${clientId}&from_date=${fromDate}&to_date=${toDate}`;
+  const url = `http://localhost:8025/call/download_excel_raw?client_id=${clientId}&from_date=${fromDate}&to_date=${toDate}`;
 
   try {
     const response = await fetch(url, {
       method: 'GET',
+      headers: {
+        'Accept': 'application/vnd.ms-excel'
+      }
     });
 
     if (!response.ok) {
       throw new Error('Network response was not ok');
     }
 
-    // Download Excel file
     const blob = await response.blob();
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = downloadUrl;
-
-    // Optional: Set a filename
-    link.download = `report_${clientId}_${fromDate}_to_${toDate}.xlsx`;
-
+    link.download = `report_${clientId}_${fromDate}_to_${toDate}.xls`;  // <-- .xls
     document.body.appendChild(link);
     link.click();
-    link.remove();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(downloadUrl); // cleanup
   } catch (error) {
     console.error('Download failed:', error);
     alert('Download failed. See console for details.');
   }
 };
+
+
 
 
   return (
