@@ -749,6 +749,55 @@ def download_excel_raw(
             </tr>
         """
 
+    # === 1️⃣ Get dynamic rates with fallback ===
+    rate_icb = plan_result.InboundRate if plan_result and hasattr(plan_result, "InboundRate") else 0.5
+    rate_multilang = plan_result.MultiLangInboundRate if plan_result and hasattr(plan_result,
+                                                                                 "MultiLangInboundRate") else 0.5
+    rate_ocb = plan_result.OutboundRate if plan_result and hasattr(plan_result, "OutboundRate") else 0.5
+    rate_abcb = plan_result.AbandCallRate if plan_result and hasattr(plan_result, "AbandCallRate") else 0.5
+    rate_sms = plan_result.SMSRate if plan_result and hasattr(plan_result, "SMSRate") else 0.2
+    rate_email = plan_result.EmailRate if plan_result and hasattr(plan_result, "EmailRate") else 0.25
+    rate_rx = plan_result.RXRate if plan_result and hasattr(plan_result, "RXRate") else 0.2
+
+    # === 2️⃣ Recalculate final amounts ===
+    amount_icb = total_pulse * rate_icb
+    amount_multilang = total_pulse2 * rate_multilang
+    amount_ocb = total_pulse3 * rate_ocb
+    amount_abcb = total_pulse4 * rate_abcb
+    amount_sms = total_pulse5 * rate_sms
+    amount_email = total_pulse6 * rate_email
+    amount_rx = total_pulse7 * rate_rx
+
+    grand_total = amount_icb + amount_multilang + amount_ocb + amount_abcb + amount_sms + amount_email + amount_rx
+
+    # === 3️⃣ Append Summary Table ===
+    html += f"""
+    <table><tr><td>&nbsp;</td></tr></table>
+    <table border='1' width='600' cellpadding='2' cellspacing='2' style='font-size:11pt;'>
+        <tr>
+            <td colspan='4' style='font-size:15pt;background-color:#607d8b;color:#fff;'>Summary</td>
+        </tr>
+        <tr>
+            <th>Description</th>
+            <th>Pulse/Unit</th>
+            <th>Rate</th>
+            <th>Amount</th>
+        </tr>
+        <tr><td>ICB</td><td>{total_pulse}</td><td>{rate_icb:.2f}</td><td>{amount_icb:.2f}</td></tr>
+        <tr><td>ICB Multi Language</td><td>{total_pulse2}</td><td>{rate_multilang:.2f}</td><td>{amount_multilang:.2f}</td></tr>
+        <tr><td>OCB</td><td>{total_pulse3}</td><td>{rate_ocb:.2f}</td><td>{amount_ocb:.2f}</td></tr>
+        <tr><td>ABCB</td><td>{total_pulse4}</td><td>{rate_abcb:.2f}</td><td>{amount_abcb:.2f}</td></tr>
+        <tr><td>SMS</td><td>{total_pulse5}</td><td>{rate_sms:.2f}</td><td>{amount_sms:.2f}</td></tr>
+        <tr><td>Email</td><td>{total_pulse6}</td><td>{rate_email:.2f}</td><td>{amount_email:.2f}</td></tr>
+        <tr><td>RX/IVR</td><td>{total_pulse7}</td><td>{rate_rx:.2f}</td><td>{amount_rx:.2f}</td></tr>
+        <tr style='font-weight:bold; background-color:#e0e0e0;'>
+            <td colspan='3' align='right'>Grand Total</td>
+            <td>{grand_total:.2f}</td>
+        </tr>
+    </table>
+    """
+
+
     html += "</table></body></html>"
 
     # Step 4: Return as Excel
