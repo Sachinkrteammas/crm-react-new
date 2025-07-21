@@ -95,8 +95,8 @@ function CsatView() {
                   <DatePicker
                     selected={startDate}
                     onChange={(date) => setStartDate(date)}
-                    dateFormat="yyyy-MM-dd"
-                    placeholderText="YYYY-MM-DD"
+                    dateFormat="dd-MM-yyyy"
+                    placeholderText="DD-MM-YYYY"
                     className="form-control"
                     id="start-date"
                   />
@@ -109,8 +109,8 @@ function CsatView() {
                   <DatePicker
                     selected={endDate}
                     onChange={(date) => setEndDate(date)}
-                    dateFormat="yyyy-MM-dd"
-                    placeholderText="YYYY-MM-DD"
+                    dateFormat="dd-MM-yyyy"
+                    placeholderText="DD-MM-YYYY"
                     className="form-control"
                     id="end-date"
                   />

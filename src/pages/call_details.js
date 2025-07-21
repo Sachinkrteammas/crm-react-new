@@ -204,11 +204,11 @@ function CallDetails() {
         <DatePicker
           selected={startDate}
           onChange={(date) => setStartDate(date)}
-          dateFormat="yyyy-MM-dd"
-          placeholderText="YYYY-MM-DD"
+          dateFormat="dd-MM-yyyy"
+          placeholderText="DD-MM-YYYY"
           className="form-control"
           id="start-date"
-          maxDate={endDate} // optional: prevents selecting date after end
+          maxDate={endDate}
         />
       </div>
 
@@ -217,11 +217,11 @@ function CallDetails() {
         <DatePicker
           selected={endDate}
           onChange={(date) => setEndDate(date)}
-          dateFormat="yyyy-MM-dd"
-          placeholderText="YYYY-MM-DD"
+          dateFormat="dd-MM-yyyy"
+          placeholderText="DD-MM-YYYY"
           className="form-control"
           id="end-date"
-          minDate={startDate} // optional: prevents selecting date before start
+          minDate={startDate}
         />
       </div>
 
