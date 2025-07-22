@@ -14,6 +14,7 @@ import OutCallDetails from "./pages/OutCallDetails";
 import PriorityCalls from "./pages/PriorityCalls";
 import CsatView from "./pages/csat_view";
 import CurrentBillStatement from "./pages/CurrentBillStatement";
+import TaggingPage from "./pages/TaggingPage";
 import Layout from "./layout/layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -26,6 +27,7 @@ function App() {
           <Route path="/auth-register" element={<AuthRegister  />} />
           <Route path="/forgot-password" element={<ForgotPassword  />} />
           <Route path="/logout" element={<Logout />} />
+
 
 
           <Route element={<ProtectedRoute />}>
@@ -41,6 +43,7 @@ function App() {
                   <Route path="/priority_calls" element={<PriorityCalls />} />
                   <Route path="/csat_view" element={<CsatView />} />
                   <Route path="/bill_statement" element={<CurrentBillStatement />} />
+                  <Route path="/tagging" element={<TaggingPage />} />
               </Route>
           </Route>
         </Routes>

@@ -813,3 +813,47 @@ def download_excel_raw(
 
 
 
+@router.get("/fields/{client_id}")
+def get_fields_for_client(client_id: int, db: Session = Depends(get_db)):
+    # Fetch field_master data for the client
+    sql_fields = text("""
+        SELECT id, FieldName, FieldType, FieldValidation, DefinedField, RequiredCheck, Priority, fieldNumber
+        FROM field_master
+        WHERE client_id = :client_id AND FieldStatus = 1
+        ORDER BY Priority ASC
+    """)
+    fields_result = db.execute(sql_fields, {"client_id": client_id})
+    fields = [dict(row) for row in fields_result.mappings().all()]
+
+    if not fields:
+        raise HTTPException(status_code=404, detail="No fields found for this client_id")
+
+    # Collect IDs of DropDown fields
+    dropdown_field_ids = [field['id'] for field in fields if field['FieldType'].lower() == 'dropdown']
+
+    dropdown_values_map = {}
+    if dropdown_field_ids:
+        sql_dropdown_values = text("""
+            SELECT FieldId, FieldValueName
+            FROM field_master_value
+            WHERE client_id = :client_id
+              AND FieldId IN :field_ids
+            ORDER BY id ASC
+        """)
+        dropdown_values_result = db.execute(sql_dropdown_values, {
+            "client_id": client_id,
+            "field_ids": tuple(dropdown_field_ids)
+        })
+
+        # Organize values as {FieldId: [value1, value2, ...]}
+        for row in dropdown_values_result.mappings().all():
+            field_id = row['FieldId']
+            value_name = row['FieldValueName']
+            dropdown_values_map.setdefault(field_id, []).append(value_name)
+
+    # Attach dropdown options to relevant fields
+    for field in fields:
+        if field['FieldType'].lower() == 'dropdown':
+            field['options'] = dropdown_values_map.get(field['id'], [])
+
+    return fields

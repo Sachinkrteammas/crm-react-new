@@ -122,6 +122,13 @@ useEffect(() => {
               </Link>
             </li>
 
+            <li className={`menu-item ${location.pathname === "/tagging" ? "active" : ""}`}>
+              <Link to="/tagging" className="menu-link">
+                <i className="menu-icon icon-base ti tabler-phone-call"></i>
+                <div>Call Manager</div>
+              </Link>
+            </li>
+
             {/* In Call Operations */}
             <li className={`menu-item ${openMenus.inCall ? "open" : ""} ${isActiveMenu(["/call_details", "/csat_view"]) ? "active" : ""}`}>
               <a href="#"
