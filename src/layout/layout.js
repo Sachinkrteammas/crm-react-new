@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 const Layout = () => {
-const [theme, setTheme] = useState('dark');
 const [username, setUsername] = useState("");
 
   useEffect(() => {
@@ -13,24 +12,9 @@ const [username, setUsername] = useState("");
     }
   }, []);
 
-
-
-useEffect(() => {
-
-    document.documentElement.setAttribute('data-bs-theme', theme);
-  }, [theme]);
-
-  const handleThemeChange = (selectedTheme) => {
-    setTheme(selectedTheme);
-  };
-
-
-
     const location = useLocation();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isSidebarHovered, setIsSidebarHovered] = useState(false);
-
-
 
     const [openMenus, setOpenMenus] = useState({
         inCall: false,
@@ -71,7 +55,7 @@ useEffect(() => {
     <div className="layout-wrapper layout-content-navbar">
     <div className="layout-container">
       {/* Sidebar */}
-      <aside id="layout-menu" className="layout-menu menu-vertical menu bg-menu-theme"
+        <aside id="layout-menu" className="layout-menu menu-vertical menu"
           onMouseEnter={() => {
                 if (!isSidebarOpen) {
                     setIsSidebarHovered(true);
@@ -236,12 +220,17 @@ useEffect(() => {
           </ul>
       </aside>
 
+      <div className="menu-mobile-toggler d-xl-none rounded-1">
+          <a href="#" className="layout-menu-toggle menu-link text-large text-bg-secondary p-2 rounded-1">
+            <i className="ti tabler-menu icon-base"></i>
+            <i className="ti tabler-chevron-right icon-base"></i>
+          </a>
+        </div>
+
       {/* Main Content */}
       <div className="layout-page">
         {/* Header */}
-        <header className="layout-header navbar">
-          {/* Add your header logic here if needed */}
-          <nav
+        <nav
             className="layout-navbar container-xxl navbar-detached navbar navbar-expand-xl align-items-center bg-navbar-theme"
             id="layout-navbar">
             <div className="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
@@ -263,7 +252,7 @@ useEffect(() => {
               {/* /Search */}
 
               <ul className="navbar-nav flex-row align-items-center ms-md-auto">
-
+                {/*/ Language */}
 
                 {/* Style Switcher */}
                 <li className="nav-item dropdown">
@@ -271,36 +260,48 @@ useEffect(() => {
                     className="nav-link dropdown-toggle hide-arrow btn btn-icon btn-text-secondary rounded-pill"
                     id="nav-theme"
                     href="#"
-                    onClick={(e) => e.preventDefault()}
-                    data-bs-toggle="dropdown"
-                  >
-                    <i className={`icon-base ti icon-22px theme-icon-active text-heading tabler-${theme === 'light' ? 'sun' : theme === 'dark' ? 'moon-stars' : 'device-desktop-analytics'}`}></i>
+                    data-bs-toggle="dropdown">
+                    <i className="icon-base ti tabler-sun icon-22px theme-icon-active text-heading"></i>
                     <span className="d-none ms-2" id="nav-theme-text">Toggle theme</span>
                   </a>
                   <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="nav-theme-text">
-                    {['light', 'dark', 'system'].map((t) => (
-                      <li key={t}>
-                        <button
-                          type="button"
-                          className={`dropdown-item align-items-center ${theme === t ? 'active' : ''}`}
-                          data-bs-theme-value={t}
-                          aria-pressed={theme === t}
-                          onClick={() => handleThemeChange(t)}
+                    <li>
+                      <button
+                        type="button"
+                        className="dropdown-item align-items-center active"
+                        data-bs-theme-value="light"
+                        aria-pressed="false">
+                        <span><i className="icon-base ti tabler-sun icon-22px me-3" data-icon="sun"></i>Light</span>
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        className="dropdown-item align-items-center"
+                        data-bs-theme-value="dark"
+                        aria-pressed="true">
+                        <span
+                          ><i className="icon-base ti tabler-moon-stars icon-22px me-3" data-icon="moon-stars"></i
+                          >Dark</span
                         >
-                          <span>
-                            <i
-                              className={`icon-base ti icon-22px me-3 ${
-                                t === 'light' ? 'tabler-sun' : t === 'dark' ? 'tabler-moon-stars' : 'tabler-device-desktop-analytics'
-                              }`}
-                            ></i>
-                            {t.charAt(0).toUpperCase() + t.slice(1)}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
+                      </button>
+                    </li>
+                    <li>
+                      <button
+                        type="button"
+                        className="dropdown-item align-items-center"
+                        data-bs-theme-value="system"
+                        aria-pressed="false">
+                        <span
+                          ><i
+                            className="icon-base ti tabler-device-desktop-analytics icon-22px me-3"
+                            data-icon="device-desktop-analytics"></i
+                          >System</span
+                        >
+                      </button>
+                    </li>
                   </ul>
                 </li>
-
                 {/* / Style Switcher*/}
 
                 {/* Quick links  */}
@@ -318,20 +319,20 @@ useEffect(() => {
                     href="#"
                     data-bs-toggle="dropdown">
                     <div className="avatar avatar-online">
-                      <img src="../../assets/img/avatars/1.png" alt className="rounded-circle" />
+                      <img src="assets/img/avatars/1.png" alt className="rounded-circle" />
                     </div>
                   </a>
                   <ul className="dropdown-menu dropdown-menu-end">
                     <li>
-                      <a className="dropdown-item mt-0" href="#">
+                      <a className="dropdown-item mt-0">
                         <div className="d-flex align-items-center">
                           <div className="flex-shrink-0 me-2">
                             <div className="avatar avatar-online">
-                              <img src="../../assets/img/avatars/1.png" alt className="rounded-circle" />
+                              <img src="assets/img/avatars/1.png" alt className="rounded-circle" />
                             </div>
                           </div>
                           <div className="flex-grow-1">
-                            <h6 className="mb-0">{username}</h6>
+                            <h6 className="mb-0">John Doe</h6>
                             <small className="text-body-secondary">Admin</small>
                           </div>
                         </div>
@@ -340,7 +341,6 @@ useEffect(() => {
                     <li>
                       <div className="dropdown-divider my-1 mx-n2"></div>
                     </li>
-
                     <li>
                       <div className="d-grid px-2 pt-2 pb-1">
                         <Link to="/logout" className="btn btn-sm btn-danger d-flex">
@@ -355,15 +355,17 @@ useEffect(() => {
               </ul>
             </div>
           </nav>
-        </header>
 
         <div className="content-wrapper">
           <div className="container-xxl flex-grow-1 container-p-y">
             <Outlet /> {/* Routes will render here */}
           </div>
+          <div className="content-backdrop fade"></div>
         </div>
       </div>
       </div>
+      <div className="layout-overlay layout-menu-toggle"></div>
+      <div className="drag-target"></div>
     </div>
   );
 };
