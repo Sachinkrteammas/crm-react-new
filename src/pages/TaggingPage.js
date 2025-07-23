@@ -1,8 +1,58 @@
 // TaggingHistorySearchTabs.jsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import '../styles/TaggingHistorySearchTabs.css';
+import api from "../api";
 
 export default function TaggingHistorySearchTabs() {
+  const [fields, setFields] = useState([]);
+  const [formData, setFormData] = useState({});
+
+  const companyId = localStorage.getItem("company_id");
+
+  useEffect(() => {
+    async function fetchFields() {
+      if (!companyId) {
+        console.error("company_id not found in localStorage");
+        return;
+      }
+
+      try {
+        const { data } = await api.get(`call/fields/${companyId}`);
+        setFields(data);
+
+        const initialData = {};
+        data.forEach((field) => {
+          initialData[field.FieldName] = "";
+        });
+        setFormData(initialData);
+      } catch (error) {
+        console.error("Error fetching fields:", error);
+      }
+    }
+    fetchFields();
+  }, [companyId]);
+
+  const handleChange = (fieldName, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      await api.post(`call/call_tag/${companyId}`, formData);
+      alert("Data saved successfully!");
+      // Optionally clear the form:
+       setFormData(Object.fromEntries(Object.keys(formData).map(key => [key, ""])));
+    } catch (error) {
+      console.error("Error saving data:", error);
+      alert("Error saving data");
+    }
+  };
+
   return (
     <div className="card mb-5 shadow-sm">
       {/* ——— Tabs Header ——— */}
@@ -32,63 +82,116 @@ export default function TaggingHistorySearchTabs() {
           {/* — Tagging — */}
           <div className="tab-pane fade show active" id="pane-tagging" role="tabpanel">
             <div className="card mb-4">
-              <div className="card-header bg-white">
-                <h6 className="mb-0">Quick Tag</h6>
+              <div className="card-header">
+                <h6 className="mb-0">Tagging Form</h6>
               </div>
               <div className="card-body">
-                <div className="row g-4">
-                  {/** Floating labels example **/}
-                  <div className="col-md-6 form-floating">
-                    <input id="callFrom" type="text" className="form-control" placeholder=" " />
-                    <label htmlFor="callFrom">Call From</label>
-                  </div>
-                  <div className="col-md-6 form-floating">
-                    <select id="scenarios" className="form-select" placeholder=" ">
-                      <option value="">Select Scenario</option>
-                    </select>
-                    <label htmlFor="scenarios">Scenario</label>
-                  </div>
-                </div>
-              </div>
-            </div>
+                <form onSubmit={handleSubmit}>
+                  <div className="row g-4">
+                    {fields.map((field) => {
+                      const {
+                        FieldName,
+                        FieldType,
+                        RequiredCheck,
+                        options = [],
+                      } = field;
 
-            <div className="card">
-              <div className="card-header bg-white">
-                <h6 className="mb-0">Details</h6>
-              </div>
-              <div className="card-body">
-                <div className="row g-4">
-                  {[
-                    ['issue','Issue'],
-                    ['contact','Contact Person'],
-                    ['mobile','Mobile Number'],
-                    ['city','City'],
-                    ['house','House No'],
-                    ['street','Street No']
-                  ].map(([id,label])=>(
-                    <div key={id} className="col-md-6 form-floating">
-                      <input id={id} type="text" className="form-control" placeholder=" " />
-                      <label htmlFor={id}>{label}</label>
-                    </div>
-                  ))}
+                      const required = RequiredCheck === 1;
 
-                  <div className="col-md-6 form-floating">
-                    <select id="block" className="form-select" placeholder=" ">
-                      <option value="">Select Block/Marg/Road</option>
-                    </select>
-                    <label htmlFor="block">Block / Marg / Road</label>
-                  </div>
-                  <div className="col-md-6 form-floating">
-                    <select id="state" className="form-select" placeholder=" ">
-                      <option value="">Select State</option>
-                    </select>
-                    <label htmlFor="state">State</label>
+                      if (FieldType.toLowerCase() === "textbox") {
+                        return (
+                          <div key={FieldName} className="col-md-4 form-floating">
+                            <input
+                              id={FieldName}
+                              type="text"
+                              className="form-control"
+                              placeholder=" "
+                              value={formData[FieldName]}
+                              onChange={(e) => handleChange(FieldName, e.target.value)}
+                              required={required}
+                            />
+                            <label htmlFor={FieldName}>{FieldName}</label>
+                          </div>
+                        );
+                      }
+
+                      if (FieldType.toLowerCase() === "textarea") {
+                        return (
+                          <div key={FieldName} className="col-4 form-floating">
+                            <textarea
+                              id={FieldName}
+                              className="form-control"
+                              placeholder=" "
+                              style={{ height: "100px" }}
+                              value={formData[FieldName]}
+                              onChange={(e) => handleChange(FieldName, e.target.value)}
+                              required={required}
+                            />
+                            <label htmlFor={FieldName}>{FieldName}</label>
+                          </div>
+                        );
+                      }
+
+                      if (FieldType.toLowerCase() === "dropdown") {
+                        return (
+                          <div key={FieldName} className="col-md-4 form-floating">
+                            <select
+                              id={FieldName}
+                              className="form-select"
+                              value={formData[FieldName]}
+                              onChange={(e) => handleChange(FieldName, e.target.value)}
+                              required={required}
+                            >
+                              <option value="">Select {FieldName}</option>
+                              {options.map((opt) => (
+                                <option key={opt} value={opt}>{opt}</option>
+                              ))}
+                            </select>
+                            <label htmlFor={FieldName}>{FieldName}</label>
+                          </div>
+                        );
+                      }
+
+                      if (["date", "date_time"].includes(FieldType.toLowerCase())) {
+                        return (
+                          <div key={FieldName} className="col-md-4 form-floating">
+                            <input
+                              id={FieldName}
+                              type="date"
+                              className="form-control"
+                              placeholder=" "
+                              value={formData[FieldName]}
+                              onChange={(e) => handleChange(FieldName, e.target.value)}
+                              required={required}
+                            />
+                            <label htmlFor={FieldName}>{FieldName}</label>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={FieldName} className="col-md-4 form-floating">
+                          <input
+                            id={FieldName}
+                            type="text"
+                            className="form-control"
+                            placeholder=" "
+                            value={formData[FieldName]}
+                            onChange={(e) => handleChange(FieldName, e.target.value)}
+                            required={required}
+                          />
+                          <label htmlFor={FieldName}>{FieldName}</label>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  <div className="col-12 text-end">
-                    <button className="btn btn-primary px-4">Submit</button>
+                  <div className="text-end mt-4">
+                    <button type="submit" className="btn btn-primary px-4">
+                      Submit
+                    </button>
                   </div>
-                </div>
+                </form>
               </div>
             </div>
           </div>
@@ -96,7 +199,7 @@ export default function TaggingHistorySearchTabs() {
           {/* — History — */}
           <div className="tab-pane fade" id="pane-history" role="tabpanel">
             <div className="card">
-              <div className="card-header bg-white">
+              <div className="card-header">
                 <h6 className="mb-0">History Log</h6>
               </div>
               <div className="card-body p-0">
@@ -130,7 +233,7 @@ export default function TaggingHistorySearchTabs() {
           {/* — Search — */}
           <div className="tab-pane fade" id="pane-search" role="tabpanel">
             <div className="card mb-4">
-              <div className="card-header bg-white">
+              <div className="card-header">
                 <h6 className="mb-0">Advanced Search</h6>
               </div>
               <div className="card-body">
@@ -153,7 +256,7 @@ export default function TaggingHistorySearchTabs() {
             </div>
 
             <div className="card">
-              <div className="card-header bg-white">
+              <div className="card-header">
                 <h6 className="mb-0">Search Results</h6>
               </div>
               <div className="card-body p-0">

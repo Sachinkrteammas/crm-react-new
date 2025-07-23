@@ -2,7 +2,7 @@
 from http.client import HTTPException
 from io import BytesIO
 
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, Body
 from sqlalchemy import text
 from typing import List, Dict, Optional, Any
 
@@ -857,3 +857,41 @@ def get_fields_for_client(client_id: int, db: Session = Depends(get_db)):
             field['options'] = dropdown_values_map.get(field['id'], [])
 
     return fields
+
+
+@router.post("/call_tag/{client_id}")
+async def save_call_master(client_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+    # 1️⃣ Fetch FieldNames ordered by fieldNumber for this client
+    field_query = text("""
+            SELECT FieldName, fieldNumber
+            FROM field_master
+            WHERE client_id = :client_id AND FieldStatus = 1
+            ORDER BY fieldNumber
+        """)
+    result = db.execute(field_query, {"client_id": client_id})
+    fields = result.mappings().all()
+
+    # 2️⃣ Map payload values to Field1, Field2, Field3, ...
+    field_column_mapping = {}
+    for row in fields:
+        field_name = row["FieldName"]
+        field_number = row["fieldNumber"]
+        value = payload.get(field_name, None)
+        field_column_mapping[f"Field{field_number}"] = value
+
+    # 3️⃣ Prepare insert statement
+    columns = ', '.join(["`client_id`"] + [f"`{col}`" for col in field_column_mapping.keys()])
+    placeholders = ', '.join([":client_id"] + [f":{col}" for col in field_column_mapping.keys()])
+
+    param_payload = {"client_id": client_id}
+    param_payload.update(field_column_mapping)
+
+    sql = text(f"""
+            INSERT INTO call_master ({columns})
+            VALUES ({placeholders})
+        """)
+
+    db.execute(sql, param_payload)
+    db.commit()
+
+    return {"message": "Data saved successfully."}

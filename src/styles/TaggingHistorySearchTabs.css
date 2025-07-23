@@ -3,7 +3,6 @@
 /* make active tab show a nice underline */
 .custom-tabs .nav-link {
   border: none;
-  color: #495057;
   font-weight: 500;
   padding: 0.75rem 1.25rem;
   position: relative;
