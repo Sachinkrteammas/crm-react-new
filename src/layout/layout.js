@@ -44,12 +44,28 @@ const [username, setUsername] = useState("");
 
 
     useEffect(() => {
-        if (isSidebarOpen || isSidebarHovered) {
-            document.body.classList.remove("layout-menu-collapsed");
+        const sidebar = document.getElementById("layout-menu");
+
+        if (window.innerWidth >= 1200) {
+            // Desktop behavior
+            if (isSidebarOpen || isSidebarHovered) {
+                document.body.classList.remove("layout-menu-collapsed");
+            } else {
+                document.body.classList.add("layout-menu-collapsed");
+            }
+            sidebar.classList.remove("show"); // Ensure mobile show class is removed
         } else {
-            document.body.classList.add("layout-menu-collapsed");
+            // Mobile behavior
+            if (isSidebarOpen) {
+                sidebar.classList.add("show");
+                document.body.style.overflow = "hidden"; // Optional: prevent scroll
+            } else {
+                sidebar.classList.remove("show");
+                document.body.style.overflow = ""; // restore scroll
+            }
         }
     }, [isSidebarOpen, isSidebarHovered]);
+
 
   const handleThemeChange = (theme) => {
     document.documentElement.setAttribute("data-bs-theme", theme);
@@ -60,6 +76,7 @@ const [username, setUsername] = useState("");
     const savedTheme = localStorage.getItem("theme") || "light";
     document.documentElement.setAttribute("data-bs-theme", savedTheme);
   }, []);
+
 
   return (
     <div className="layout-wrapper layout-content-navbar">
@@ -244,7 +261,17 @@ const [username, setUsername] = useState("");
             className="layout-navbar container-xxl navbar-detached navbar navbar-expand-xl align-items-center bg-navbar-theme"
             id="layout-navbar">
             <div className="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
-              <a className="nav-item nav-link px-0 me-xl-6" href="#">
+              <a
+                href="#"
+                className="nav-item nav-link px-0 me-xl-6"
+                onClick={(e) => {
+                    e.preventDefault();
+                    toggleSidebar();
+                    if (isSidebarHovered) {
+                        setIsSidebarHovered(false);
+                    }
+                }}
+              >
                 <i className="icon-base ti tabler-menu-2 icon-md"></i>
               </a>
             </div>
