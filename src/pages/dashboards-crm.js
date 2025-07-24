@@ -9,6 +9,8 @@ const Dashboard = () => {
     const [dateRange, setDateRange] = useState("today");
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
+    const [loading, setLoading] = useState(false);
+
     const [dashboardData, setDashboardData] = useState({
         answered: 0,
         abandon: 0,
@@ -106,15 +108,29 @@ const Dashboard = () => {
             }
         };
 
-    useEffect(() => {
-      if (fromDate && toDate) {
-        fetchDashboardData();
-        fetchCallAnalysis();
-        fetchCallDistribution();
-        fetchData();
-        fetchTicketBySource();
-      }
-    }, [fromDate, toDate]);
+   useEffect(() => {
+  const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      await Promise.all([
+        fetchDashboardData(),
+        fetchCallAnalysis(),
+        fetchCallDistribution(),
+        fetchData(),
+        fetchTicketBySource()
+      ]);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (fromDate && toDate) {
+    fetchAllData();
+  }
+}, [fromDate, toDate]);
+
 
 
 
@@ -283,19 +299,40 @@ useEffect(() => {
 
 
 
-const handleSubmit = (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
-  fetchDashboardData();
-  fetchCallAnalysis();
-  fetchCallDistribution();
-  fetchData();
-  fetchTicketBySource();
+
+  try {
+    setLoading(true);
+    await Promise.all([
+      fetchDashboardData(),
+      fetchCallAnalysis(),
+      fetchCallDistribution(),
+      fetchData(),
+      fetchTicketBySource()
+    ]);
+  } catch (error) {
+    console.error("Error during submission data fetch:", error);
+  } finally {
+    setLoading(false);
+  }
 };
 
 
 
+
    return (
-   <div>
+   <>
+   {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+   <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
       <div className="row gy-4 gx-3">
         {/* Sales last year */}
         <div className="col-xxl-2 col-md-3 col-6">
@@ -733,6 +770,7 @@ const handleSubmit = (e) => {
         </div>
       </div>
     </div>
+    </>
    );
 
 };
