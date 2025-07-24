@@ -87,7 +87,7 @@ export default function TaggingHistorySearchTabs() {
               </div>
               <div className="card-body">
                 <form onSubmit={handleSubmit}>
-                  <div className="row g-4">
+                  <div className="row g-2">
                     {fields.map((field) => {
                       const {
                         FieldName,
@@ -100,7 +100,8 @@ export default function TaggingHistorySearchTabs() {
 
                       if (FieldType.toLowerCase() === "textbox") {
                         return (
-                          <div key={FieldName} className="col-md-4 form-floating">
+                          <div key={FieldName} className="col-md-3 dynamic-form-group">
+                            <label htmlFor={FieldName}>{FieldName}</label>
                             <input
                               id={FieldName}
                               type="text"
@@ -110,14 +111,15 @@ export default function TaggingHistorySearchTabs() {
                               onChange={(e) => handleChange(FieldName, e.target.value)}
                               required={required}
                             />
-                            <label htmlFor={FieldName}>{FieldName}</label>
+
                           </div>
                         );
                       }
 
                       if (FieldType.toLowerCase() === "textarea") {
                         return (
-                          <div key={FieldName} className="col-4 form-floating">
+                          <div key={FieldName} className="col-3 dynamic-form-group">
+                            <label htmlFor={FieldName}>{FieldName}</label>
                             <textarea
                               id={FieldName}
                               className="form-control"
@@ -127,14 +129,15 @@ export default function TaggingHistorySearchTabs() {
                               onChange={(e) => handleChange(FieldName, e.target.value)}
                               required={required}
                             />
-                            <label htmlFor={FieldName}>{FieldName}</label>
+
                           </div>
                         );
                       }
 
                       if (FieldType.toLowerCase() === "dropdown") {
                         return (
-                          <div key={FieldName} className="col-md-4 form-floating">
+                          <div key={FieldName} className="col-md-3 dynamic-form-group">
+                            <label htmlFor={FieldName}>{FieldName}</label>
                             <select
                               id={FieldName}
                               className="form-select"
@@ -147,14 +150,15 @@ export default function TaggingHistorySearchTabs() {
                                 <option key={opt} value={opt}>{opt}</option>
                               ))}
                             </select>
-                            <label htmlFor={FieldName}>{FieldName}</label>
+
                           </div>
                         );
                       }
 
                       if (["date", "date_time"].includes(FieldType.toLowerCase())) {
                         return (
-                          <div key={FieldName} className="col-md-4 form-floating">
+                          <div key={FieldName} className="col-md-3 dynamic-form-group">
+                            <label htmlFor={FieldName}>{FieldName}</label>
                             <input
                               id={FieldName}
                               type="date"
@@ -164,13 +168,14 @@ export default function TaggingHistorySearchTabs() {
                               onChange={(e) => handleChange(FieldName, e.target.value)}
                               required={required}
                             />
-                            <label htmlFor={FieldName}>{FieldName}</label>
+
                           </div>
                         );
                       }
 
                       return (
-                        <div key={FieldName} className="col-md-4 form-floating">
+                        <div key={FieldName} className="col-md-3 dynamic-form-group">
+                          <label htmlFor={FieldName}>{FieldName}</label>
                           <input
                             id={FieldName}
                             type="text"
@@ -180,7 +185,7 @@ export default function TaggingHistorySearchTabs() {
                             onChange={(e) => handleChange(FieldName, e.target.value)}
                             required={required}
                           />
-                          <label htmlFor={FieldName}>{FieldName}</label>
+
                         </div>
                       );
                     })}
@@ -243,9 +248,10 @@ export default function TaggingHistorySearchTabs() {
                     ['searchFrom','Call From','text'],
                     ['searchDate','Call Date','date'],
                   ].map(([id,label,type])=>(
-                    <div key={id} className="col-md-4 form-floating">
-                      <input id={id} type={type} className="form-control" placeholder=" " />
+                    <div key={id} className="col-md-3 dynamic-form-group">
                       <label htmlFor={id}>{label}</label>
+                      <input id={id} type={type} className="form-control" placeholder=" " />
+
                     </div>
                   ))}
                   <div className="col-md-4 text-end">
