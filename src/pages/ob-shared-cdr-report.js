@@ -4,6 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { getOBSharedCDRReport } from "../services/authService";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import "../styles/loader.css";
 
 
 const OBSharedCDRReport = () => {
@@ -62,6 +63,18 @@ const OBSharedCDRReport = () => {
   };
 
   return (
+  <>
+      {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+
+    <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
     <div className="row gy-4 gx-3">
       {/* OB Shared CDR Filter Section */}
       <div className="card p-4 mb-4">
@@ -91,7 +104,7 @@ const OBSharedCDRReport = () => {
       </div>
 
       {/* CDR Report Table */}
-      {showTable && (
+      {!loading && showTable && (
       <div className="card p-4">
         <h6 className="mb-3">VIEW OB SHARED CDR REPORT</h6>
         <div className="table-responsive" style={{ maxHeight: "500px", overflow: "auto" }}>
@@ -174,6 +187,8 @@ const OBSharedCDRReport = () => {
       </div>
       )}
     </div>
+    </div>
+    </>
   );
 };
 

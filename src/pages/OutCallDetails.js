@@ -7,6 +7,7 @@ import {
 } from '../services/authService';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import "../styles/loader.css";
 
 
 export default function OutCallDetails() {
@@ -27,6 +28,8 @@ export default function OutCallDetails() {
     const [campaigns, setCampaigns] = useState([]);
     const [allocs, setAllocs] = useState([]);
     const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [showTable, setShowTable] = useState(false);
 
     const company_id = localStorage.getItem('company_id');
 
@@ -61,8 +64,9 @@ export default function OutCallDetails() {
         }
     };
 
-    const handleView = (e) => {
+    const handleView = async (e) => {
         e.preventDefault();
+
         if (company_id) {
             // Create a sanitized filter object without empty strings
             const sanitizedFilters = {};
@@ -72,11 +76,19 @@ export default function OutCallDetails() {
                 }
             }
 
-            getOutCallDetails(company_id, sanitizedFilters)
-                .then(res => setData(res))
-                .catch(err => console.error(err));
+            setLoading(true);
+            try {
+                const res = await getOutCallDetails(company_id, sanitizedFilters);
+                setData(res);
+                setShowTable(true);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
         }
     };
+
 
     const handleExport = (e) => {
         e.preventDefault();
@@ -106,6 +118,18 @@ export default function OutCallDetails() {
     };
 
   return (
+  <>
+      {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+
+    <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
     <div className="card p-4">
       <h5 className="mb-4">Out Call Details</h5>
       <form onSubmit={handleView}>
@@ -236,10 +260,11 @@ export default function OutCallDetails() {
       </div>
       </form>
 
-      {data.length > 0 && (
-      <div className="table-responsive">
-        <table className="table table-bordered">
-          <thead>
+      {!loading && showTable && (
+      <div className="card p-4">
+      <div className="table-responsive" style={{ maxHeight: "500px", overflow: "auto" }}>
+        <table className="table table-bordered table-sm">
+          <thead className="table-light">
             <tr>
               <th>View</th>
               <th>Recording</th>
@@ -253,31 +278,43 @@ export default function OutCallDetails() {
             </tr>
           </thead>
           <tbody>
-            {Array.isArray(data) && data.map((row, idx) => (
-              <tr key={idx}>
-                <td>
-                  <button className="btn btn-sm btn-outline-primary">
-                    🔍
-                  </button>
-                </td>
-                <td>
-                  <button className="btn btn-sm btn-outline-secondary">
-                    ⏬
-                  </button>
-                </td>
-                <td>{row.id}</td>
-                <td>{row.callFrom}</td>
-                <td>{row.scenario}</td>
-                <td>{row.subScenario1}</td>
-                <td>{row.name}</td>
-                <td>{row.contactNumber}</td>
-                {/* Add more cells as needed */}
-              </tr>
-            ))}
-          </tbody>
+              {Array.isArray(data) && data.length > 0 ? (
+                data.map((row, idx) => (
+                  <tr key={idx}>
+                    <td>
+                      <button className="btn btn-sm btn-outline-primary">
+                        🔍
+                      </button>
+                    </td>
+                    <td>
+                      <button className="btn btn-sm btn-outline-secondary">
+                        ⏬
+                      </button>
+                    </td>
+                    <td>{row.id}</td>
+                    <td>{row.callFrom}</td>
+                    <td>{row.scenario}</td>
+                    <td>{row.subScenario1}</td>
+                    <td>{row.name}</td>
+                    <td>{row.contactNumber}</td>
+                    {/* Add more cells as needed */}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="23" className="text-center">
+                    No data available for selected date range.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+
         </table>
+      </div>
       </div>
       )}
     </div>
+    </div>
+    </>
   );
 }

@@ -51,6 +51,16 @@ const [username, setUsername] = useState("");
         }
     }, [isSidebarOpen, isSidebarHovered]);
 
+  const handleThemeChange = (theme) => {
+    document.documentElement.setAttribute("data-bs-theme", theme);
+    localStorage.setItem("theme", theme);
+  };
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-bs-theme", savedTheme);
+  }, []);
+
   return (
     <div className="layout-wrapper layout-content-navbar">
     <div className="layout-container">
@@ -270,7 +280,8 @@ const [username, setUsername] = useState("");
                         type="button"
                         className="dropdown-item align-items-center active"
                         data-bs-theme-value="light"
-                        aria-pressed="false">
+                        aria-pressed="false"
+                        onClick={() => handleThemeChange("light")}>
                         <span><i className="icon-base ti tabler-sun icon-22px me-3" data-icon="sun"></i>Light</span>
                       </button>
                     </li>
@@ -279,7 +290,8 @@ const [username, setUsername] = useState("");
                         type="button"
                         className="dropdown-item align-items-center"
                         data-bs-theme-value="dark"
-                        aria-pressed="true">
+                        aria-pressed="true"
+                        onClick={() => handleThemeChange("dark")}>
                         <span
                           ><i className="icon-base ti tabler-moon-stars icon-22px me-3" data-icon="moon-stars"></i
                           >Dark</span
@@ -291,7 +303,8 @@ const [username, setUsername] = useState("");
                         type="button"
                         className="dropdown-item align-items-center"
                         data-bs-theme-value="system"
-                        aria-pressed="false">
+                        aria-pressed="false"
+                        onClick={() => handleThemeChange("auto")}>
                         <span
                           ><i
                             className="icon-base ti tabler-device-desktop-analytics icon-22px me-3"

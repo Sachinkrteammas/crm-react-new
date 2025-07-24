@@ -5,6 +5,7 @@ import { getIVRReport } from "../services/authService";
 import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import "../styles/loader.css";
 
 
 const IVRReport = () => {
@@ -62,6 +63,18 @@ const IVRReport = () => {
   };
 
   return (
+  <>
+      {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+
+    <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
     <div className="row gy-4 gx-3">
       {/* IVR REPORT CARD */}
       <div className="card p-4 mb-4">
@@ -89,7 +102,7 @@ const IVRReport = () => {
       </div>
 
       {/* VIEW IVR LOG REPORT */}
-      {showTable && (
+      {!loading && showTable && (
       <div className="card p-4">
         <h6 className="mb-3">VIEW IVR LOG REPORT</h6>
         <div className="table-responsive" style={{ maxHeight: "500px", overflow: "auto" }}>
@@ -133,6 +146,8 @@ const IVRReport = () => {
       </div>
       )}
     </div>
+    </div>
+    </>
   );
 };
 
