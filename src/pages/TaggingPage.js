@@ -6,6 +6,7 @@ import api from "../api";
 export default function TaggingHistorySearchTabs() {
   const [fields, setFields] = useState([]);
   const [formData, setFormData] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const companyId = localStorage.getItem("company_id");
 
@@ -15,6 +16,7 @@ export default function TaggingHistorySearchTabs() {
         console.error("company_id not found in localStorage");
         return;
       }
+      setLoading(true);
 
       try {
         const { data } = await api.get(`call/fields/${companyId}`);
@@ -27,6 +29,8 @@ export default function TaggingHistorySearchTabs() {
         setFormData(initialData);
       } catch (error) {
         console.error("Error fetching fields:", error);
+      } finally {
+            setLoading(false);
       }
     }
     fetchFields();
@@ -54,6 +58,19 @@ export default function TaggingHistorySearchTabs() {
   };
 
   return (
+  <>
+      {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+
+    <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
+    {!loading && (
     <div className="card mb-5 shadow-sm">
       {/* ——— Tabs Header ——— */}
       <div className="card-header bg-light border-0 pb-0">
@@ -294,5 +311,8 @@ export default function TaggingHistorySearchTabs() {
         </div>
       </div>
     </div>
+    )}
+    </div>
+    </>
   );
 }
