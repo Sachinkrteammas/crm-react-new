@@ -58,10 +58,8 @@ const [username, setUsername] = useState("");
             // Mobile behavior
             if (isSidebarOpen) {
                 sidebar.classList.add("show");
-                document.body.style.overflow = "hidden"; // Optional: prevent scroll
             } else {
                 sidebar.classList.remove("show");
-                document.body.style.overflow = ""; // restore scroll
             }
         }
     }, [isSidebarOpen, isSidebarHovered]);
@@ -76,6 +74,12 @@ const [username, setUsername] = useState("");
     const savedTheme = localStorage.getItem("theme") || "light";
     document.documentElement.setAttribute("data-bs-theme", savedTheme);
   }, []);
+
+  const handleMenuLinkClick = () => {
+      if (window.innerWidth < 1200) {
+        setIsSidebarOpen(false);
+      }
+  };
 
 
   return (
@@ -127,14 +131,14 @@ const [username, setUsername] = useState("");
 
             {/* Dashboard */}
             <li className={`menu-item ${location.pathname === "/dashboard" ? "active" : ""}`}>
-              <Link to="/dashboard" className="menu-link">
+              <Link to="/dashboard" className="menu-link" onClick={handleMenuLinkClick}>
                 <i className="menu-icon icon-base ti tabler-smart-home"></i>
                 <div>Dashboard</div>
               </Link>
             </li>
 
             <li className={`menu-item ${location.pathname === "/tagging" ? "active" : ""}`}>
-              <Link to="/tagging" className="menu-link">
+              <Link to="/tagging" className="menu-link" onClick={handleMenuLinkClick}>
                 <i className="menu-icon icon-base ti tabler-phone-call"></i>
                 <div>Call Manager</div>
               </Link>
@@ -151,12 +155,12 @@ const [username, setUsername] = useState("");
               </a>
               <ul className="menu-sub" style={{ display: openMenus.inCall ? "block" : "none" }}>
                 <li className={`menu-item ${location.pathname === "/call_details" ? "active" : ""}`}>
-                  <Link to="/call_details" className="menu-link">
+                  <Link to="/call_details" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>In Call Details</div>
                   </Link>
                 </li>
                 <li className={`menu-item ${location.pathname === "/csat_view" ? "active" : ""}`}>
-                  <Link to="/csat_view" className="menu-link">
+                  <Link to="/csat_view" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>CSAT View</div>
                   </Link>
                 </li>
@@ -174,12 +178,12 @@ const [username, setUsername] = useState("");
               </a>
               <ul className="menu-sub" style={{ display: openMenus.outCall ? "block" : "none" }}>
                 <li className={`menu-item ${location.pathname === "/out_call_details" ? "active" : ""}`}>
-                  <Link to="/out_call_details" className="menu-link">
+                  <Link to="/out_call_details" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>Out Call Details</div>
                   </Link>
                 </li>
                 <li className={`menu-item ${location.pathname === "/priority_calls" ? "active" : ""}`}>
-                  <Link to="/priority_calls" className="menu-link">
+                  <Link to="/priority_calls" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>Priority Calls via API</div>
                   </Link>
                 </li>
@@ -198,27 +202,27 @@ const [username, setUsername] = useState("");
               </a>
               <ul className="menu-sub" style={{ display: openMenus.misReports ? "block" : "none" }}>
                 <li className={`menu-item ${location.pathname === "/cdr-report" ? "active" : ""}`}>
-                  <Link to="/cdr-report" className="menu-link">
+                  <Link to="/cdr-report" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>CDR Report</div>
                   </Link>
                 </li>
                 <li className={`menu-item ${location.pathname === "/ob-cdr-report" ? "active" : ""}`}>
-                  <Link to="/ob-cdr-report" className="menu-link">
+                  <Link to="/ob-cdr-report" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>OB CDR Report</div>
                   </Link>
                 </li>
                 <li className={`menu-item ${location.pathname === "/ivr-report" ? "active" : ""}`}>
-                  <Link to="/ivr-report" className="menu-link">
+                  <Link to="/ivr-report" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>IVR Report</div>
                   </Link>
                 </li>
                 <li className={`menu-item ${location.pathname === "/ob-shared-cdr-report" ? "active" : ""}`}>
-                  <Link to="/ob-shared-cdr-report" className="menu-link">
+                  <Link to="/ob-shared-cdr-report" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>OB Shared CDR Report</div>
                   </Link>
                 </li>
                 <li className={`menu-item ${location.pathname === "/ivr-funnel-report" ? "active" : ""}`}>
-                  <Link to="/ivr-funnel-report" className="menu-link">
+                  <Link to="/ivr-funnel-report" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>IVR Funnel Report</div>
                   </Link>
                 </li>
@@ -237,7 +241,7 @@ const [username, setUsername] = useState("");
               </a>
               <ul className="menu-sub" style={{ display: openMenus.billing ? "block" : "none" }}>
                 <li className={`menu-item ${location.pathname === "/bill_statement" ? "active" : ""}`}>
-                  <Link to="/bill_statement" className="menu-link">
+                  <Link to="/bill_statement" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>Statement New</div>
                   </Link>
                 </li>
