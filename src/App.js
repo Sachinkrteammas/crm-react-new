@@ -15,6 +15,9 @@ import PriorityCalls from "./pages/PriorityCalls";
 import CsatView from "./pages/csat_view";
 import CurrentBillStatement from "./pages/CurrentBillStatement";
 import TaggingPage from "./pages/TaggingPage";
+import ManageAdminLogins from "./pages/ManageAdminLogins";
+import ManageAdminAccess from "./pages/ManageAdminAccess";
+import ManageRiskExposure from "./pages/ManageRiskExposure";
 import Layout from "./layout/layout";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { useLocation } from "react-router-dom";
@@ -58,8 +61,6 @@ function App() {
       <Route path="/forgot-password" element={<ForgotPassword  />} />
       <Route path="/logout" element={<Logout />} />
 
-
-
       <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
@@ -74,6 +75,9 @@ function App() {
               <Route path="/csat_view" element={<CsatView />} />
               <Route path="/bill_statement" element={<CurrentBillStatement />} />
               <Route path="/tagging" element={<TaggingPage />} />
+              <Route path="/admin_login" element={<ManageAdminLogins />} />
+              <Route path="/admin_access" element={<ManageAdminAccess />} />
+              <Route path="/manage_risk" element={<ManageRiskExposure />} />
           </Route>
       </Route>
     </Routes>

@@ -21,6 +21,7 @@ const [username, setUsername] = useState("");
         outCall: false,
         misReports: false,
         billing: false,
+        adminManage: false,
     });
 
     const toggleMenu = (menu) => {
@@ -142,6 +143,36 @@ const [username, setUsername] = useState("");
                 <i className="menu-icon icon-base ti tabler-phone-call"></i>
                 <div>Call Tagging</div>
               </Link>
+            </li>
+
+            <li className={`menu-item ${location.pathname === "/manage_risk" ? "active" : ""}`}>
+              <Link to="/manage_risk" className="menu-link" onClick={handleMenuLinkClick}>
+                <i className="menu-icon icon-base ti tabler-file-invoice"></i>
+                <div>Bill Risk Management</div>
+              </Link>
+            </li>
+
+
+            <li className={`menu-item ${openMenus.adminManage ? "open" : ""} ${isActiveMenu(["/admin_login", "/admin_access"]) ? "active" : ""}`}>
+              <a href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("adminManage")}
+              >
+                <i className="menu-icon icon-base ti tabler-user"></i>
+                <div>Admin Management</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.adminManage ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/admin_login" ? "active" : ""}`}>
+                  <Link to="/admin_login" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Add/View Admin</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/admin_access" ? "active" : ""}`}>
+                  <Link to="/admin_access" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Manage Admin Rights</div>
+                  </Link>
+                </li>
+              </ul>
             </li>
 
             {/* In Call Operations */}
