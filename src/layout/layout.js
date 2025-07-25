@@ -140,7 +140,7 @@ const [username, setUsername] = useState("");
             <li className={`menu-item ${location.pathname === "/tagging" ? "active" : ""}`}>
               <Link to="/tagging" className="menu-link" onClick={handleMenuLinkClick}>
                 <i className="menu-icon icon-base ti tabler-phone-call"></i>
-                <div>Call Manager</div>
+                <div>Call Tagging</div>
               </Link>
             </li>
 
