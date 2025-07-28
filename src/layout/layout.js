@@ -22,6 +22,9 @@ const [username, setUsername] = useState("");
         misReports: false,
         billing: false,
         adminManage: false,
+        companyApproval: false,
+        agentCreation: false,
+        agentCall: false,
     });
 
     const toggleMenu = (menu) => {
@@ -133,7 +136,7 @@ const [username, setUsername] = useState("");
             {/* Dashboard */}
             <li className={`menu-item ${location.pathname === "/dashboard" ? "active" : ""}`}>
               <Link to="/dashboard" className="menu-link" onClick={handleMenuLinkClick}>
-                <i className="menu-icon icon-base ti tabler-smart-home"></i>
+                <i className="menu-icon icon-base ti tabler-dashboard"></i>
                 <div>Dashboard</div>
               </Link>
             </li>
@@ -170,6 +173,107 @@ const [username, setUsername] = useState("");
                 <li className={`menu-item ${location.pathname === "/admin_access" ? "active" : ""}`}>
                   <Link to="/admin_access" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>Manage Admin Rights</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
+            <li className={`menu-item ${openMenus.companyApproval ? "open" : ""} ${isActiveMenu(["/campaign_list", "/campaign_subtype", "/shopify_integration", "/email_map", "/view_client", "/did_creation", "/campaign_page", "/social_media_form", "/client_request"]) ? "active" : ""}`}>
+              <a href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("companyApproval")}
+              >
+                <i className="menu-icon icon-base ti tabler-building-skyscraper"></i>
+                <div>Company Approval</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.companyApproval ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/campaign_list" ? "active" : ""}`}>
+                  <Link to="/campaign_list" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>List Id</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/campaign_subtype" ? "active" : ""}`}>
+                  <Link to="/campaign_subtype" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Add Sub Type</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/shopify_integration" ? "active" : ""}`}>
+                  <Link to="/shopify_integration" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Shopify Integration</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/email_map" ? "active" : ""}`}>
+                  <Link to="/email_map" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Add/View Email Map</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/view_client" ? "active" : ""}`}>
+                  <Link to="/view_client" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Client Details</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/did_creation" ? "active" : ""}`}>
+                  <Link to="/did_creation" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>DID Creation</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/campaign_page" ? "active" : ""}`}>
+                  <Link to="/campaign_page" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Add campaign</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/social_media_form" ? "active" : ""}`}>
+                  <Link to="/social_media_form" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Add/View Social Media</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/client_request" ? "active" : ""}`}>
+                  <Link to="/client_request" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Client Request</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
+            <li className={`menu-item ${openMenus.agentCreation ? "open" : ""} ${isActiveMenu(["/view_agent", "/create_agent"]) ? "active" : ""}`}>
+              <a href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("agentCreation")}
+              >
+                <i className="menu-icon icon-base ti tabler-users"></i>
+                <div>Agent Creation</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.agentCreation ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/view_agent" ? "active" : ""}`}>
+                  <Link to="/view_agent" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Add/View Admin</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/create_agent" ? "active" : ""}`}>
+                  <Link to="/create_agent" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Add Agent</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
+            <li className={`menu-item ${openMenus.agentCall ? "open" : ""} ${isActiveMenu(["/call_allocation", "/client_rights_allocation"]) ? "active" : ""}`}>
+              <a href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("agentCall")}
+              >
+                <i className="menu-icon icon-base ti tabler-outbound"></i>
+                <div>Agent Call Allocation</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.agentCall ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/call_allocation" ? "active" : ""}`}>
+                  <Link to="/call_allocation" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>PD Call Allocation</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/client_rights_allocation" ? "active" : ""}`}>
+                  <Link to="/client_rights_allocation" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Client Rights Allocation</div>
                   </Link>
                 </li>
               </ul>

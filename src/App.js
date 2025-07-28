@@ -1,4 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import Layout from "./layout/layout";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import AuthLoginCover from "./pages/auth-login-cover";
 import AuthRegister from "./pages/auth-register-cover";
 import Dashboard from "./pages/dashboards-crm";
@@ -18,10 +22,20 @@ import TaggingPage from "./pages/TaggingPage";
 import ManageAdminLogins from "./pages/ManageAdminLogins";
 import ManageAdminAccess from "./pages/ManageAdminAccess";
 import ManageRiskExposure from "./pages/ManageRiskExposure";
-import Layout from "./layout/layout";
-import ProtectedRoute from "./components/ProtectedRoute";
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import CampaignListPage from "./pages/CampaignListPage";
+import CampaignSubTypePage from "./pages/CampaignSubTypePage";
+import ShopifyIntegrationPage from "./pages/ShopifyIntegrationPage";
+import EmailMapPage from "./pages/EmailMapPage";
+import ViewClient from "./pages/ViewClient";
+import DidCreation from "./pages/DidCreation";
+import CampaignPage from "./pages/CampaignPage";
+import SocialMediaForm from "./pages/SocialMediaForm";
+import ClientRequestPage from "./pages/ClientRequestPage";
+import ViewAgent from "./pages/ViewAgent";
+import CreateAgent from "./pages/CreateAgent";
+import PdCallAllocation from "./pages/PdCallAllocation";
+import ClientRightsAllocation from "./pages/ClientRightsAllocation";
+
 
 
 function App() {
@@ -43,6 +57,18 @@ function App() {
         "/bill_statement": "Billing Statement | DialDesk",
         "/logout": "Logout | DialDesk",
         "/forgot-password": "Forgot Password | DialDesk",
+        "/admin_login": "Admin Access | DialDesk",
+        "/admin_access": "Admin Rights | DialDesk",
+        "/manage_risk": "Bill Risk Management | DialDesk",
+        "/campaign_list": "Campaign List | DialDesk",
+        "/campaign_subtype": "Campaign Sub Type | DialDesk",
+        "/shopify_integration": "Shopify Integration | DialDesk",
+        "/email_map": "Email Map | DialDesk",
+        "/view_client": "Client Details | DialDesk",
+        "/did_creation": "DID Creation | DialDesk",
+        "/campaign_page": "Campaign | DialDesk",
+        "/manage_risk": "Bill Risk Management | DialDesk",
+        "/manage_risk": "Bill Risk Management | DialDesk",
     };
 
     const location = useLocation();
@@ -78,6 +104,19 @@ function App() {
               <Route path="/admin_login" element={<ManageAdminLogins />} />
               <Route path="/admin_access" element={<ManageAdminAccess />} />
               <Route path="/manage_risk" element={<ManageRiskExposure />} />
+              <Route path="/campaign_list" element={<CampaignListPage />} />
+              <Route path="/campaign_subtype" element={<CampaignSubTypePage />} />
+              <Route path="/shopify_integration" element={<ShopifyIntegrationPage />} />
+              <Route path="/email_map" element={<EmailMapPage />} />
+              <Route path="/view_client" element={<ViewClient />} />
+              <Route path="/did_creation" element={<DidCreation />} />
+              <Route path="/campaign_page" element={<CampaignPage />} />
+              <Route path="/social_media_form" element={<SocialMediaForm />} />
+              <Route path="/client_request" element={<ClientRequestPage />} />
+              <Route path="/view_agent" element={<ViewAgent />} />
+              <Route path="/create_agent" element={<CreateAgent />} />
+              <Route path="/call_allocation" element={<PdCallAllocation />} />
+              <Route path="/client_rights_allocation" element={<ClientRightsAllocation />} />
           </Route>
       </Route>
     </Routes>
