@@ -35,7 +35,12 @@ import ViewAgent from "./pages/ViewAgent";
 import CreateAgent from "./pages/CreateAgent";
 import PdCallAllocation from "./pages/PdCallAllocation";
 import ClientRightsAllocation from "./pages/ClientRightsAllocation";
-
+import ReAllocatePlan from "./pages/ReAllocatePlan";
+import ViewPlan from "./pages/ViewPlan";
+import AllocatePlan from "./pages/AllocatePlan";
+import PlanCreation from "./pages/PlanCreation";
+import PlanPending from "./pages/PlanPending";
+import PlanApproval from "./pages/PlanApproval";
 
 
 function App() {
@@ -67,8 +72,18 @@ function App() {
         "/view_client": "Client Details | DialDesk",
         "/did_creation": "DID Creation | DialDesk",
         "/campaign_page": "Campaign | DialDesk",
-        "/manage_risk": "Bill Risk Management | DialDesk",
-        "/manage_risk": "Bill Risk Management | DialDesk",
+        "/social_media_form": "Social Media | DialDesk",
+        "/client_request": "Client Request | DialDesk",
+        "/view_agent": "View Agent | DialDesk",
+        "/create_agent": "Agent Creation | DialDesk",
+        "/call_allocation": "PD Call Allocation | DialDesk",
+        "/client_rights_allocation": "Client Rights Allocation | DialDesk",
+        "/re_allocate_plan": "RE-ALLOCATE PLAN | DialDesk",
+        "/view_plan": "VIEW PLAN | DialDesk",
+        "/allocate_plan": "ALLOCATE PLAN | DialDesk",
+        "/plan_creation": "PLAN CREATION | DialDesk",
+        "/plan_pending": "PLAN PENDING | DialDesk",
+        "/plan_approval": "PLAN APPROVAL | DialDesk",
     };
 
     const location = useLocation();
@@ -117,6 +132,12 @@ function App() {
               <Route path="/create_agent" element={<CreateAgent />} />
               <Route path="/call_allocation" element={<PdCallAllocation />} />
               <Route path="/client_rights_allocation" element={<ClientRightsAllocation />} />
+              <Route path="/re_allocate_plan" element={<ReAllocatePlan />} />
+              <Route path="/view_plan" element={<ViewPlan />} />
+              <Route path="/allocate_plan" element={<AllocatePlan />} />
+              <Route path="/plan_creation" element={<PlanCreation />} />
+              <Route path="/plan_pending" element={<PlanPending />} />
+              <Route path="/plan_approval" element={<PlanApproval />} />
           </Route>
       </Route>
     </Routes>

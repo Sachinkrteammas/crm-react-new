@@ -25,6 +25,7 @@ const [username, setUsername] = useState("");
         companyApproval: false,
         agentCreation: false,
         agentCall: false,
+        planMaster: false,
     });
 
     const toggleMenu = (menu) => {
@@ -274,6 +275,48 @@ const [username, setUsername] = useState("");
                 <li className={`menu-item ${location.pathname === "/client_rights_allocation" ? "active" : ""}`}>
                   <Link to="/client_rights_allocation" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>Client Rights Allocation</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
+            <li className={`menu-item ${openMenus.planMaster ? "open" : ""} ${isActiveMenu(["/re_allocate_plan", "/view_plan", "/allocate_plan", "/plan_creation", "/plan_pending", "/plan_approval"]) ? "active" : ""}`}>
+              <a href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("planMaster")}
+              >
+                <i className="menu-icon icon-base ti tabler-notebook"></i>
+                <div>Plan Master</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.planMaster ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/re_allocate_plan" ? "active" : ""}`}>
+                  <Link to="/re_allocate_plan" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Re-Allocate Plan</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/view_plan" ? "active" : ""}`}>
+                  <Link to="/view_plan" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>View Plan</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/allocate_plan" ? "active" : ""}`}>
+                  <Link to="/allocate_plan" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Allocate Plan</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/plan_creation" ? "active" : ""}`}>
+                  <Link to="/plan_creation" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Plan Creation</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/plan_pending" ? "active" : ""}`}>
+                  <Link to="/plan_pending" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Plan Pending For Approval</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/plan_approval" ? "active" : ""}`}>
+                  <Link to="/plan_approval" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Plan Approval</div>
                   </Link>
                 </li>
               </ul>
