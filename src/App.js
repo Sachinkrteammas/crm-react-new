@@ -41,6 +41,11 @@ import AllocatePlan from "./pages/AllocatePlan";
 import PlanCreation from "./pages/PlanCreation";
 import PlanPending from "./pages/PlanPending";
 import PlanApproval from "./pages/PlanApproval";
+import BillPayment from "./pages/BillPayment";
+import AgentWiseCallTagging from "./pages/AgentWiseCallTagging";
+import BillSummaryMail from "./pages/BillSummaryMail";
+import SLAReport from "./pages/SlaReport";
+import ClientBillSummary from "./pages/ClientBillSummary";
 
 
 function App() {
@@ -138,6 +143,11 @@ function App() {
               <Route path="/plan_creation" element={<PlanCreation />} />
               <Route path="/plan_pending" element={<PlanPending />} />
               <Route path="/plan_approval" element={<PlanApproval />} />
+              <Route path="/bill_payment" element={<BillPayment />} />
+              <Route path="/agent_call_tag" element={<AgentWiseCallTagging />} />
+              <Route path="/bill_summary_mail" element={<BillSummaryMail />} />
+              <Route path="/sla_report" element={<SLAReport />} />
+              <Route path="/client_bill_summary" element={<ClientBillSummary />} />
           </Route>
       </Route>
     </Routes>

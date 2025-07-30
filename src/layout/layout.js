@@ -26,6 +26,7 @@ const [username, setUsername] = useState("");
         agentCreation: false,
         agentCall: false,
         planMaster: false,
+        renewalPlan: false,
     });
 
     const toggleMenu = (menu) => {
@@ -156,6 +157,13 @@ const [username, setUsername] = useState("");
               </Link>
             </li>
 
+            <li className={`menu-item ${location.pathname === "/bill_payment" ? "active" : ""}`}>
+              <Link to="/bill_payment" className="menu-link" onClick={handleMenuLinkClick}>
+                <i className="menu-icon icon-base ti tabler-receipt-rupee"></i>
+                <div>Bill Payment</div>
+              </Link>
+            </li>
+
 
             <li className={`menu-item ${openMenus.adminManage ? "open" : ""} ${isActiveMenu(["/admin_login", "/admin_access"]) ? "active" : ""}`}>
               <a href="#"
@@ -247,7 +255,7 @@ const [username, setUsername] = useState("");
               <ul className="menu-sub" style={{ display: openMenus.agentCreation ? "block" : "none" }}>
                 <li className={`menu-item ${location.pathname === "/view_agent" ? "active" : ""}`}>
                   <Link to="/view_agent" className="menu-link" onClick={handleMenuLinkClick}>
-                    <div>Add/View Admin</div>
+                    <div>View Agent</div>
                   </Link>
                 </li>
                 <li className={`menu-item ${location.pathname === "/create_agent" ? "active" : ""}`}>
@@ -317,6 +325,38 @@ const [username, setUsername] = useState("");
                 <li className={`menu-item ${location.pathname === "/plan_approval" ? "active" : ""}`}>
                   <Link to="/plan_approval" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>Plan Approval</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
+            <li className={`menu-item ${openMenus.renewalPlan ? "open" : ""} ${isActiveMenu(["/agent_call_tag", "/bill_summary_mail", "/client_bill_summary", "/sla_report"]) ? "active" : ""}`}>
+              <a href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("renewalPlan")}
+              >
+                <i className="menu-icon icon-base ti tabler-report"></i>
+                <div>Report/Renewal Plan</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.renewalPlan ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/agent_call_tag" ? "active" : ""}`}>
+                  <Link to="/agent_call_tag" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Agent Wise Call Tagging</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/bill_summary_mail" ? "active" : ""}`}>
+                  <Link to="/bill_summary_mail" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Add Bill Summary Auto Mail</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/client_bill_summary" ? "active" : ""}`}>
+                  <Link to="/client_bill_summary" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Renewal Plan/Bill Summary</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/sla_report" ? "active" : ""}`}>
+                  <Link to="/sla_report" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>SLA Report</div>
                   </Link>
                 </li>
               </ul>
