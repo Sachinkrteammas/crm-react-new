@@ -28,6 +28,7 @@ const SLAReport = () => {
       <div className="card mb-4">
         <h6 className="card-header">SLA REPORTS</h6>
         <div className="card-body">
+        <div className="d-flex flex-wrap align-items-center gap-2">
           <form className="row g-3" onSubmit={handleSubmit}>
 
             <div className="col-md-4">
@@ -42,7 +43,7 @@ const SLAReport = () => {
               </select>
             </div>
 
-            <div className="col-md-3">
+            <div className="col-md-4">
               <label className="form-label d-block">Start Date</label>
               <DatePicker
                 selected={form.startDate}
@@ -53,7 +54,7 @@ const SLAReport = () => {
               />
             </div>
 
-            <div className="col-md-3">
+            <div className="col-md-4">
               <label className="form-label d-block">End Date</label>
               <DatePicker
                 selected={form.endDate}
@@ -70,6 +71,7 @@ const SLAReport = () => {
               </button>
             </div>
           </form>
+        </div>
         </div>
       </div>
       </div>

@@ -46,6 +46,17 @@ import AgentWiseCallTagging from "./pages/AgentWiseCallTagging";
 import BillSummaryMail from "./pages/BillSummaryMail";
 import SLAReport from "./pages/SlaReport";
 import ClientBillSummary from "./pages/ClientBillSummary";
+import ManageCustomizedMIS from "./pages/ManageCustomizedMIS";
+import AddCallFlow from "./pages/AddCallFlow";
+import PromptCreation from "./pages/PromptCreation";
+import ManageUserLogin from "./pages/ManageUserLogin";
+import ManageInCallActionAlerts from "./pages/ManageInCallActionAlerts";
+import ManageMISReports from "./pages/ManageMISReports";
+import ManageTrainingDocs from "./pages/ManageTrainingDocs";
+import ManageIVR from "./pages/ManageIVR";
+import ManageInCallScenarios from "./pages/ManageInCallScenarios";
+import ManageTAT from "./pages/ManageTAT";
+import ManageAlertsEscalations from "./pages/ManageAlertsEscalations";
 
 
 function App() {
@@ -148,6 +159,17 @@ function App() {
               <Route path="/bill_summary_mail" element={<BillSummaryMail />} />
               <Route path="/sla_report" element={<SLAReport />} />
               <Route path="/client_bill_summary" element={<ClientBillSummary />} />
+              <Route path="/manage_customize_mis" element={<ManageCustomizedMIS />} />
+              <Route path="/add_call_flow" element={<AddCallFlow />} />
+              <Route path="/prompt_creation" element={<PromptCreation />} />
+              <Route path="/manage_user_login" element={<ManageUserLogin />} />
+              <Route path="/manage_in_call_action" element={<ManageInCallActionAlerts />} />
+              <Route path="/manage_mis_reports" element={<ManageMISReports />} />
+              <Route path="/manage_training_docs" element={<ManageTrainingDocs />} />
+              <Route path="/manage_ivr" element={<ManageIVR />} />
+              <Route path="/manage_incal_scenarios" element={<ManageInCallScenarios />} />
+              <Route path="/manage_tat" element={<ManageTAT />} />
+              <Route path="/manage_alert_escalations" element={<ManageAlertsEscalations />} />
           </Route>
       </Route>
     </Routes>
