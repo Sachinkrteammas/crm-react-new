@@ -57,6 +57,15 @@ import ManageIVR from "./pages/ManageIVR";
 import ManageInCallScenarios from "./pages/ManageInCallScenarios";
 import ManageTAT from "./pages/ManageTAT";
 import ManageAlertsEscalations from "./pages/ManageAlertsEscalations";
+import ManageInCallActions from "./pages/ManageInCallActions";
+import OutManageAlertsEscalations from "./pages/OutManageAlertsEscalations";
+import OutManageCustomizedMIS from "./pages/OutManageCustomizedMIS";
+import ManageReAllocations from "./pages/ManageReAllocations";
+import OBAddCallFlow from "./pages/OBAddCallFlow";
+import OutManageCallActions from "./pages/OutManageCallActions";
+import ManageCampaign from "./pages/ManageCampaign";
+import ManageAllocations from "./pages/ManageAllocations";
+import OutManageCallScenarios from "./pages/OutManageCallScenarios";
 
 
 function App() {
@@ -170,6 +179,15 @@ function App() {
               <Route path="/manage_incal_scenarios" element={<ManageInCallScenarios />} />
               <Route path="/manage_tat" element={<ManageTAT />} />
               <Route path="/manage_alert_escalations" element={<ManageAlertsEscalations />} />
+              <Route path="/manage_call_actions" element={<ManageInCallActions />} />
+              <Route path="/out_manage_alert_escalations" element={<OutManageAlertsEscalations />} />
+              <Route path="/out_manage_customize_mis" element={<OutManageCustomizedMIS />} />
+              <Route path="/manage_reallocation" element={<ManageReAllocations />} />
+              <Route path="/ob_add_call_flow" element={<OBAddCallFlow />} />
+              <Route path="/out_manage_call_actions" element={<OutManageCallActions />} />
+              <Route path="/manage_campaign" element={<ManageCampaign />} />
+              <Route path="/manage_allocations" element={<ManageAllocations />} />
+              <Route path="/out_manage_call_scenarios" element={<OutManageCallScenarios />} />
           </Route>
       </Route>
     </Routes>

@@ -28,6 +28,7 @@ const [username, setUsername] = useState("");
         planMaster: false,
         renewalPlan: false,
         inCallManagement: false,
+        outCallManagement: false,
     });
 
     const toggleMenu = (menu) => {
@@ -363,7 +364,7 @@ const [username, setUsername] = useState("");
               </ul>
             </li>
 
-            <li className={`menu-item ${openMenus.inCallManagement ? "open" : ""} ${isActiveMenu(["/manage_customize_mis", "/add_call_flow", "/prompt_creation", "/manage_user_login", "/manage_in_call_action", "/manage_mis_reports", "/manage_training_docs", "/manage_ivr", "/manage_incal_scenarios", "/manage_tat", "/manage_alert_escalations"]) ? "active" : ""}`}>
+            <li className={`menu-item ${openMenus.inCallManagement ? "open" : ""} ${isActiveMenu(["/manage_customize_mis", "/add_call_flow", "/prompt_creation", "/manage_user_login", "/manage_in_call_action", "/manage_mis_reports", "/manage_training_docs", "/manage_ivr", "/manage_incal_scenarios", "/manage_tat", "/manage_alert_escalations", "/manage_call_actions"]) ? "active" : ""}`}>
               <a href="#"
                 className="menu-link menu-toggle"
                 onClick={() => toggleMenu("inCallManagement")}
@@ -427,8 +428,66 @@ const [username, setUsername] = useState("");
                     <div>Manage Alerts & Escalations</div>
                   </Link>
                 </li>
+                <li className={`menu-item ${location.pathname === "/manage_call_actions" ? "active" : ""}`}>
+                  <Link to="/manage_call_actions" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Manage In Call Actions</div>
+                  </Link>
+                </li>
               </ul>
             </li>
+
+            <li className={`menu-item ${openMenus.outCallManagement ? "open" : ""} ${isActiveMenu(["/out_manage_alert_escalations", "/out_manage_customize_mis", "/manage_reallocation", "/ob_add_call_flow", "/out_manage_call_actions", "/manage_campaign", "/manage_allocations", "/out_manage_call_scenarios"]) ? "active" : ""}`}>
+              <a href="#"
+                className="menu-link menu-toggle"
+                onClick={() => toggleMenu("outCallManagement")}
+              >
+                <i className="menu-icon icon-base ti tabler-file-phone"></i>
+                <div>Out Call Management</div>
+              </a>
+              <ul className="menu-sub" style={{ display: openMenus.outCallManagement ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/out_manage_alert_escalations" ? "active" : ""}`}>
+                  <Link to="/out_manage_alert_escalations" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Manage Alerts & Escalations</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/out_manage_customize_mis" ? "active" : ""}`}>
+                  <Link to="/out_manage_customize_mis" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Manage Customized Report</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/manage_reallocation" ? "active" : ""}`}>
+                  <Link to="/manage_reallocation" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Manage Re Allocations</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/ob_add_call_flow" ? "active" : ""}`}>
+                  <Link to="/ob_add_call_flow" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>OB Call Flow</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/out_manage_call_actions" ? "active" : ""}`}>
+                  <Link to="/out_manage_call_actions" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Manage Out Call Actions</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/manage_campaign" ? "active" : ""}`}>
+                  <Link to="/manage_campaign" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Manage Campaigns</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/manage_allocations" ? "active" : ""}`}>
+                  <Link to="/manage_allocations" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Manage Allocations</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/out_manage_call_scenarios" ? "active" : ""}`}>
+                  <Link to="/out_manage_call_scenarios" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Manage Out Call Scenarios</div>
+                  </Link>
+                </li>
+              </ul>
+            </li>
+
 
             {/* In Call Operations */}
             <li className={`menu-item ${openMenus.inCall ? "open" : ""} ${isActiveMenu(["/call_details", "/csat_view"]) ? "active" : ""}`}>
