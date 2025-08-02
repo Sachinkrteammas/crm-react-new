@@ -133,7 +133,7 @@ const OutManageCallScenarios = () => {
                   data-bs-toggle="collapse"
                   data-bs-target="#collapseTalked"
                 >
-                  Talked
+                Out Call Scenario Tree
                 </button>
               </h2>
               <div
@@ -142,116 +142,15 @@ const OutManageCallScenarios = () => {
                 data-bs-parent="#treeAccordion"
               >
                 <div className="accordion-body">
-                  <button className="btn btn-sm btn-outline-secondary me-2">✎ Edit</button>
-                  <button className="btn btn-sm btn-outline-danger">🗑 Delete</button>
-                </div>
-              </div>
-            </div>
-
-            {/* Callback */}
-            <div className="accordion-item">
-              <h2 className="accordion-header">
-                <button
-                  className="accordion-button collapsed"
-                  type="button"
-                  data-bs-toggle="collapse"
-                  data-bs-target="#collapseCallback"
-                >
-                  Call Back
-                </button>
-              </h2>
-              <div
-                id="collapseCallback"
-                className="accordion-collapse collapse"
-                data-bs-parent="#treeAccordion"
-              >
-                <div className="accordion-body">
-                  <button className="btn btn-sm btn-outline-secondary me-2">✎ Edit</button>
-                  <button className="btn btn-sm btn-outline-danger">🗑 Delete</button>
-                </div>
-              </div>
-            </div>
-
-            {/* Inbound */}
-            <div className="accordion-item">
-              <h2 className="accordion-header">
-                <button
-                  className="accordion-button collapsed"
-                  type="button"
-                  data-bs-toggle="collapse"
-                  data-bs-target="#collapseInbound"
-                >
-                  Inbound
-                </button>
-              </h2>
-              <div
-                id="collapseInbound"
-                className="accordion-collapse collapse"
-                data-bs-parent="#treeAccordion"
-              >
-                <div className="accordion-body">
-                  <ul className="list-group">
-                    {["Case closed", "Penalty", "Penalty NC", "Language Barrier"].map(
-                      (sub, idx) => (
-                        <li
-                          className="list-group-item d-flex justify-content-between align-items-center"
-                          key={idx}
-                        >
-                          {sub}
-                          <span>
-                            <button className="btn btn-sm btn-outline-secondary me-2">
-                              ✎
-                            </button>
-                            <button className="btn btn-sm btn-outline-danger">🗑</button>
-                          </span>
-                        </li>
-                      )
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* CCO */}
-            <div className="accordion-item">
-              <h2 className="accordion-header">
-                <button
-                  className="accordion-button collapsed"
-                  type="button"
-                  data-bs-toggle="collapse"
-                  data-bs-target="#collapseCCO"
-                >
-                  CCO
-                </button>
-              </h2>
-              <div
-                id="collapseCCO"
-                className="accordion-collapse collapse"
-                data-bs-parent="#treeAccordion"
-              >
-                <div className="accordion-body">
-                  <ul className="list-group">
-                    {[
-                      "Call Back",
-                      "Issue Resolved on Call",
-                      "Issue will not Resolve",
-                      "Spare part pending",
-                      "Replacement pending",
-                    ].map((sub, idx) => (
-                      <li
-                        className="list-group-item d-flex justify-content-between align-items-center"
-                        key={idx}
-                      >
-                        {sub}
-                        <span>
-                          <button className="btn btn-sm btn-outline-secondary me-2">
-                            ✎
-                          </button>
-                          <button className="btn btn-sm btn-outline-danger">🗑</button>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="mb-3">
+                      <label className="form-label">Select Campaign</label>
+                      <select className="form-select">
+                        <option>Select Campaign</option>
+                        {scenarios.map((s, i) => (
+                          <option key={i}>{s.name}</option>
+                        ))}
+                      </select>
+                  </div>
                 </div>
               </div>
             </div>
