@@ -490,7 +490,7 @@ const [username, setUsername] = useState("");
 
 
             {/* In Call Operations */}
-            <li className={`menu-item ${openMenus.inCall ? "open" : ""} ${isActiveMenu(["/call_details", "/csat_view"]) ? "active" : ""}`}>
+            <li className={`menu-item ${openMenus.inCall ? "open" : ""} ${isActiveMenu(["/call_details", "/update_ticket_status", "/create_manual_call", "/csat_view"]) ? "active" : ""}`}>
               <a href="#"
                 className="menu-link menu-toggle"
                 onClick={() => toggleMenu("inCall")}
@@ -499,6 +499,16 @@ const [username, setUsername] = useState("");
                 <div>In Call Operations</div>
               </a>
               <ul className="menu-sub" style={{ display: openMenus.inCall ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/create_manual_call" ? "active" : ""}`}>
+                  <Link to="/create_manual_call" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Create Manual Call</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/update_ticket_status" ? "active" : ""}`}>
+                  <Link to="/update_ticket_status" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Update Ticket Status</div>
+                  </Link>
+                </li>
                 <li className={`menu-item ${location.pathname === "/call_details" ? "active" : ""}`}>
                   <Link to="/call_details" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>In Call Details</div>
@@ -513,7 +523,7 @@ const [username, setUsername] = useState("");
             </li>
 
             {/* Out Call Operations */}
-            <li className={`menu-item ${openMenus.outCall ? "open" : ""} ${isActiveMenu(["/out_call_details", "/priority_calls"]) ? "active" : ""}`}>
+            <li className={`menu-item ${openMenus.outCall ? "open" : ""} ${isActiveMenu(["/out_call_details", "/out_create_manual_call", "/priority_calls"]) ? "active" : ""}`}>
               <a href="#"
                 className="menu-link menu-toggle"
                 onClick={() => toggleMenu("outCall")}
@@ -522,6 +532,11 @@ const [username, setUsername] = useState("");
                 <div>Out Call Operations</div>
               </a>
               <ul className="menu-sub" style={{ display: openMenus.outCall ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/out_create_manual_call" ? "active" : ""}`}>
+                  <Link to="/out_create_manual_call" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Create Manual Call</div>
+                  </Link>
+                </li>
                 <li className={`menu-item ${location.pathname === "/out_call_details" ? "active" : ""}`}>
                   <Link to="/out_call_details" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>Out Call Details</div>

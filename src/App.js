@@ -66,6 +66,9 @@ import OutManageCallActions from "./pages/OutManageCallActions";
 import ManageCampaign from "./pages/ManageCampaign";
 import ManageAllocations from "./pages/ManageAllocations";
 import OutManageCallScenarios from "./pages/OutManageCallScenarios";
+import CreateManualCall from "./pages/CreateManualCall";
+import UpdateTicketStatus from "./pages/UpdateTicketStatus";
+import OutCreateManualCall from "./pages/OutCreateManualCall";
 
 
 function App() {
@@ -134,6 +137,9 @@ function App() {
         "/manage_campaign": "Manage Campaign | DialDesk",
         "/manage_allocations": "Manage Allocations | DialDesk",
         "/out_manage_call_scenarios": "Manage OutCall Scenarios | DialDesk",
+        "/create_manual_call": "Manual In Call | DialDesk",
+        "/update_ticket_status": "Ticket Status | DialDesk",
+        "/out_create_manual_call": "Manual Out Call | DialDesk",
     };
 
     const location = useLocation();
@@ -213,6 +219,9 @@ function App() {
               <Route path="/manage_campaign" element={<ManageCampaign />} />
               <Route path="/manage_allocations" element={<ManageAllocations />} />
               <Route path="/out_manage_call_scenarios" element={<OutManageCallScenarios />} />
+              <Route path="/create_manual_call" element={<CreateManualCall />} />
+              <Route path="/update_ticket_status" element={<UpdateTicketStatus />} />
+              <Route path="/out_create_manual_call" element={<OutCreateManualCall />} />
           </Route>
       </Route>
     </Routes>
