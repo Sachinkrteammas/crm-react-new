@@ -69,6 +69,10 @@ import OutManageCallScenarios from "./pages/OutManageCallScenarios";
 import CreateManualCall from "./pages/CreateManualCall";
 import UpdateTicketStatus from "./pages/UpdateTicketStatus";
 import OutCreateManualCall from "./pages/OutCreateManualCall";
+import SLAReports from "./pages/SLAReports";
+import ShopifyReports from "./pages/ShopifyReports";
+import TaggingReports from "./pages/TaggingReports";
+import CallReports from "./pages/CallReports";
 
 
 function App() {
@@ -140,6 +144,10 @@ function App() {
         "/create_manual_call": "Manual In Call | DialDesk",
         "/update_ticket_status": "Ticket Status | DialDesk",
         "/out_create_manual_call": "Manual Out Call | DialDesk",
+        "/sla_reports": "SLA Reports | DialDesk",
+        "/shopify_reports": "Shopify Reports | DialDesk",
+        "/tagging_reports": "Tagging Reports | DialDesk",
+        "/call_reports": "Call Reports | DialDesk",
     };
 
     const location = useLocation();
@@ -222,6 +230,10 @@ function App() {
               <Route path="/create_manual_call" element={<CreateManualCall />} />
               <Route path="/update_ticket_status" element={<UpdateTicketStatus />} />
               <Route path="/out_create_manual_call" element={<OutCreateManualCall />} />
+              <Route path="/sla_reports" element={<SLAReports />} />
+              <Route path="/shopify_reports" element={<ShopifyReports />} />
+              <Route path="/tagging_reports" element={<TaggingReports />} />
+              <Route path="/call_reports" element={<CallReports />} />
           </Route>
       </Route>
     </Routes>

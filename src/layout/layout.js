@@ -551,7 +551,7 @@ const [username, setUsername] = useState("");
             </li>
 
             {/* MIS & Reports */}
-            <li className={`menu-item ${openMenus.misReports ? "open" : ""} ${isActiveMenu(["/cdr-report", "/ob-cdr-report", "/ivr-report", "/ob-shared-cdr-report", "/ivr-funnel-report"]) ? "active" : ""}`}>
+            <li className={`menu-item ${openMenus.misReports ? "open" : ""} ${isActiveMenu(["/cdr-report", "/sla_reports", "/ob-cdr-report", "/ivr-report", "/ob-shared-cdr-report", "/ivr-funnel-report", "/tagging_reports", "/call_reports", "/shopify_reports"]) ? "active" : ""}`}>
               <a
                 href="#"
                 className="menu-link menu-toggle"
@@ -561,6 +561,11 @@ const [username, setUsername] = useState("");
                 <div>MIS & Reports</div>
               </a>
               <ul className="menu-sub" style={{ display: openMenus.misReports ? "block" : "none" }}>
+                <li className={`menu-item ${location.pathname === "/sla_reports" ? "active" : ""}`}>
+                  <Link to="/sla_reports" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>SLA Reports</div>
+                  </Link>
+                </li>
                 <li className={`menu-item ${location.pathname === "/cdr-report" ? "active" : ""}`}>
                   <Link to="/cdr-report" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>CDR Report</div>
@@ -584,6 +589,21 @@ const [username, setUsername] = useState("");
                 <li className={`menu-item ${location.pathname === "/ivr-funnel-report" ? "active" : ""}`}>
                   <Link to="/ivr-funnel-report" className="menu-link" onClick={handleMenuLinkClick}>
                     <div>IVR Funnel Report</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/call_reports" ? "active" : ""}`}>
+                  <Link to="/call_reports" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Call Reports</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/tagging_reports" ? "active" : ""}`}>
+                  <Link to="/tagging_reports" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Tagging Reports</div>
+                  </Link>
+                </li>
+                <li className={`menu-item ${location.pathname === "/shopify_reports" ? "active" : ""}`}>
+                  <Link to="/shopify_reports" className="menu-link" onClick={handleMenuLinkClick}>
+                    <div>Shopify Reports</div>
                   </Link>
                 </li>
               </ul>
