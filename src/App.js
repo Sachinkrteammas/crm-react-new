@@ -73,6 +73,7 @@ import SLAReports from "./pages/SLAReports";
 import ShopifyReports from "./pages/ShopifyReports";
 import TaggingReports from "./pages/TaggingReports";
 import CallReports from "./pages/CallReports";
+import RealTimeDashboard from "./pages/RealTimeDashboard";
 
 
 function App() {
@@ -169,6 +170,7 @@ function App() {
       <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/real_time_report" element={<RealTimeDashboard />} />
               <Route path="/cdr-report" element={<CDRReport />} />
               <Route path="/ob-cdr-report" element={<OBCDRReport />} />
               <Route path="/ivr-report" element={<IVRReport />} />

@@ -145,6 +145,13 @@ const [username, setUsername] = useState("");
               </Link>
             </li>
 
+            <li className={`menu-item ${location.pathname === "/real_time_report" ? "active" : ""}`}>
+              <Link to="/real_time_report" className="menu-link" onClick={handleMenuLinkClick}>
+                <i className="menu-icon icon-base ti tabler-report"></i>
+                <div>Real Time Report</div>
+              </Link>
+            </li>
+
             <li className={`menu-item ${location.pathname === "/tagging" ? "active" : ""}`}>
               <Link to="/tagging" className="menu-link" onClick={handleMenuLinkClick}>
                 <i className="menu-icon icon-base ti tabler-phone-call"></i>
