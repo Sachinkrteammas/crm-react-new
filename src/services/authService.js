@@ -209,4 +209,6 @@ export const getAllocations = async (company_id, campaignId) => {
         console.error("Error fetching allocations:", error);
         throw error;
     }
+
+    
 };

@@ -8,6 +8,7 @@ from call_master import router as call_master_router
 from dashboard import router as dashboard_router
 from agents import router as agents_router
 from real_time_agents import router as real_time_agents_router
+from plan import router as plan_router
 
 
 
@@ -29,3 +30,4 @@ app.include_router(call_master_router, prefix="/call", tags=["Call Master"])
 app.include_router(dashboard_router, prefix="/dashboard", tags=["Home2"])
 app.include_router(agents_router, prefix="/agents", tags=["Agents"])
 app.include_router(real_time_agents_router, prefix="/real_time_agents", tags=["Real Time Agents"])
+app.include_router(plan_router, prefix="/plan", tags=["Plan Management"])

@@ -74,6 +74,7 @@ import ShopifyReports from "./pages/ShopifyReports";
 import TaggingReports from "./pages/TaggingReports";
 import CallReports from "./pages/CallReports";
 import RealTimeDashboard from "./pages/RealTimeDashboard";
+import CompanyRegistration from "./pages/company-registration";
 
 
 function App() {
@@ -149,6 +150,7 @@ function App() {
         "/shopify_reports": "Shopify Reports | DialDesk",
         "/tagging_reports": "Tagging Reports | DialDesk",
         "/call_reports": "Call Reports | DialDesk",
+       "/company_registration": "Company Registration | DialDesk"
     };
 
     const location = useLocation();
@@ -166,6 +168,7 @@ function App() {
       <Route path="/auth-register" element={<AuthRegister  />} />
       <Route path="/forgot-password" element={<ForgotPassword  />} />
       <Route path="/logout" element={<Logout />} />
+      <Route path="/company_registration" element={<CompanyRegistration />} />
 
       <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
