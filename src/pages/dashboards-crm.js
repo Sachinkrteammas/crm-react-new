@@ -5,6 +5,8 @@ import { getDashboardReport, getActiveServices, getCallAnalysisReport, getCallDi
 import api from "../api";
 
 const Dashboard = () => {
+    const [clients, setClients] = useState([]);
+    const [selectedClient, setSelectedClient] = useState("");
 
     const [dateRange, setDateRange] = useState("today");
     const [fromDate, setFromDate] = useState("");
@@ -27,7 +29,6 @@ const Dashboard = () => {
     const [callData, setCallData] = useState([]);
 
     const [plan, setPlan] = useState(null);
-    const [planLoading, setPlanLoading] = useState(true);
 
     const [ticketCaseData, setTicketCaseData] = useState([]);
     const [openCloseTicketData, setOpenCloseTicketData] = useState([]);
@@ -69,15 +70,15 @@ const Dashboard = () => {
 
 
   const handleDateRangeChange = (e) => {
-  setDateRange(e.target.value); // e.g., "today", "custom"
+  setDateRange(e.target.value);
 };
 
     const fetchCallAnalysis = async () => {
-        if (!companyId) return;
+        if (!selectedClient) return;
 
         try {
             const payload = {
-                company_id: companyId,
+                company_id: selectedClient,
                 view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
                 from_date: fromDate || null,
                 to_date: toDate || null,
@@ -93,10 +94,10 @@ const Dashboard = () => {
     };
 
     const fetchCallDistribution = async () => {
-            if (!companyId) return;
+            if (!selectedClient) return;
             try {
                 const payload = {
-                    company_id: companyId,
+                    company_id: selectedClient,
                     view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
                     from_date: fromDate || null,
                     to_date: toDate || null,
@@ -109,6 +110,8 @@ const Dashboard = () => {
         };
 
    useEffect(() => {
+   if (!selectedClient || !fromDate || !toDate) return;
+
   const fetchAllData = async () => {
     try {
       setLoading(true);
@@ -126,74 +129,21 @@ const Dashboard = () => {
     }
   };
 
-  if (fromDate && toDate) {
-    fetchAllData();
-  }
-}, [fromDate, toDate]);
+  fetchAllData();
 
+}, [selectedClient, fromDate, toDate]);
 
-
-
-
-
-
-//    const data = [
-//    { name: 'Abandon', value: 10 },
-//    { name: 'Total Answered', value: 90 },
-//    ];
-//
-//    const COLORS = ['#36A2EB', '#4BC0C0'];
-//
-//    const callData = [
-//      {
-//        date: '03-Jul-2025',
-//        Answered: 95,
-//        Abandon: 5,
-//      },
-//    ];
-
-//    const ticketCaseData = [
-//      {
-//        name: 'JUL-25-WK1',
-//        Enquiry: 300,
-//        Complaint: 80,
-//        BulkOrder: 15,
-//        Request: 90,
-//        Other: 30,
-//      },
-//      {
-//        name: 'MTD',
-//        Enquiry: 310,
-//        Complaint: 78,
-//        BulkOrder: 12,
-//        Request: 85,
-//        Other: 28,
-//      },
-//    ];
-//
-//    const openCloseTicketData = [
-//      { name: 'Open', InTAT: 70, OutOfTAT: 30 },
-//      { name: 'Close', InTAT: 85, OutOfTAT: 15 },
-//    ];
-
-//    const ticketSourceData = [
-//        { source: 'Call', total: 0, open: 0, close: 0, asOnDate: 0 },
-//        { source: 'Email', total: 0, open: 0, close: 0, asOnDate: 0 },
-//        { source: 'Whatsapp', total: 0, open: 0, close: 0, asOnDate: 0 },
-//    ];
 
     const fetchDashboardData = async () => {
       try {
         const payload = {
-          company_id: Number(companyId),
+          company_id: Number(selectedClient),
           view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
           from_date: fromDate,
           to_date: toDate
         };
 
         const { days, total_tagged, total_abandon_cb } = await getDashboardReport(payload);
-
-//        const { days, total_tagged, total_abandon_cb } = response.data;
 
         const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
         const abandon  = days.reduce((sum, d) => sum + (d.Abandon  ?? 0), 0);
@@ -212,14 +162,12 @@ const Dashboard = () => {
 
 
       const fetchData = async () => {
-        if (!companyId) return;
-
-        // Build view_type from your dateRange radio (e.g. "today" → "Today")
+        if (!selectedClient) return;
         const viewType =
           dateRange.charAt(0).toUpperCase() + dateRange.slice(1);
 
         const payload = {
-          company_id: companyId,
+          company_id: selectedClient,
           view_type:  dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
           from_date:  fromDate || null,
           to_date:    toDate   || null,
@@ -250,11 +198,11 @@ const Dashboard = () => {
 
 
     const fetchTicketBySource = async () => {
-        if (!companyId) return;
+        if (!selectedClient) return;
 
         try {
             const payload = {
-                company_id: companyId,
+                company_id: selectedClient,
                 view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
                 from_date: fromDate || null,
                 to_date: toDate || null,
@@ -266,32 +214,39 @@ const Dashboard = () => {
         }
     };
 
+    useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await api.get("/agents/clients-rights"); // 👈 use api
+        setClients(res.data);
+      } catch (err) {
+        console.error("Error fetching clients:", err);
+      }
+    };
+
+    fetchClients();
+  }, []);
 
 
 
 useEffect(() => {
-    if (!companyId) {
-      setPlanLoading(false);
+  const fetchPlan = async () => {
+    if (!selectedClient) {  // use selectedClient instead of companyId
+      setPlan(null);
       return;
     }
-    (async () => {
-      try {
-        const data = await getActiveServices(parseInt(companyId, 10));
-        setPlan(data);
-      } catch (err) {
-        console.error("Failed to load active services", err);
-      } finally {
-        setPlanLoading(false);
-      }
-    })();
-  }, [companyId]);
+    try {
+      const data = await getActiveServices(parseInt(selectedClient, 10));
+      setPlan(data);
+    } catch (err) {
+      console.error("Failed to load active services", err);
+      setPlan(null);
+    } finally {
+    }
+  };
 
-  if (planLoading) {
-       return <div className="card h-100"><div className="card-body">Loading active services…</div></div>;
-     }
-     if (!plan) {
-       return <div className="card h-100"><div className="card-body">No active plan found.</div></div>;
-  }
+  fetchPlan();
+}, [selectedClient]);
 
 
 
@@ -321,7 +276,33 @@ const handleSubmit = async (e) => {
 
 
 
+
+
    return (
+   <>
+
+   <div className="row mb-4">
+      <div className="col-md-4">
+        <label className="form-label fw-semibold">Select Client</label>
+        <select
+          className="form-select"
+          value={selectedClient}
+          onChange={(e) => setSelectedClient(e.target.value)}
+        >
+          <option value="">-- Select Client --</option>
+          {clients.map((client) => (
+            <option key={client.company_id} value={String(client.company_id)}>
+              {client.company_name}
+            </option>
+          ))}
+        </select>
+      </div>
+   </div>
+
+    {/* Show placeholders depending on state */}
+  {!selectedClient ? (
+      <div className="card h-100"><div className="card-body">Please select a client</div></div>
+  ) : (
    <>
    {loading && (
         <div className="loader-overlay">
@@ -472,66 +453,53 @@ const handleSubmit = async (e) => {
         {/* Earning Reports Tabs*/}
         {/* Active Services Table (Vuexy styled) */}
         <div className="col-xxl-8 col-12">
-          <div className="card h-100">
-            <div className="card-header d-flex justify-content-between">
-              <div className="card-title m-0">
-                <h5 className="mb-1">Active Services</h5>
-                <p className="card-subtitle">Currently Active Plan Details</p>
-              </div>
-              <div className="dropdown">
-                <button
-                  className="btn btn-text-secondary rounded-pill text-body-secondary border-0 p-2 me-n1"
-                  type="button"
-                  id="activeServicesDropdown"
-                  data-bs-toggle="dropdown"
-                  aria-haspopup="true"
-                  aria-expanded="false"
-                >
-                  <i className="icon-base ti tabler-dots-vertical icon-md text-body-secondary"></i>
-                </button>
-                <div
-                  className="dropdown-menu dropdown-menu-end"
-                  aria-labelledby="activeServicesDropdown"
-                >
-                  <a className="dropdown-item" href="#">View More</a>
-                  <a className="dropdown-item" href="#">Delete</a>
+              <div className="card h-100">
+                <div className="card-header d-flex justify-content-between">
+                  <div className="card-title m-0">
+                    <h5 className="mb-1">Active Services</h5>
+                    <p className="card-subtitle">Currently Active Plan Details</p>
+                  </div>
+                </div>
+                <div className="card-body">
+                  {!plan || (typeof plan === "object" && Object.keys(plan).length === 0) ? (
+                    <div className="text-center text-muted">
+                      No active plan found.
+                    </div>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-hover table-bordered mb-0">
+                        <thead className="text-center align-middle">
+                          <tr>
+                            <th className="bg-label-primary text-primary">My Plan</th>
+                            <th>Plan Mode</th>
+                            <th className="bg-label-primary text-primary">Credit Value</th>
+                            <th>Subscription Value</th>
+                            <th className="bg-label-primary text-primary">Inbound Call - Day Charges</th>
+                            <th>Inbound Call - Night Charges</th>
+                            <th className="bg-label-primary text-primary">Outbound Call Charges</th>
+                            <th>SMS Charges</th>
+                            <th>Email Charges</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-center align-middle">
+                          <tr>
+                            <td className="fw-semibold">{plan.plan_name}</td>
+                            <td>{plan.period_type}</td>
+                            <td>Rs. {plan.credit_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td>Rs. {plan.subscription_value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td>Rs. {plan.inbound_call_day_charge.toFixed(2)} / Min.</td>
+                            <td>Rs. {plan.inbound_call_night_charge.toFixed(2)} / Min.</td>
+                            <td>Rs. {plan.outbound_call_charge.toFixed(2)} / Min.</td>
+                            <td>{plan.sms_charge.toFixed(2)}</td>
+                            <td>{plan.email_charge.toFixed(2)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-            <div className="card-body">
-              <div className="table-responsive">
-                <table className="table table-hover table-bordered mb-0">
-                  <thead className="text-center align-middle">
-                    <tr>
-                      <th className="bg-label-primary text-primary">My Plan</th>
-                      <th>Plan Mode</th>
-                      <th className="bg-label-primary text-primary">Credit Value</th>
-                      <th>Subscription Value</th>
-                      <th className="bg-label-primary text-primary">Inbound Call - Day Charges</th>
-                      <th>Inbound Call - Night Charges</th>
-                      <th className="bg-label-primary text-primary">Outbound Call Charges</th>
-                      <th>SMS Charges</th>
-                      <th className="bg-label-primary text-primary">Email Charges</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-center align-middle">
-                    <tr>
-                      <td className="fw-semibold">{plan.plan_name}</td>
-                      <td>{plan.period_type}</td>
-                      <td>Rs. {plan.credit_value.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
-                      <td>Rs. {plan.subscription_value.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
-                      <td>Rs. {plan.inbound_call_day_charge.toFixed(2)} / Min.</td>
-                      <td>Rs. {plan.inbound_call_night_charge.toFixed(2)} / Min.</td>
-                      <td>Rs. {plan.outbound_call_charge.toFixed(2)} / Min.</td>
-                      <td>{plan.sms_charge.toFixed(2)}</td>
-                      <td>{plan.email_charge.toFixed(2)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
 
 
 
@@ -770,6 +738,8 @@ const handleSubmit = async (e) => {
         </div>
       </div>
     </div>
+    </>
+    )}
     </>
    );
 

@@ -12,7 +12,7 @@
   font-size: 1.1rem;
   font-weight: 600;
   color: #374151; /* gray-700 */
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
 .stats-box p {
@@ -45,10 +45,20 @@
 }
 
 /* Agent card */
+
+.flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem; /* same as gap-6 */
+  justify-content: flex-start;
+}
+
 .agent-card {
-  background: #F3F4F6; /* gray-900 */
+  flex: 1 1 calc(20% - 1.5rem); /* 5 cards per row */
+  max-width: calc(20% - 1.5rem);
+  background: #F3F4F6;
   color: black;
-  padding: 1rem;
+  padding: 0.75rem;
   border-radius: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   transition: all 0.2s ease-in-out;
@@ -61,22 +71,24 @@
 .agent-icon {
   display: flex;
   justify-content: center;
-  margin-bottom: 0.75rem;
 }
 
 .agent-name {
   text-align: center;
   font-weight: bold;
   font-size: 1.1rem;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.1rem;
   color: black;
 }
 
 .agent-meta {
   display: flex;
   justify-content: center; /* center horizontally */
-  gap: 1rem;              /* spacing between ID & Skills */
-  margin-bottom: 0.75rem;
+  gap: 1rem;
+}
+
+.agent-meta span {
+  font-weight: 500;
 }
 
 .agent-id,
@@ -87,43 +99,43 @@
 
 
 .agent-details {
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 0.85rem;
+  line-height: 0.8;
 }
 
 .agent-details span {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .status-row {
   display: flex;
   justify-content: center; /* center horizontally */
-  gap: 1rem;               /* space between Status and Pause Code */
-  margin-top: 0.5rem;
+  align-items: center;
+  gap: 1rem;
 }
 
 .status-row p {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #111827;
 }
 
 .calls-row {
   display: flex;
   justify-content: center; /* center both */
-  gap: 1rem;               /* spacing between them */
-  margin-top: 0.5rem;
+  align-items: center;
+  gap: 1rem;
 }
 
 .calls-row p {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #111827;
 }
 
 
 /* Circle icons */
 .status-circle {
-  width: 50px;
-  height: 50px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -148,7 +160,7 @@
 
 
 .refresh-timer {
-  font-size: 0.85rem;
+  font-size: 0.95rem;
   font-weight: 500;
 }
 

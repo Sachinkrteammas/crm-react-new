@@ -39,19 +39,62 @@ const RealTimeDashboard = () => {
 
   if (loading) return <p>Loading agents...</p>;
 
+
+   // define priority order
+    const statusOrder = ["PAUSED", "CLOSER", "INCALL"];
+
+    const sortedAgents = [...agents].sort((a, b) => {
+      const aIndex = statusOrder.indexOf(a.status);
+      const bIndex = statusOrder.indexOf(b.status);
+
+      if (aIndex !== bIndex) {
+        return (aIndex === -1 ? Infinity : aIndex) - (bIndex === -1 ? Infinity : bIndex);
+      }
+
+      // If both are PAUSED → sort oldest first
+      if (a.status === "PAUSED" && b.status === "PAUSED") {
+        return new Date(a.last_call_time) - new Date(b.last_call_time);
+      }
+
+      return 0;
+    });
+
+    const pausedAgents = sortedAgents.filter(a => a.status === "PAUSED");
+
+
   // counts
   const loggedIn = agents.length;
   const paused = agents.filter(a => a.status === "PAUSED").length;
   const incall = agents.filter(a => a.status === "INCALL").length;
   const waiting = loggedIn - (paused + incall);
 
-  const getStatusIcon = (status) => {
-    if (status === "PAUSED")
-      return (
-        <div className="status-circle status-paused">
+  const getStatusIcon = (status, agent) => {
+    if (status === "PAUSED") {
+    let bgColor = "rgb(255, 60, 60)"; // light red default
+
+    if (agent.last_call_time) {
+      const lastCall = new Date(agent.last_call_time);
+      const now = new Date();
+      const diffMins = Math.floor((now - lastCall) / 60000);
+
+      if (diffMins < 10) {
+        bgColor = "rgb(255, 60, 60)"; // light red
+      } else if (diffMins < 30) {
+        bgColor = "rgb(255, 30, 30)"; // medium red
+      } else {
+        bgColor = "rgb(180, 0, 0)"; // dark red
+      }
+    }
+
+    return (
+        <div className="status-circle status-paused"
+            style={{ backgroundColor: bgColor }}
+            title={`Paused for ${agent.last_call_time ? timeAgo(agent.last_call_time) : "N/A"}`}
+        >
           <PauseCircle size={28} />
         </div>
-      );
+    );
+    }
     if (status === "INCALL")
       return (
         <div className="status-circle status-incall">
@@ -84,9 +127,9 @@ const RealTimeDashboard = () => {
       const diffHours = Math.floor(diffMins / 60);
 
       if (diffMins < 1) return "Just now";
-      if (diffMins < 60) return `${diffMins} min ago`;
-      if (diffHours < 24) return `${diffHours} hr ${diffMins % 60} min ago`;
-      return `${Math.floor(diffHours / 24)} days ago`;
+      if (diffMins < 60) return `${diffMins} min`;
+      if (diffHours < 24) return `${diffHours} hr ${diffMins % 60} min`;
+      return `${Math.floor(diffHours / 24)} days`;
   };
 
   const countSkills = (campaigns) => {
@@ -97,10 +140,14 @@ const RealTimeDashboard = () => {
         .filter(Boolean).length;
   };
 
+
+
+
+
   return (
     <div className="col-12">
       {/* Top Stats */}
-      <div className="flex flex-wrap gap-6 mb-8" style={{display: "flex"}}>
+      <div className="flex flex-wrap gap-6 mb-6" style={{display: "flex"}}>
         <div className="stats-box stats-logged">
           <h3>Agents Logged In</h3>
           <p>{loggedIn}</p>
@@ -124,16 +171,16 @@ const RealTimeDashboard = () => {
 
       {/* Agent Cards */}
       <div className="flex flex-wrap gap-6" style={{display: "flex"}}>
-        {agents.map((agent, idx) => (
+        {sortedAgents.map((agent, idx) => (
           <div key={idx} className="agent-card">
-            <div className="agent-icon">{getStatusIcon(agent.status)}</div>
+            <div className="agent-icon">{getStatusIcon(agent.status, agent)}</div>
             <h3 className="agent-name">{agent.full_name}</h3>
             <div className="agent-meta">
                 <p className="agent-id">ID: {agent.user}</p>
+                <p><span>{agent.campaign_id}</span></p>
                 <p className="skills">Skills: {countSkills(agent.closer_campaigns)}</p>
             </div>
             <div className="agent-details">
-              <p>Campaign: <span>{agent.campaign_id}</span></p>
               <div className="calls-row">
                   <p>Calls Today: {agent.calls_today}</p>
                   <p>Last Call: {timeAgo(agent.last_call_time)}</p>
