@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from schemas import *
-from database import get_db, get_db2
+from database import get_db, get_db2, get_db3
 from datetime import date
 from typing import List, Dict, Any
 
@@ -143,11 +143,11 @@ def get_dashboard_report(
 @router.post("/active_services", response_model=ActiveService)
 def get_active_services(
     req: ActiveServicesRequest,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db3),
 ):
     # 1) Look up the balance_master entry for this client
     bm = db.execute(
-        text("SELECT PlanId FROM balance_master WHERE client_id = :cid LIMIT 1"),
+        text("SELECT PlanId FROM balance_master WHERE clientId = :cid LIMIT 1"),
         {"cid": req.company_id}
     ).mappings().first()
     if not bm:
@@ -321,7 +321,7 @@ def get_call_distribution_report(
 def get_ticket_case_analysis(
     company_id: int,
     req: DashboardReq,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db3),
 ):
     # Build date condition exactly as in PHP
     vt = req.view_type or "Today"
@@ -352,7 +352,7 @@ def get_ticket_case_analysis(
               ('Enquiry','Complaint','BulkOrder','Request') 
             THEN 1 ELSE 0 END)                                    AS Other
         FROM call_master 
-        WHERE client_id = :cid AND {cond}
+        WHERE ClientId = :cid AND {cond}
     """)
     row = db.execute(sql_cases, params).mappings().first()
 
@@ -383,12 +383,12 @@ def get_ticket_case_analysis(
                 THEN 1 ELSE 0 END) AS OutOfTAT
         FROM call_master cm
         JOIN tbl_time tt 
-          ON cm.client_id = tt.clientId 
+          ON cm.ClientId = tt.clientId 
          AND CONCAT_WS('',cm.Category1,cm.Category2,cm.Category3,
                        cm.Category4,cm.Category5) = 
              CONCAT_WS('',tt.Category1,tt.Category2,tt.Category3,
                        tt.Category4,tt.Category5)
-        WHERE cm.client_id = :cid 
+        WHERE cm.ClientId = :cid 
           AND {cond}
           AND cm.CloseLoopingDate IS NULL  -- Open tickets only
     """)
@@ -412,12 +412,12 @@ def get_ticket_case_analysis(
                 THEN 1 ELSE 0 END) AS OutOfTAT
         FROM call_master cm
         JOIN tbl_time tt 
-          ON cm.client_id = tt.clientId 
+          ON cm.ClientId = tt.clientId 
          AND CONCAT_WS('',cm.Category1,cm.Category2,cm.Category3,
                        cm.Category4,cm.Category5) = 
              CONCAT_WS('',tt.Category1,tt.Category2,tt.Category3,
                        tt.Category4,tt.Category5)
-        WHERE cm.client_id = :cid 
+        WHERE cm.ClientId = :cid 
           AND {cond}
           AND cm.CloseLoopingDate IS NOT NULL  -- Closed tickets only
     """)
@@ -439,7 +439,7 @@ def get_ticket_case_analysis(
 @router.post("/ticket_by_source", response_model=List[TicketSourceResponse])
 def get_ticket_by_source(
     req: DashboardReq,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db3),
 ):
     cond = "DATE(CallDate) = CURDATE()"  # adjust with view_type logic if needed
     params = {"cid": req.company_id}
@@ -452,7 +452,7 @@ def get_ticket_by_source(
             SUM(CASE WHEN CloseLoopingDate IS NOT NULL THEN 1 ELSE 0 END) AS close,
             DATE_FORMAT(CURDATE(), '%Y-%m-%d') AS as_on_date
         FROM call_master
-        WHERE client_id = :cid AND {cond}
+        WHERE ClientId = :cid AND {cond}
         GROUP BY CallType
         ORDER BY total DESC
     """)

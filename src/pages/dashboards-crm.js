@@ -653,7 +653,7 @@ const handleSubmit = async (e) => {
                       <td className="py-3 px-4 text-center text-gray-600">{item.total}</td>
                       <td className="py-3 px-4 text-center text-gray-600">{item.open}</td>
                       <td className="py-3 px-4 text-center text-gray-600">{item.close}</td>
-                      <td className="py-3 px-4 text-center text-gray-600">{item.asOnDate}</td>
+                      <td className="py-3 px-4 text-center text-gray-600">{item.as_on_date}</td>
                     </tr>
                   ))}
                 </tbody>

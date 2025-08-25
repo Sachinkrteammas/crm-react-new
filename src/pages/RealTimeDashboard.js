@@ -78,9 +78,9 @@ const RealTimeDashboard = () => {
       const diffMins = Math.floor((now - lastCall) / 60000);
 
       if (diffMins < 10) {
-        bgColor = "rgb(255, 60, 60)"; // light red
+        bgColor = "rgb(255, 30, 30)"; // light red
       } else if (diffMins < 30) {
-        bgColor = "rgb(255, 30, 30)"; // medium red
+        bgColor = "rgb(255, 0, 0)"; // medium red
       } else {
         bgColor = "rgb(180, 0, 0)"; // dark red
       }
