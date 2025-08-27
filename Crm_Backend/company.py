@@ -445,7 +445,21 @@ async def get_company(company_id: int):
 
 
 
-# ---------------- Update Company ----------------
+from fastapi import APIRouter, Form, UploadFile, File, HTTPException
+from typing import Optional, List
+
+router = APIRouter()
+
+
+
+
+from fastapi import APIRouter, Form, File, UploadFile, HTTPException
+from typing import Optional, List
+from database import get_engine
+from utils import save_file, save_multiple_files  # your file helpers
+
+router = APIRouter()
+
 @router.put("/update/{company_id}")
 async def update_company(
     company_id: int,
@@ -487,13 +501,12 @@ async def update_company(
     authorizedId: Optional[UploadFile] = File(None),
     companyLogo: Optional[UploadFile] = File(None),
 ):
-    conn = None
-    cursor = None
     try:
+        # Password match check
         if password and confirmPassword and password != confirmPassword:
             raise HTTPException(status_code=400, detail="Password and Confirm Password do not match.")
 
-        # Save new uploaded files (if provided)
+        # Save files
         incorporation_path = save_file(incorporationCertificate, "incorporation") if incorporationCertificate else None
         pan_path = save_file(panCard, "pan") if panCard else None
         auth_addr_path = save_file(authorizedAddressProof, "auth_address") if authorizedAddressProof else None
@@ -502,37 +515,37 @@ async def update_company(
         logo_path = save_file(companyLogo, "logo") if companyLogo else None
         other_docs_combined = save_multiple_files(otherDocuments, "other") if otherDocuments else None
 
-        # Build fields dynamically
+        # Build update fields dynamically
         fields = {}
-        if companyName is not None: fields["company_name"] = companyName
-        if regAddress1 is not None: fields["reg_office_address1"] = regAddress1
-        if regAddress2 is not None: fields["reg_office_address2"] = regAddress2
-        if city is not None: fields["city"] = city
-        if state is not None: fields["state"] = state
-        if gst is not None: fields["gst_no"] = gst
-        if pincode is not None: fields["pincode"] = pincode
-        if authorisedPerson is not None: fields["auth_person"] = authorisedPerson
-        if designation is not None: fields["designation"] = designation
-        if mobile is not None: fields["phone_no"] = mobile
-        if email is not None: fields["email"] = email
-        if password is not None: fields["password"] = password
-        if commAddress1 is not None: fields["comm_address1"] = commAddress1
-        if commAddress2 is not None: fields["comm_address2"] = commAddress2
-        if commCity is not None: fields["comm_city"] = commCity
-        if commState is not None: fields["comm_state"] = commState
-        if commPincode is not None: fields["comm_pincode"] = commPincode
-        if contactPerson1 is not None: fields["contact_person1"] = contactPerson1
-        if designation1 is not None: fields["cp1_designation"] = designation1
-        if mobile1 is not None: fields["cp1_phone"] = mobile1
-        if email1 is not None: fields["cp1_email"] = email1
-        if contactPerson2 is not None: fields["contact_person2"] = contactPerson2
-        if designation2 is not None: fields["cp2_designation"] = designation2
-        if mobile2 is not None: fields["cp2_phone"] = mobile2
-        if email2 is not None: fields["cp2_email"] = email2
-        if contactPerson3 is not None: fields["contact_person3"] = contactPerson3
-        if designation3 is not None: fields["cp3_designation"] = designation3
-        if mobile3 is not None: fields["cp3_phone"] = mobile3
-        if email3 is not None: fields["cp3_email"] = email3
+        if companyName: fields["company_name"] = companyName
+        if regAddress1: fields["reg_office_address1"] = regAddress1
+        if regAddress2: fields["reg_office_address2"] = regAddress2
+        if city: fields["city"] = city
+        if state: fields["state"] = state
+        if gst: fields["gst_no"] = gst
+        if pincode: fields["pincode"] = pincode
+        if authorisedPerson: fields["auth_person"] = authorisedPerson
+        if designation: fields["designation"] = designation
+        if mobile: fields["phone_no"] = mobile
+        if email: fields["email"] = email
+        if password: fields["password"] = password
+        if commAddress1: fields["comm_address1"] = commAddress1
+        if commAddress2: fields["comm_address2"] = commAddress2
+        if commCity: fields["comm_city"] = commCity
+        if commState: fields["comm_state"] = commState
+        if commPincode: fields["comm_pincode"] = commPincode
+        if contactPerson1: fields["contact_person1"] = contactPerson1
+        if designation1: fields["cp1_designation"] = designation1
+        if mobile1: fields["cp1_phone"] = mobile1
+        if email1: fields["cp1_email"] = email1
+        if contactPerson2: fields["contact_person2"] = contactPerson2
+        if designation2: fields["cp2_designation"] = designation2
+        if mobile2: fields["cp2_phone"] = mobile2
+        if email2: fields["cp2_email"] = email2
+        if contactPerson3: fields["contact_person3"] = contactPerson3
+        if designation3: fields["cp3_designation"] = designation3
+        if mobile3: fields["cp3_phone"] = mobile3
+        if email3: fields["cp3_email"] = email3
 
         if incorporation_path: fields["incorporation_certificate"] = incorporation_path
         if pan_path: fields["pancard"] = pan_path
@@ -546,7 +559,7 @@ async def update_company(
             raise HTTPException(status_code=400, detail="No fields provided to update.")
 
         # Build SQL
-        set_clause = ", ".join([f"{key} = %({key})s" for key in fields.keys()])
+        set_clause = ", ".join([f"{k} = %({k})s" for k in fields.keys()])
         sql = f"UPDATE registration_master SET {set_clause} WHERE company_id = %(company_id)s"
         fields["company_id"] = company_id
 
@@ -562,5 +575,130 @@ async def update_company(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
     finally:
-        if cursor: cursor.close()
-        if conn: conn.close()
+        try: cursor.close()
+        except: pass
+        try: conn.close()
+        except: pass
+
+
+# @router.post("/update/{company_id}")
+# async def update_company(
+#     company_id: int,
+#     companyName: Optional[str] = Form(None),
+#     regAddress1: Optional[str] = Form(None),
+#     regAddress2: Optional[str] = Form(None),
+#     city: Optional[str] = Form(None),
+#     state: Optional[str] = Form(None),
+#     gst: Optional[str] = Form(None),
+#     pincode: Optional[str] = Form(None),
+#     authorisedPerson: Optional[str] = Form(None),
+#     designation: Optional[str] = Form(None),
+#     mobile: Optional[str] = Form(None),
+#     email: Optional[str] = Form(None),
+#     password: Optional[str] = Form(None),
+#     confirmPassword: Optional[str] = Form(None),
+#     commAddress1: Optional[str] = Form(None),
+#     commAddress2: Optional[str] = Form(None),
+#     commCity: Optional[str] = Form(None),
+#     commState: Optional[str] = Form(None),
+#     commPincode: Optional[str] = Form(None),
+#     contactPerson1: Optional[str] = Form(None),
+#     designation1: Optional[str] = Form(None),
+#     mobile1: Optional[str] = Form(None),
+#     email1: Optional[str] = Form(None),
+#     contactPerson2: Optional[str] = Form(None),
+#     designation2: Optional[str] = Form(None),
+#     mobile2: Optional[str] = Form(None),
+#     email2: Optional[str] = Form(None),
+#     contactPerson3: Optional[str] = Form(None),
+#     designation3: Optional[str] = Form(None),
+#     mobile3: Optional[str] = Form(None),
+#     email3: Optional[str] = Form(None),
+#     incorporationCertificate: Optional[UploadFile] = File(None),
+#     panCard: Optional[UploadFile] = File(None),
+#     authorizedAddressProof: Optional[UploadFile] = File(None),
+#     otherDocuments: Optional[List[UploadFile]] = File(None),
+#     billingAddressProof: Optional[UploadFile] = File(None),
+#     authorizedId: Optional[UploadFile] = File(None),
+#     companyLogo: Optional[UploadFile] = File(None),
+# ):
+#     try:
+#         # Password check
+#         if password and confirmPassword and password != confirmPassword:
+#             raise HTTPException(status_code=400, detail="Password and Confirm Password do not match.")
+
+#         # --- Save files if uploaded ---
+#         incorporation_path = save_file(incorporationCertificate, "incorporation") if incorporationCertificate else None
+#         pan_path = save_file(panCard, "pan") if panCard else None
+#         auth_addr_path = save_file(authorizedAddressProof, "auth_address") if authorizedAddressProof else None
+#         billing_path = save_file(billingAddressProof, "billing") if billingAddressProof else None
+#         auth_id_path = save_file(authorizedId, "auth_id") if authorizedId else None
+#         logo_path = save_file(companyLogo, "logo") if companyLogo else None
+#         other_docs_combined = save_multiple_files(otherDocuments, "other") if otherDocuments else None
+
+#         # --- Build fields dynamically ---
+#         fields = {}
+#         if companyName: fields["company_name"] = companyName
+#         if regAddress1: fields["reg_office_address1"] = regAddress1
+#         if regAddress2: fields["reg_office_address2"] = regAddress2
+#         if city: fields["city"] = city
+#         if state: fields["state"] = state
+#         if gst: fields["gst_no"] = gst
+#         if pincode: fields["pincode"] = pincode
+#         if authorisedPerson: fields["auth_person"] = authorisedPerson
+#         if designation: fields["designation"] = designation
+#         if mobile: fields["phone_no"] = mobile
+#         if email: fields["email"] = email
+#         if password: fields["password"] = password
+#         if commAddress1: fields["comm_address1"] = commAddress1
+#         if commAddress2: fields["comm_address2"] = commAddress2
+#         if commCity: fields["comm_city"] = commCity
+#         if commState: fields["comm_state"] = commState
+#         if commPincode: fields["comm_pincode"] = commPincode
+#         if contactPerson1: fields["contact_person1"] = contactPerson1
+#         if designation1: fields["cp1_designation"] = designation1
+#         if mobile1: fields["cp1_phone"] = mobile1
+#         if email1: fields["cp1_email"] = email1
+#         if contactPerson2: fields["contact_person2"] = contactPerson2
+#         if designation2: fields["cp2_designation"] = designation2
+#         if mobile2: fields["cp2_phone"] = mobile2
+#         if email2: fields["cp2_email"] = email2
+#         if contactPerson3: fields["contact_person3"] = contactPerson3
+#         if designation3: fields["cp3_designation"] = designation3
+#         if mobile3: fields["cp3_phone"] = mobile3
+#         if email3: fields["cp3_email"] = email3
+
+#         if incorporation_path: fields["incorporation_certificate"] = incorporation_path
+#         if pan_path: fields["pancard"] = pan_path
+#         if auth_addr_path: fields["auth_person_address_prof"] = auth_addr_path
+#         if billing_path: fields["bill_address_prof"] = billing_path
+#         if auth_id_path: fields["authorized_id_prof"] = auth_id_path
+#         if logo_path: fields["company_logo"] = logo_path
+#         if other_docs_combined: fields["other_documents"] = other_docs_combined
+
+#         if not fields:
+#             raise HTTPException(status_code=400, detail="No fields provided to update.")
+
+#         # --- Build SQL dynamically ---
+#         set_clause = ", ".join([f"{key} = %({key})s" for key in fields.keys()])
+#         sql = f"UPDATE registration_master SET {set_clause} WHERE company_id = %(company_id)s"
+#         fields["company_id"] = company_id
+
+#         conn = get_engine().raw_connection()
+#         cursor = conn.cursor()
+#         cursor.execute(sql, fields)
+#         conn.commit()
+
+#         return {"status": "success", "message": "Company updated successfully!"}
+
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
+#     finally:
+#         try: cursor.close()
+#         except: pass
+#         try: conn.close()
+#         except: pass
+
+
