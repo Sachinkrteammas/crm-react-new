@@ -1,121 +1,250 @@
-import { useState } from "react";
+//...Table with Pagination and Search bar..///
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import WizardForm from "./company-registration"; // make sure the path is correct
+import "../styles/stepper.css";
 
-const ClientRequestPage = () => {
+export default function ClientRequestPage() {
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingCompany, setEditingCompany] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+
   const [search, setSearch] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filtered, setFiltered] = useState([]);
+  const [filterType, setFilterType] = useState("company_name");
 
-  const clientRequests = [
-    {
-      srn: 201,
-      companyName: "DLF Estate Developers Limited",
-      clientName: "Mr. Vikas Yadav",
-      requestType: "Change Email Id",
-      requestStatus: "NOT PENDING",
-      requestData: "cc-dedl@dlf.in",
-      requestDate: "2017-10-24 00:43:09",
-      responseDate: "2020-09-26 03:52:57",
-    },
-    {
-      srn: 241,
-      companyName: "Rx Infotech P Limited",
-      clientName: "Kamal Kishore",
-      requestType: "Change Email Id",
-      requestStatus: "NOT PENDING",
-      requestData: "customercare@lapcare.com",
-      requestDate: "2017-10-13 23:33:31",
-      responseDate: "2017-10-13 23:36:05",
-    },
-    {
-      srn: 283,
-      companyName: "Summerking India",
-      clientName: "Vikas Goel",
-      requestType: "Change Email Id",
-      requestStatus: "NOT PENDING",
-      requestData: "ameetkr@gmail.com",
-      requestDate: "2017-11-30 23:52:10",
-      responseDate: "2017-11-30 23:53:21",
-    },
-    {
-      srn: 284,
-      companyName: "Summerking India",
-      clientName: "Vikas Goel",
-      requestType: "Change Email Id",
-      requestStatus: "NOT PENDING",
-      requestData: "ameetkr@gmail.com",
-      requestDate: "2017-12-02 02:31:14",
-      responseDate: "2017-12-22 02:34:03",
-    },
-    {
-      srn: 285,
-      companyName: "Summerking India",
-      clientName: "Vikas Goel",
-      requestType: "Change Email Id",
-      requestStatus: "NOT PENDING",
-      requestData: "service.summerking@gmail.com",
-      requestDate: "2018-06-29 02:16:36",
-      responseDate: "2018-06-29 02:18:07",
-    },
-  ];
+  // Fetch all companies
+  useEffect(() => {
+    fetchCompanies();
+  }, []);
 
-  const filtered = clientRequests.filter((item) =>
-    Object.values(item).some((val) =>
-      val.toString().toLowerCase().includes(search.toLowerCase())
-    )
+  const fetchCompanies = async () => {
+    try {
+      const res = await axios.get("http://localhost:8000/company/list");
+      setCompanies(res.data.data || []);
+    } catch (err) {
+      console.error("Error fetching companies:", err);
+      alert("Failed to fetch companies.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter companies based on search
+  // useEffect(() => {
+  //   const filteredData = companies.filter((company) =>
+  //     Object.values(company).some((val) =>
+  //       val?.toString().toLowerCase().includes(search.toLowerCase())
+  //     )
+  //   );
+  //   setFiltered(filteredData);
+  //   setCurrentPage(1); // Reset page when search changes
+  // }, [search, companies]);
+
+  useEffect(() => {
+    const searchLower = search.toLowerCase();
+
+    const filteredData = companies.filter((company) => {
+      if (filterType === "company_name") {
+        return company.company_name?.toLowerCase().includes(searchLower);
+      }
+      if (filterType === "status") {
+        return company.status?.toLowerCase().includes(searchLower);
+      }
+      if (filterType === "auth_person") {
+        return company.auth_person?.toLowerCase().includes(searchLower);
+      }
+      return true;
+    });
+
+    setFiltered(filteredData);
+    setCurrentPage(1); // reset page when search changes
+  }, [search, filterType, companies]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const paginatedData = filtered.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
   );
 
-  return (
-    <div className="row">
-      <div className="col-12">
-        <h4 className="mb-3">View Client Request</h4>
+  const handlePageChange = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
 
-        <div className="card p-3">
+  // Handle edit button click
+  const handleEdit = async (companyId) => {
+    try {
+      const res = await axios.get(
+        `http://localhost:8000/company/get/${companyId}`
+      );
+      if (res.data.status === "success" && res.data.data) {
+        setEditingCompany(res.data.data);
+        setShowForm(true);
+      } else {
+        alert("Company not found!");
+      }
+    } catch (err) {
+      console.error("Fetch company by ID failed:", err);
+      alert("Failed to fetch company details.");
+    }
+  };
+
+  // Close form modal
+  const handleFormClose = () => {
+    setEditingCompany(null);
+    setShowForm(false);
+  };
+
+  // Submit form (create or update)
+  const handleFormSubmit = async (formData) => {
+    try {
+      const isEdit = !!editingCompany;
+      const url = isEdit
+        ? `http://localhost:8000/company/update/${editingCompany.company_id}`
+        : "http://localhost:8000/company/register";
+
+      await axios({
+        method: isEdit ? "put" : "post",
+        url,
+        data: formData,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      alert(
+        isEdit
+          ? "✅ Company updated successfully!"
+          : "✅ Company created successfully!"
+      );
+      fetchCompanies();
+      handleFormClose();
+    } catch (err) {
+      console.error("Error saving company:", err.response || err);
+      alert("❌ Failed to save company.");
+    }
+  };
+
+  return (
+    <div className="container mt-4">
+      <h3>Company List</h3>
+
+      {loading ? (
+        <p>Loading...</p>
+      ) : (
+        <>
+          {/* Search and page size */}
           <div className="d-flex justify-content-between align-items-center mb-3">
-            <h6 className="m-0">CLIENT REQUEST</h6>
-            <div className="d-flex align-items-center gap-2">
-              <select className="form-select form-select-sm w-auto">
-                <option>10</option>
-                <option>25</option>
-                <option>50</option>
+            <div>
+              Show{" "}
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                className="form-select d-inline-block w-auto"
+              >
+                {[10, 25, 50, 100].map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>{" "}
+            </div>
+            <div className="d-flex">
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="form-select me-2"
+              >
+                <option value="company_name">Company Name</option>
+                <option value="auth_person">Client Name</option>
+                <option value="status">Request Status</option>
               </select>
               <input
-                type="search"
-                className="form-control form-control-sm w-auto"
-                placeholder="Search..."
+                type="text"
+                placeholder={`Search by ${filterType.replace("_", " ")}`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                className="form-control form-control-sm"
               />
             </div>
           </div>
 
-          <div className="table-responsive">
-            <table className="table table-bordered table-hover">
+          {/* Table */}
+          <div
+            className="table-responsive"
+            style={{ maxHeight: "600px", overflowY: "auto" }}
+          >
+            <table className="table table-bordered table-hover table-striped">
               <thead className="table-light">
                 <tr>
-                  <th>SRN.</th>
-                  <th>COMPANY NAME</th>
-                  <th>CLIENT NAME</th>
-                  <th>REQUEST TYPE</th>
-                  <th>REQUEST STATUS</th>
-                  <th>REQUEST DATA</th>
-                  <th>REQUEST DATE</th>
-                  <th>RESPONSE DATE</th>
-                  <th>ACTION</th>
+                  <th style={{ minWidth: "40px" }}>SRN.</th>
+                  <th style={{ minWidth: "150px" }}>COMPANY NAME</th>
+                  <th style={{ minWidth: "120px" }}>CLIENT NAME</th>
+                  <th style={{ minWidth: "120px" }}>REQUEST TYPE</th>
+                  <th style={{ minWidth: "120px" }}>REQUEST STATUS</th>
+                  <th style={{ minWidth: "120px" }}>REQUEST DATA</th>
+                  <th style={{ minWidth: "120px" }}>REQUEST DATE</th>
+                  <th style={{ minWidth: "120px" }}>RESPONSE DATE</th>
+                  <th style={{ minWidth: "80px" }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
-                {filtered.length > 0 ? (
-                  filtered.map((req) => (
-                    <tr key={req.srn + req.requestData}>
-                      <td>{req.srn}</td>
-                      <td>{req.companyName}</td>
-                      <td>{req.clientName}</td>
-                      <td>{req.requestType}</td>
-                      <td className="text-success">{req.requestStatus}</td>
-                      <td>{req.requestData}</td>
-                      <td>{req.requestDate}</td>
-                      <td>{req.responseDate}</td>
+                {paginatedData.length > 0 ? (
+                  paginatedData.map((company, index) => (
+                    <tr key={company.company_id}>
+                      <td>{(currentPage - 1) * pageSize + index + 1}</td>
+                      <td
+                        className="text-truncate"
+                        style={{ maxWidth: "150px" }}
+                      >
+                        {company.company_name}
+                      </td>
+                      <td
+                        className="text-truncate"
+                        style={{ maxWidth: "120px" }}
+                      >
+                        {company.auth_person}
+                      </td>
+                      <td
+                        className="text-truncate"
+                        style={{ maxWidth: "120px" }}
+                      >
+                        {company.email}
+                      </td>
+                      <td
+                        className="text-truncate"
+                        style={{ maxWidth: "120px" }}
+                      >
+                        {company.status}
+                      </td>
+                      <td
+                        className="text-truncate"
+                        style={{ maxWidth: "120px" }}
+                      >
+                        {company.state}
+                      </td>
+                      <td
+                        className="text-truncate"
+                        style={{ maxWidth: "120px" }}
+                      >
+                        {company.create_date}
+                      </td>
+                      <td
+                        className="text-truncate"
+                        style={{ maxWidth: "120px" }}
+                      >
+                        {company.response_date || "N/A"}
+                      </td>
                       <td>
-                        <button className="btn btn-sm btn-light">
-                          ✏️
+                        <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => handleEdit(company.company_id)}
+                          title="Edit"
+                        >
+                          ✏ Edit
                         </button>
                       </td>
                     </tr>
@@ -123,7 +252,7 @@ const ClientRequestPage = () => {
                 ) : (
                   <tr>
                     <td colSpan="9" className="text-center text-muted">
-                      No matching records found.
+                      No records found.
                     </td>
                   </tr>
                 )}
@@ -131,28 +260,103 @@ const ClientRequestPage = () => {
             </table>
           </div>
 
+          {/* Pagination */}
           <div className="d-flex justify-content-between align-items-center mt-3">
-            <div>Showing 1 to {filtered.length} of {clientRequests.length} entries</div>
+            <div>
+              Showing{" "}
+              {paginatedData.length ? (currentPage - 1) * pageSize + 1 : 0} to{" "}
+              {(currentPage - 1) * pageSize + paginatedData.length} of{" "}
+              {filtered.length} entries
+            </div>
             <nav>
               <ul className="pagination pagination-sm mb-0">
-                <li className="page-item disabled">
-                  <button className="page-link">Previous</button>
+                <li
+                  className={`page-item ${currentPage === 1 ? "disabled" : ""}`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                  >
+                    Previous
+                  </button>
                 </li>
-                {[1, 2, 3, 4, 5].map((num) => (
-                  <li key={num} className={`page-item ${num === 1 ? "active" : ""}`}>
-                    <button className="page-link">{num}</button>
-                  </li>
-                ))}
-                <li className="page-item">
-                  <button className="page-link">Next</button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (num) => (
+                    <li
+                      key={num}
+                      className={`page-item ${
+                        num === currentPage ? "active" : ""
+                      }`}
+                    >
+                      <button
+                        className="page-link"
+                        onClick={() => handlePageChange(num)}
+                      >
+                        {num}
+                      </button>
+                    </li>
+                  )
+                )}
+
+                <li
+                  className={`page-item ${
+                    currentPage === totalPages ? "disabled" : ""
+                  }`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                  >
+                    Next
+                  </button>
                 </li>
               </ul>
             </nav>
           </div>
+        </>
+      )}
+
+      {/* Edit/Create modal */}
+      {showForm && (
+        <div
+          className="modal fade show"
+          style={{
+            display: "block",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            zIndex: 9999,
+            overflow: "auto",
+          }}
+        >
+          <div className="modal-dialog modal-lg" style={{ marginTop: "50px" }}>
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">
+                  {editingCompany ? "Edit Company" : "Add Company"}
+                </h5>
+                <button
+                  className="btn-close"
+                  onClick={handleFormClose}
+                ></button>
+              </div>
+              <div className="modal-body">
+                <WizardForm
+                  key={editingCompany ? editingCompany.company_id : "new"}
+                  initialData={editingCompany}
+                  isEdit={!!editingCompany}
+                  onSubmit={handleFormSubmit}
+                  onClose={handleFormClose}
+                />
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
-};
-
-export default ClientRequestPage;
+}
