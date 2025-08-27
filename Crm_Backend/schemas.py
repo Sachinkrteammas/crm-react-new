@@ -190,6 +190,7 @@ class CDRReportRequest(BaseModel):
     from_date: date
     to_date: date
     company_id: int
+    category: Optional[str] = "All"
 
 class CDRReportResponse(BaseModel):
     uniqueid: Optional[str]
@@ -217,11 +218,72 @@ class CDRReportResponse(BaseModel):
     term_reason: Optional[str]
     xfercallid: Optional[int]
 
+    Category1: Optional[str]
+    Category2: Optional[str]
+    Category3: Optional[str]
+    Category4: Optional[str]
+    Category5: Optional[str]
+    Source: Optional[str]
+    Recording: Optional[str]
+
 
 class OBCDRReportRequest(BaseModel):
     from_date: date
     to_date: date
     company_id: int
+
+
+class OBCDReportRow(BaseModel):
+    user: Optional[str]
+    lead_id: Optional[int]
+    phone_number: Optional[str]
+    call_date: Optional[str]
+    campaign_id: Optional[str]
+    status: Optional[str]
+    term_reason: Optional[str]
+    sub_status: Optional[str]
+    length_in_sec: Optional[int]
+    queue_seconds: Optional[int]
+    talk_seconds: Optional[int]
+    full_name: Optional[str]
+    Category1: Optional[str]
+    Category2: Optional[str]
+    Category3: Optional[str]
+    Category4: Optional[str]
+    Category5: Optional[str]
+    Source: Optional[str]
+    Recording: Optional[str]
+
+
+
+class OBSharedCDRReportRow(BaseModel):
+    CallDate: Optional[str]
+    StartTime: Optional[str]
+    Endtime: Optional[str]
+    PhoneNumber: Optional[str]
+    Agent: Optional[str]
+    FullName: Optional[str]
+    CallType: Optional[str]
+    Status: Optional[str]
+    DialMode: Optional[str]
+    CampaignID: Optional[str]
+    LeadID: Optional[int]
+    LengthInSec: Optional[int]
+    LengthInMin: Optional[str]
+    TermReason: Optional[str]
+    CallDuration: Optional[int]
+    CallStatus: Optional[str]
+    PauseSec: Optional[int]
+    WaitSec: Optional[int]
+    TalkSec: Optional[int]
+    DispoSec: Optional[int]
+    Category1: Optional[str]
+    Category2: Optional[str]
+    Category3: Optional[str]
+    Category4: Optional[str]
+    Category5: Optional[str]
+    Recording: Optional[str]
+
 
 
 class IVRFunnelReportRequest(BaseModel):

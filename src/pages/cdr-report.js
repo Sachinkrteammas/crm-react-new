@@ -59,14 +59,14 @@ const handleEndDateChange = (date) => {
                 wrapTime: row.wrap_time,
                 holdTime: row.parked_time,
 
-                scenario: row.scenario,
-                subScenario1: row.sub_scenario_1,
-                subScenario2: row.sub_scenario_2,
-                subScenario3: row.sub_scenario_3,
-                subScenario4: row.sub_scenario_4,
-                source: row.source ?? row.campaign_id,
-                recording: row.recording
-                    ? row.recording
+                Category1: row.Category1,
+                Category2: row.Category2,
+                Category3: row.Category3,
+                Category4: row.Category4,
+                Category5: row.Category5,
+                Source: row.Source ?? row.campaign_id,
+                Recording: row.Recording
+                    ? row.Recording
                     : `http://your-server.com/recordings/${row.uniqueid}.wav`,
             }));
 
@@ -174,7 +174,8 @@ const handleEndDateChange = (date) => {
               </tr>
             </thead>
             <tbody>
-              {sampleData.map((row, idx) => (
+              {sampleData.length > 0 ? (
+                sampleData.map((row, idx) => (
                 <tr key={idx}>
                   <td>{row.agent}</td>
                   <td>{row.phone}</td>
@@ -188,19 +189,27 @@ const handleEndDateChange = (date) => {
                   <td>{row.callDurationTime}</td>
                   <td>{row.wrapTime}</td>
                   <td>{row.holdTime}</td>
-                  <td>{row.scenario}</td>
-                  <td>{row.subScenario1}</td>
-                  <td>{row.subScenario2}</td>
-                  <td>{row.subScenario3}</td>
-                  <td>{row.subScenario4}</td>
-                  <td>{row.source}</td>
+                  <td>{row.Category1}</td>
+                  <td>{row.Category2}</td>
+                  <td>{row.Category3}</td>
+                  <td>{row.Category4}</td>
+                  <td>{row.Category5}</td>
+                  <td>{row.Source}</td>
                   <td>
-                    <a href={row.recording} className="text-primary">
+                    <a href={row.Recording} className="text-primary">
                       Download Recording
                     </a>
                   </td>
                 </tr>
-              ))}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="12" className="text-center">
+                    No data available for selected date range.
+                  </td>
+                </tr>
+
+              )}
             </tbody>
           </table>
         </div>

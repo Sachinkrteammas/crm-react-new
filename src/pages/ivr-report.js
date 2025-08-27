@@ -123,19 +123,19 @@ const IVRReport = () => {
               {ivrData.length > 0 ? (
                 ivrData.map((row, idx) => (
                   <tr key={idx}>
-                    <td>{row.Dater}</td>
+                    <td>{row.date}</td>
                     <td>{row.call_type}</td>
-                    <td>{row.from_number}</td>
-                    <td>{row.StartDate}</td>
-                    <td>{row.EndDate}</td>
-                    <td>{row.duration_sec}</td>
+                    <td>{row.from}</td>
+                    <td>{row.start_time}</td>
+                    <td>{row.end_time}</td>
+                    <td>{row.duration}</td>
                     <td>{row.outcome}</td>
-                    <td>{row.options_chosen}</td>
+                    <td>{row.opt}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="text-center">
+                  <td colSpan="12" className="text-center">
                     No data available for selected date range.
                   </td>
                 </tr>
