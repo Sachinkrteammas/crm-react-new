@@ -445,20 +445,20 @@ async def get_company(company_id: int):
 
 
 
-from fastapi import APIRouter, Form, UploadFile, File, HTTPException
-from typing import Optional, List
+# from fastapi import APIRouter, Form, UploadFile, File, HTTPException
+# from typing import Optional, List
 
-router = APIRouter()
-
-
+# router = APIRouter()
 
 
-from fastapi import APIRouter, Form, File, UploadFile, HTTPException
-from typing import Optional, List
-from database import get_engine
-from utils import save_file, save_multiple_files  # your file helpers
 
-router = APIRouter()
+
+# from fastapi import APIRouter, Form, File, UploadFile, HTTPException
+# from typing import Optional, List
+# from database import get_engine
+# from utils import save_file, save_multiple_files  # your file helpers
+
+# router = APIRouter()
 
 @router.put("/update/{company_id}")
 async def update_company(
