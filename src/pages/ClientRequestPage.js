@@ -333,7 +333,10 @@ export default function ClientRequestPage() {
             overflow: "auto",
           }}
         >
-          <div className="modal-dialog modal-lg" style={{ marginTop: "50px" }}>
+          <div
+            className="modal-dialog modal-xl" // <-- wider modal
+            style={{ marginTop: "50px" }}
+          >
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">

@@ -68,7 +68,7 @@ export default function PlanManagement() {
     }
   };
 
-  // ✅ Filtered + Paginated Data
+  // Filtered + Paginated Data
   const filteredPlans = plans.filter(
     (plan) =>
       plan.PlanName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -290,7 +290,7 @@ export default function PlanManagement() {
           value={searchTerm}
           onChange={(e) => {
             setSearchTerm(e.target.value);
-            setCurrentPage(1); // reset to first page when searching
+            setCurrentPage(1);
           }}
         />
         <select
@@ -323,10 +323,10 @@ export default function PlanManagement() {
             </tr>
           </thead>
           <tbody>
-            {plans.length > 0 ? (
-              plans.map((plan, index) => (
+            {currentPlans.length > 0 ? (
+              currentPlans.map((plan, index) => (
                 <tr key={plan.Id}>
-                  <td className="text-center">{index + 1}</td>
+                  <td className="text-center">{indexOfFirstRow + index + 1}</td>
                   <td className="text-start">{plan.PlanName}</td>
                   <td className="text-center">{plan.PlanType}</td>
                   <td className="text-center">{plan.SetupCost}</td>
@@ -377,11 +377,9 @@ export default function PlanManagement() {
           >
             ⬅ Previous
           </button>
-
           <span>
             Page {currentPage} of {totalPages}
           </span>
-
           <button
             className="btn btn-sm btn-outline-primary"
             disabled={currentPage === totalPages}
@@ -393,39 +391,41 @@ export default function PlanManagement() {
       )}
 
       {/* ✅ View Plan Modal */}
-      {showViewModal && viewPlan && (
-        <div className="modal show fade d-block" tabIndex="-1">
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">View Plan - {viewPlan.PlanName}</h5>
-                <button
-                  type="button"
-                  className="btn-close"
-                  onClick={() => setShowViewModal(false)}
-                ></button>
+   {/* ✅ View Plan Modal */}
+{showViewModal && viewPlan && (
+  <div className="modal show fade d-block" tabIndex="-1">
+    <div className="modal-dialog modal-xl"> {/* <-- wider modal */}
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">View Plan - {viewPlan.PlanName}</h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => setShowViewModal(false)}
+          ></button>
+        </div>
+        <div className="modal-body">
+          <div className="row">
+            {Object.keys(viewPlan).map((key) => (
+              <div className="col-md-6 mb-2" key={key}>
+                <strong>{key}:</strong> {viewPlan[key]}
               </div>
-              <div className="modal-body">
-                <div className="row">
-                  {Object.keys(viewPlan).map((key) => (
-                    <div className="col-md-6 mb-2" key={key}>
-                      <strong>{key}:</strong> {viewPlan[key]}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => setShowViewModal(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
-      )}
+        <div className="modal-footer">
+          <button
+            className="btn btn-secondary"
+            onClick={() => setShowViewModal(false)}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+
 
       {/* Modal for Add/Edit Plan */}
       {showModal && (

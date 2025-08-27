@@ -320,7 +320,7 @@ export default function WizardForm({
 
     // Step 3 - Document Uploads (validate mandatory fields)
     if (step === 3) {
-      if (!formData.panCard) newErrors.panCard = true;
+      // if (!formData.panCard) newErrors.panCard = true;
       if (!formData.termsAccepted) newErrors.termsAccepted = true;
     }
 
@@ -348,70 +348,123 @@ export default function WizardForm({
   };
 
   // Reusable FileInput component
-  function FileInput({
-    label,
-    name,
-    existingFile,
-    file,
-    onChange,
-    multiple = false,
-  }) {
-    return (
-      <div className="mb-3 d-flex align-items-center">
-        <input
-          type="text"
-          className="form-control col"
-          placeholder={label}
-          value={file ? file.name : ""}
-          readOnly
-        />
-        <button
-          type="button"
-          className="btn btn-outline-primary ms-2"
-          onClick={() => document.getElementById(name).click()}
-        >
-          Choose File
-        </button>
-        <input
-          type="file"
-          id={name}
-          name={name}
-          onChange={onChange}
-          className="d-none"
-          accept=".jpg,.jpeg,.png,.gif,.pdf"
-          multiple={multiple}
-        />
+  // function FileInput({
+  //   label,
+  //   name,
+  //   existingFile,
+  //   file,
+  //   onChange,
+  //   multiple = false,
+  // }) {
+  //   return (
+  //     <div className="mb-3 d-flex align-items-center">
+  //       <input
+  //         type="text"
+  //         className="form-control col"
+  //         placeholder={label}
+  //         value={file ? file.name : ""}
+  //         readOnly
+  //       />
+  //       <button
+  //         type="button"
+  //         className="btn btn-outline-primary ms-2"
+  //         onClick={() => document.getElementById(name).click()}
+  //       >
+  //         Choose File
+  //       </button>
+  //       <input
+  //         type="file"
+  //         id={name}
+  //         name={name}
+  //         onChange={onChange}
+  //         className="d-none"
+  //         accept=".jpg,.jpeg,.png,.gif,.pdf"
+  //         multiple={multiple}
+  //       />
 
-        {/* Show existing file if no new file selected */}
-        {!file && existingFile && (
-          <p className="ms-3 mb-0">
-            Existing:{" "}
-            {Array.isArray(existingFile) ? (
-              existingFile.map((f, i) => (
-                <a
-                  key={i}
-                  href={`http://localhost:8000/${f}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="me-2"
-                >
-                  {f.split("/").pop()}
-                </a>
-              ))
-            ) : (
-              <a
-                href={`http://localhost:8000/${existingFile}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                {existingFile.split("/").pop()}
-              </a>
-            )}
-          </p>
-        )}
-      </div>
-    );
-  }
+  //       {/* Show existing file if no new file selected */}
+  //       {!file && existingFile && (
+  //         <p className="ms-3 mb-0">
+  //           Existing:{" "}
+  //           {Array.isArray(existingFile) ? (
+  //             existingFile.map((f, i) => (
+  //               <a
+  //                 key={i}
+  //                 href={`http://localhost:8000/${f}`}
+  //                 target="_blank"
+  //                 rel="noopener noreferrer"
+  //                 className="me-2"
+  //               >
+  //                 {f.split("/").pop()}
+  //               </a>
+  //             ))
+  //           ) : (
+  //             <a
+  //               href={`http://localhost:8000/${existingFile}`}
+  //               target="_blank"
+  //               rel="noopener noreferrer"
+  //             >
+  //               {existingFile.split("/").pop()}
+  //             </a>
+  //           )}
+  //         </p>
+  //       )}
+  //     </div>
+  //   );
+  // }
+
+
+  function FileInput({
+  label,
+  name,
+  existingFile,
+  file,
+  onChange,
+  multiple = false,
+}) {
+  return (
+    <div className="mb-3 d-flex align-items-center">
+      <input
+        type="text"
+        className="form-control col"
+        placeholder={label}
+        value={file ? file.name : ""}
+        readOnly
+      />
+      <button
+        type="button"
+        className="btn btn-outline-primary ms-2"
+        onClick={() => document.getElementById(name).click()}
+      >
+        Choose File
+      </button>
+      <input
+        type="file"
+        id={name}
+        name={name}
+        onChange={onChange}
+        className="d-none"
+        accept=".jpg,.jpeg,.png,.gif,.pdf"
+        multiple={multiple}
+      />
+
+      {/* Show existing file only if single file */}
+      {!file && existingFile && !multiple && (
+        <p className="ms-3 mb-0">
+          Existing:{" "}
+          <a
+            href={`http://localhost:8000/${existingFile}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {existingFile.split("/").pop()}
+          </a>
+        </p>
+      )}
+    </div>
+  );
+}
+
 
   // --- Final Submit ---
   // const handleSubmit = async (e) => {
@@ -487,215 +540,240 @@ export default function WizardForm({
   //   }
   // };
 
+  //   const handleSubmit = async (e) => {
+  //   e.preventDefault();
+  //   if (!validateStep(step)) return;
 
-//   const handleSubmit = async (e) => {
-//   e.preventDefault();
-//   if (!validateStep(step)) return;
+  //   try {
+  //     // Check edit mode and ID
+  //     if (isEdit && !initialData?.id) {
+  //       alert("Cannot update: Company ID not found.");
+  //       return;
+  //     }
 
-//   try {
-//     // Check edit mode and ID
-//     if (isEdit && !initialData?.id) {
-//       alert("Cannot update: Company ID not found.");
-//       return;
-//     }
+  //     const data = new FormData();
 
-//     const data = new FormData();
+  //     // Append text fields (ensure names match backend)
+  //     const textFields = [
+  //       "companyName",
+  //       "regAddress1",
+  //       "regAddress2",
+  //       "city",
+  //       "state",
+  //       "gst",
+  //       "pincode",
+  //       "authorisedPerson",
+  //       "designation",
+  //       "mobile",
+  //       "email",
+  //       "password",
+  //       "confirmPassword",
+  //       "commAddress1",
+  //       "commAddress2",
+  //       "commCity",
+  //       "commState",
+  //       "commPincode",
+  //       "contactPerson1",
+  //       "designation1",
+  //       "mobile1",
+  //       "email1",
+  //       "contactPerson2",
+  //       "designation2",
+  //       "mobile2",
+  //       "email2",
+  //       "contactPerson3",
+  //       "designation3",
+  //       "mobile3",
+  //       "email3",
+  //       "termsAccepted",
+  //     ];
 
-//     // Append text fields (ensure names match backend)
-//     const textFields = [
-//       "companyName",
-//       "regAddress1",
-//       "regAddress2",
-//       "city",
-//       "state",
-//       "gst",
-//       "pincode",
-//       "authorisedPerson",
-//       "designation",
-//       "mobile",
-//       "email",
-//       "password",
-//       "confirmPassword",
-//       "commAddress1",
-//       "commAddress2",
-//       "commCity",
-//       "commState",
-//       "commPincode",
-//       "contactPerson1",
-//       "designation1",
-//       "mobile1",
-//       "email1",
-//       "contactPerson2",
-//       "designation2",
-//       "mobile2",
-//       "email2",
-//       "contactPerson3",
-//       "designation3",
-//       "mobile3",
-//       "email3",
-//       "termsAccepted",
-//     ];
+  //     textFields.forEach((key) => {
+  //       if (formData[key] !== undefined && formData[key] !== null) {
+  //         data.append(key, formData[key]);
+  //       }
+  //     });
 
-//     textFields.forEach((key) => {
-//       if (formData[key] !== undefined && formData[key] !== null) {
-//         data.append(key, formData[key]);
-//       }
-//     });
+  //     // Append single file fields
+  //     const singleFileFields = [
+  //       "incorporationCertificate",
+  //       "panCard",
+  //       "authorizedAddressProof",
+  //       "billingAddressProof",
+  //       "authorizedId",
+  //       "companyLogo",
+  //     ];
 
-//     // Append single file fields
-//     const singleFileFields = [
-//       "incorporationCertificate",
-//       "panCard",
-//       "authorizedAddressProof",
-//       "billingAddressProof",
-//       "authorizedId",
-//       "companyLogo",
-//     ];
+  //     singleFileFields.forEach((key) => {
+  //       if (formData[key]) data.append(key, formData[key]);
+  //     });
 
-//     singleFileFields.forEach((key) => {
-//       if (formData[key]) data.append(key, formData[key]);
-//     });
+  //     // Append multiple files
+  //     if (formData.otherDocuments?.length) {
+  //       formData.otherDocuments.forEach((file) =>
+  //         data.append("otherDocuments", file)
+  //       );
+  //     }
 
-//     // Append multiple files
-//     if (formData.otherDocuments?.length) {
-//       formData.otherDocuments.forEach((file) =>
-//         data.append("otherDocuments", file)
-//       );
-//     }
+  //     // Remove password fields if empty on edit
+  //     if (isEdit && (!formData.password || !formData.confirmPassword)) {
+  //       data.delete("password");
+  //       data.delete("confirmPassword");
+  //     }
 
-//     // Remove password fields if empty on edit
-//     if (isEdit && (!formData.password || !formData.confirmPassword)) {
-//       data.delete("password");
-//       data.delete("confirmPassword");
-//     }
+  //     // Build URL and method
+  //     const url = isEdit
+  //       ? `http://localhost:8000/company/update/${initialData.id}`
+  //       : "http://localhost:8000/company/register";
+  //     const method = isEdit ? "put" : "post";
 
-//     // Build URL and method
-//     const url = isEdit
-//       ? `http://localhost:8000/company/update/${initialData.id}`
-//       : "http://localhost:8000/company/register";
-//     const method = isEdit ? "put" : "post";
+  //     const res = await axios({
+  //       method,
+  //       url,
+  //       data,
+  //       headers: { "Content-Type": "multipart/form-data" },
+  //     });
 
-//     const res = await axios({
-//       method,
-//       url,
-//       data,
-//       headers: { "Content-Type": "multipart/form-data" },
-//     });
+  //     alert(
+  //       res.data?.message || (isEdit ? "Company updated!" : "Company registered!")
+  //     );
 
-//     alert(
-//       res.data?.message || (isEdit ? "Company updated!" : "Company registered!")
-//     );
+  //     if (onSubmit) onSubmit(data);
+  //     if (onClose) onClose();
+  //   } catch (err) {
+  //     console.error("Error:", err.response || err);
+  //     alert(
+  //       err.response?.data?.detail || "Failed to submit company data."
+  //     );
+  //   }
+  // };
 
-//     if (onSubmit) onSubmit(data);
-//     if (onClose) onClose();
-//   } catch (err) {
-//     console.error("Error:", err.response || err);
-//     alert(
-//       err.response?.data?.detail || "Failed to submit company data."
-//     );
-//   }
-// };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
-
-  // Validate current step
-  if (!validateStep(step)) {
-    console.log("Validation failed at step:", step, errors);
-    return;
-  }
-
-  try {
-    // Ensure ID exists in edit mode
-    if (isEdit && !initialData?.id) {
-      alert("Cannot update: Company ID not found.");
-      console.error("initialData.id is missing:", initialData);
+    // Validate current step
+    if (!validateStep(step)) {
+      console.log("Validation failed at step:", step, errors);
       return;
     }
 
-    console.log("Submitting formData:", formData);
-
-    const data = new FormData();
-
-    // --- Append text fields ---
-    const textFields = [
-      "companyName","regAddress1","regAddress2","city","state","gst","pincode",
-      "authorisedPerson","designation","mobile","email","password","confirmPassword",
-      "commAddress1","commAddress2","commCity","commState","commPincode",
-      "contactPerson1","designation1","mobile1","email1",
-      "contactPerson2","designation2","mobile2","email2",
-      "contactPerson3","designation3","mobile3","email3",
-      "termsAccepted"
-    ];
-
-    textFields.forEach((key) => {
-      if (formData[key] !== undefined && formData[key] !== null) {
-        data.append(key, formData[key]);
+    try {
+      // Ensure ID exists in edit mode
+      if (isEdit && !initialData?.id) {
+        alert("Cannot update: Company ID not found.");
+        console.error("initialData.id is missing:", initialData);
+        return;
       }
-    });
 
-    // --- Append single file fields ---
-    const singleFileFields = [
-      "incorporationCertificate","panCard","authorizedAddressProof",
-      "billingAddressProof","authorizedId","companyLogo"
-    ];
+      console.log("Submitting formData:", formData);
 
-    singleFileFields.forEach((key) => {
-      if (formData[key]) {
-        console.log("Appending file:", key, formData[key].name);
-        data.append(key, formData[key]);
-      }
-    });
+      const data = new FormData();
 
-    // --- Append multiple files ---
-    if (formData.otherDocuments?.length) {
-      formData.otherDocuments.forEach((file, idx) => {
-        console.log(`Appending otherDocuments[${idx}]:`, file.name);
-        data.append("otherDocuments", file);
+      // --- Append text fields ---
+      const textFields = [
+        "companyName",
+        "regAddress1",
+        "regAddress2",
+        "city",
+        "state",
+        "gst",
+        "pincode",
+        "authorisedPerson",
+        "designation",
+        "mobile",
+        "email",
+        "password",
+        "confirmPassword",
+        "commAddress1",
+        "commAddress2",
+        "commCity",
+        "commState",
+        "commPincode",
+        "contactPerson1",
+        "designation1",
+        "mobile1",
+        "email1",
+        "contactPerson2",
+        "designation2",
+        "mobile2",
+        "email2",
+        "contactPerson3",
+        "designation3",
+        "mobile3",
+        "email3",
+        "termsAccepted",
+      ];
+
+      textFields.forEach((key) => {
+        if (formData[key] !== undefined && formData[key] !== null) {
+          data.append(key, formData[key]);
+        }
       });
+
+      // --- Append single file fields ---
+      const singleFileFields = [
+        "incorporationCertificate",
+        "panCard",
+        "authorizedAddressProof",
+        "billingAddressProof",
+        "authorizedId",
+        "companyLogo",
+      ];
+
+      singleFileFields.forEach((key) => {
+        if (formData[key]) {
+          console.log("Appending file:", key, formData[key].name);
+          data.append(key, formData[key]);
+        }
+      });
+
+      // --- Append multiple files ---
+      if (formData.otherDocuments?.length) {
+        formData.otherDocuments.forEach((file, idx) => {
+          console.log(`Appending otherDocuments[${idx}]:`, file.name);
+          data.append("otherDocuments", file);
+        });
+      }
+
+      // Remove password fields if empty in edit mode
+      if (isEdit && (!formData.password || !formData.confirmPassword)) {
+        data.delete("password");
+        data.delete("confirmPassword");
+      }
+
+      // --- Build URL & method ---
+      const url = isEdit
+        ? `http://localhost:8000/company/update/${initialData.id}`
+        : "http://localhost:8000/company/register";
+      const method = isEdit ? "put" : "post";
+
+      console.log("Sending request:", method.toUpperCase(), url);
+
+      const res = await axios({
+        method,
+        url,
+        data,
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      console.log("Response:", res.data);
+
+      alert(
+        res.data?.message ||
+          (isEdit ? "Company updated!" : "Company registered!")
+      );
+
+      if (onSubmit) onSubmit(data);
+      if (onClose) onClose();
+    } catch (err) {
+      console.error("Submit Error:", err.response || err);
+      alert(
+        err.response?.data?.detail ||
+          err.message ||
+          "Failed to submit company data."
+      );
     }
-
-    // Remove password fields if empty in edit mode
-    if (isEdit && (!formData.password || !formData.confirmPassword)) {
-      data.delete("password");
-      data.delete("confirmPassword");
-    }
-
-    // --- Build URL & method ---
-    const url = isEdit
-      ? `http://localhost:8000/company/update/${initialData.id}`
-      : "http://localhost:8000/company/register";
-    const method = isEdit ? "put" : "post";
-
-    console.log("Sending request:", method.toUpperCase(), url);
-
-    const res = await axios({
-      method,
-      url,
-      data,
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-
-    console.log("Response:", res.data);
-
-    alert(
-      res.data?.message || (isEdit ? "Company updated!" : "Company registered!")
-    );
-
-    if (onSubmit) onSubmit(data);
-    if (onClose) onClose();
-
-  } catch (err) {
-    console.error("Submit Error:", err.response || err);
-    alert(
-      err.response?.data?.detail ||
-      err.message ||
-      "Failed to submit company data."
-    );
-  }
-};
-
+  };
 
   // Handle Next button click -> show OTP modal
   const handleNextClick = () => {
@@ -704,20 +782,25 @@ const handleSubmit = async (e) => {
     setStep(step + 1);
   };
 
-
   useEffect(() => {
-  if (sameAsRegistered) {
-    setFormData((prev) => ({
-      ...prev,
-      commAddress1: prev.regAddress1,
-      commAddress2: prev.regAddress2,
-      commCity: prev.city,
-      commState: prev.state,
-      commPincode: prev.pincode,
-    }));
-  }
-}, [formData.regAddress1, formData.regAddress2, formData.city, formData.state, formData.pincode, sameAsRegistered]);
-
+    if (sameAsRegistered) {
+      setFormData((prev) => ({
+        ...prev,
+        commAddress1: prev.regAddress1,
+        commAddress2: prev.regAddress2,
+        commCity: prev.city,
+        commState: prev.state,
+        commPincode: prev.pincode,
+      }));
+    }
+  }, [
+    formData.regAddress1,
+    formData.regAddress2,
+    formData.city,
+    formData.state,
+    formData.pincode,
+    sameAsRegistered,
+  ]);
 
   // Send OTP API
   // const handleSendOtp = async () => {
@@ -1106,37 +1189,36 @@ const handleSubmit = async (e) => {
                               className="form-check-input"
                             /> */}
                             <input
-  type="checkbox"
-  className="form-check-input"
-  checked={sameAsRegistered}
-  onChange={(e) => {
-    const isChecked = e.target.checked;
-    setSameAsRegistered(isChecked);
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={sameAsRegistered}
+                              onChange={(e) => {
+                                const isChecked = e.target.checked;
+                                setSameAsRegistered(isChecked);
 
-    if (isChecked) {
-      // Copy left column data into right column
-      setFormData((prev) => ({
-        ...prev,
-        commAddress1: prev.regAddress1,
-        commAddress2: prev.regAddress2,
-        commCity: prev.city,
-        commState: prev.state,
-        commPincode: prev.pincode,
-      }));
-    } else {
-      // Clear right column fields if unchecked
-      setFormData((prev) => ({
-        ...prev,
-        commAddress1: "",
-        commAddress2: "",
-        commCity: "",
-        commState: "",
-        commPincode: "",
-      }));
-    }
-  }}
-/>
-
+                                if (isChecked) {
+                                  // Copy left column data into right column
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    commAddress1: prev.regAddress1,
+                                    commAddress2: prev.regAddress2,
+                                    commCity: prev.city,
+                                    commState: prev.state,
+                                    commPincode: prev.pincode,
+                                  }));
+                                } else {
+                                  // Clear right column fields if unchecked
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    commAddress1: "",
+                                    commAddress2: "",
+                                    commCity: "",
+                                    commState: "",
+                                    commPincode: "",
+                                  }));
+                                }
+                              }}
+                            />
                           </div>
                           <input
                             type="text"
@@ -1523,15 +1605,13 @@ const handleSubmit = async (e) => {
                           />
 
                           {/* Company Logo - Hide in Edit Mode */}
-                          {!isEdit && (
-                            <FileInput
+                       <FileInput
                               label="Company Logo"
                               name="companyLogo"
                               existingFile={formData.existingFiles?.companyLogo}
                               file={formData.companyLogo}
                               onChange={handleFileChange}
                             />
-                          )}
                         </div>
                       </div>
 
@@ -1571,13 +1651,12 @@ const handleSubmit = async (e) => {
                           <i className="icon-base ti tabler-arrow-left icon-xs me-sm-2 me-0"></i>{" "}
                           Previous
                         </button>
-<button
-  type="submit" // use submit to trigger form behavior
-  className="btn btn-success btn-submit"
->
-  {isEdit ? "Update" : "Submit"}
-</button>
-
+                        <button
+                          type="submit" // use submit to trigger form behavior
+                          className="btn btn-success btn-submit"
+                        >
+                          {isEdit ? "Update" : "Submit"}
+                        </button>
                       </div>
                     </div>
                   )}
