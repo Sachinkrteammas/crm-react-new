@@ -6,6 +6,7 @@ const CreateAgent = () => {
   const [agents, setAgents] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editingAgent, setEditingAgent] = useState(null);
+  const [viewingAgent, setViewingAgent] = useState(null);
 
   const [form, setForm] = useState({
     displayname: "",
@@ -183,6 +184,12 @@ const CreateAgent = () => {
                   <td>{agent.workmode}</td>
                   <td className="text-center">
                     <button
+                      className="btn btn-sm btn-outline-info me-2"
+                      onClick={() => setViewingAgent(agent)}
+                    >
+                      👁 View
+                    </button>
+                    <button
                       className="btn btn-sm btn-outline-warning me-2"
                       onClick={() => handleEdit(agent)}
                     >
@@ -207,6 +214,120 @@ const CreateAgent = () => {
             </tbody>
           </table>
           </div>
+
+          {/* View Modal */}
+          {viewingAgent && (
+          <div className="modal fade show" style={{ display: "block" }} tabIndex="-1">
+            <div className="modal-dialog modal-xl">
+              <div className="modal-content shadow-lg border-0">
+                <div className="modal-header bg-primary text-white">
+                  <h5 className="modal-title">👤 Agent Details</h5>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() => setViewingAgent(null)}
+                  ></button>
+                </div>
+
+                <div className="modal-body">
+                  <div className="row g-4">
+                    {/* Personal Info */}
+                    <div className="col-md-12">
+                      <div className="card shadow-sm border-0">
+                        <div className="card-body">
+                          <h6 className="text-primary mb-3">Personal Information</h6>
+                          <div className="row g-3">
+                            <div className="col-md-4"><strong>Name:</strong> {viewingAgent.displayname}</div>
+                            <div className="col-md-4"><strong>User ID:</strong> {viewingAgent.username}</div>
+                            <div className="col-md-4"><strong>Email:</strong> {viewingAgent.email}</div>
+                            <div className="col-md-4"><strong>Contact:</strong> {viewingAgent.contactNo}</div>
+                            <div className="col-md-4"><strong>Gender:</strong> {viewingAgent.gender}</div>
+                            <div className="col-md-4"><strong>DOB:</strong> {viewingAgent.dateOfBirth}</div>
+                            <div className="col-md-4"><strong>DOJ:</strong> {viewingAgent.dateofjoining}</div>
+                            <div className="col-md-4"><strong>Agent Type:</strong> {viewingAgent.agentType}</div>
+                            <div className="col-md-4"><strong>Versant:</strong> {viewingAgent.versant}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Work Info */}
+                    <div className="col-md-12">
+                      <div className="card shadow-sm border-0">
+                        <div className="card-body">
+                          <h6 className="text-primary mb-3">Work Information</h6>
+                          <div className="row g-3">
+                            <div className="col-md-4"><strong>Process:</strong> {viewingAgent.processname}</div>
+                            <div className="col-md-4"><strong>Work Mode:</strong> {viewingAgent.workmode}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Address */}
+                    <div className="col-md-12">
+                      <div className="card shadow-sm border-0">
+                        <div className="card-body">
+                          <h6 className="text-primary mb-3">Address</h6>
+                          <p className="mb-0">
+                            {viewingAgent.address}, {viewingAgent.city}, {viewingAgent.state}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Languages */}
+                    <div className="col-md-12">
+                      <div className="card shadow-sm border-0">
+                        <div className="card-body">
+                          <h6 className="text-primary mb-3">Languages Known</h6>
+                          <p className="mb-0">
+                            {Array.isArray(viewingAgent.languages)
+                              ? viewingAgent.languages.join(", ")
+                              : viewingAgent.languages}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Client Rights */}
+                    <div className="col-md-12">
+                      <div className="card shadow-sm border-0">
+                        <div className="card-body">
+                          <h6 className="text-primary mb-3">Client Rights</h6>
+                          <p className="mb-0">
+                            {(() => {
+                              let rights = viewingAgent.ClientRights;
+
+                              if (typeof rights === "string") {
+                                rights = rights.split(",").map((r) => r.trim());
+                              }
+                              if (!Array.isArray(rights)) rights = [];
+
+                              if (rights.length === 0) return "No Clients Assigned";
+
+                              return rights
+                                .map((id) => {
+                                  const client = clients.find(
+                                    (c) => c.company_id.toString() === id.toString()
+                                  );
+                                  return client ? client.company_name : `Unknown (${id})`;
+                                })
+                                .join(", ");
+                            })()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
 
 
           {/* Modal */}
@@ -558,6 +679,7 @@ const CreateAgent = () => {
 
           {/* Modal backdrop */}
           {showModal && <div className="modal-backdrop fade show"></div>}
+          {viewingAgent && <div className="modal-backdrop fade show"></div>}
       </div>
     </div>
   );

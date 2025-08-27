@@ -132,7 +132,6 @@ const OBSharedCDRReport = () => {
               <th>Sub Scenario 2</th>
               <th>Sub Scenario 3</th>
               <th>Sub Scenario 4</th>
-              <th>Source</th>
               <th>Recording</th>
             </tr>
           </thead>
@@ -143,25 +142,24 @@ const OBSharedCDRReport = () => {
                   <td>{row.CallDate || "-"}</td>
                   <td>{row.StartTime || "-"}</td>
                   <td>{row.Endtime || "-"}</td>
-                  <td>{row.PhoneNumber || "-"}</td>
-                  <td>{row.Agent || "-"}</td>
-                  <td>{row.FullName || "-"}</td>
+                  <td>{row.CustomerNumber || "-"}</td>
+                  <td>{row.AgentID || "-"}</td>
+                  <td>{row.AgentName || "-"}</td>
                   <td>{row.CallType || "-"}</td>
-                  <td>{row.Status || "-"}</td>
-                  <td>{row.DialMode || "-"}</td>
-                  <td>{row.CampaignID || "-"}</td>
+                  <td>{row.SystemDisposition || "-"}</td>
+                  <td>{row.DialingMode || "-"}</td>
+                  <td>{row.ClientName || "-"}</td>
                   <td>{row.LeadID || "-"}</td>
-                  <td>{row.LengthInMin || "-"}</td>
-                  <td>{row.TalkSec || "-"}</td>
-                  <td>{row.WaitSec || "-"}</td>
-                  <td>{row.DispoSec || "-"}</td>
-                  <td>{row.TermReason || "-"}</td>
+                  <td>{row.ACHT || "-"}</td>
+                  <td>{row.TalkTime || "-"}</td>
+                  <td>{row.WaitTime || "-"}</td>
+                  <td>{row.DispoTime || "-"}</td>
+                  <td>{row.DisconnectedBy || "-"}</td>
                   <td>{row.Scenario || "-"}</td>
                   <td>{row.SubScenario1 || "-"}</td>
                   <td>{row.SubScenario2 || "-"}</td>
                   <td>{row.SubScenario3 || "-"}</td>
                   <td>{row.SubScenario4 || "-"}</td>
-                  <td>{row.Source || "-"}</td>
                   <td>
                     {row.RecordingUrl ? (
                       <a href={row.RecordingUrl} download>
@@ -175,7 +173,7 @@ const OBSharedCDRReport = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="23" className="text-center">
+                <td colSpan="12" className="text-center">
                   No data available for selected date range.
                 </td>
               </tr>

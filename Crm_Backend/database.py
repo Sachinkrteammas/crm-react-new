@@ -48,6 +48,22 @@ def get_db3():
     finally:
         db.close()
 
+
+
+SQL_DB_URL4 = "mysql+pymysql://root:vicidialnow@192.168.11.236/db_dialdesk?charset=utf8mb4"
+
+engine4 = create_engine(SQL_DB_URL4)
+SessionLocal4 = sessionmaker(bind=engine4)
+
+def get_db4():
+    db = SessionLocal4()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+
 # ---------- Raw Access (Better than yield-based) ----------
 def get_engine():
     return engine
@@ -58,3 +74,6 @@ def get_engine2():
 
 def get_engine3():
     return engine3
+
+def get_engine4():
+    return engine4

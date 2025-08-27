@@ -143,7 +143,8 @@ const OBCDRReport = () => {
               </tr>
             </thead>
             <tbody>
-              {obCdrData.map((row, idx) => (
+              {obCdrData.length > 0 ? (
+                obCdrData.map((row, idx) => (
                 <tr key={idx}>
                   <td>{row.Agent || "-"}</td>
                   <td>{row.PhoneNumber || "-"}</td>
@@ -153,8 +154,8 @@ const OBCDRReport = () => {
                   <td>{row.CallDuration || "-"}</td>
                   <td>{row.WrapTime || "-"}</td>
                   <td>
-                    {row.recording ? (
-                      <a href={row.recording} className="text-primary">
+                    {row.Recording ? (
+                      <a href={row.Recording} className="text-primary">
                         <i className="ti ti-download"></i>
                       </a>
                     ) : (
@@ -167,7 +168,14 @@ const OBCDRReport = () => {
                   <td>{row.subScenario3 || "-"}</td>
                   <td>{row.subScenario4 || "-"}</td>
                 </tr>
-              ))}
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="12" className="text-center">
+                    No data available for selected date range.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
