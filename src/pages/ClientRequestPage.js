@@ -129,7 +129,7 @@ export default function ClientRequestPage() {
   };
 
   return (
-    <div className="container mt-4">
+    <div className="mt-4">
       <h3>Company List</h3>
 
       {loading ? (
