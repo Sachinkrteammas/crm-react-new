@@ -344,12 +344,12 @@ def get_ticket_case_analysis(
     # --- 1) Case distribution by Category1 ---
     sql_cases = text(f"""
         SELECT 
-          SUM(CASE WHEN Category1 = 'Enquiry' THEN 1 ELSE 0 END)    AS Enquiry,
-          SUM(CASE WHEN Category1 = 'Complaint' THEN 1 ELSE 0 END)  AS Complaint,
-          SUM(CASE WHEN Category1 = 'BulkOrder' THEN 1 ELSE 0 END)  AS BulkOrder,
+          SUM(CASE WHEN Category1 = 'General Enquiry' THEN 1 ELSE 0 END)    AS Enquiry,
+          SUM(CASE WHEN Category1 = 'Service Complaint' THEN 1 ELSE 0 END)  AS Complaint,
+          SUM(CASE WHEN Category1 = 'Escalation' THEN 1 ELSE 0 END)  AS BulkOrder,
           SUM(CASE WHEN Category1 = 'Request' THEN 1 ELSE 0 END)    AS Request,
           SUM(CASE WHEN Category1 NOT IN 
-              ('Enquiry','Complaint','BulkOrder','Request') 
+              ('General Enquiry','Service Complaint','Escalation','Request') 
             THEN 1 ELSE 0 END)                                    AS Other
         FROM call_master 
         WHERE ClientId = :cid AND {cond}
