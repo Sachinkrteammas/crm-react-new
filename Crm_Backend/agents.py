@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime
-from database import get_db
+from database import get_db4
 from typing import Dict
 
 router = APIRouter()
 
 @router.get("/clients-rights")
-def get_all_clients_rights(db: Session = Depends(get_db)):
+def get_all_clients_rights(db: Session = Depends(get_db4)):
     """
     Fetch all companies (company_id, company_name) as dictionary list
     """
@@ -19,7 +19,7 @@ def get_all_clients_rights(db: Session = Depends(get_db)):
 
 
 @router.get("/clients-rights/{company_id}")
-def get_client_right(company_id: int, db: Session = Depends(get_db)):
+def get_client_right(company_id: int, db: Session = Depends(get_db4)):
     """
     Fetch single company by company_id as dictionary
     """
@@ -35,7 +35,7 @@ def get_client_right(company_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/save")
-def create_agent(agent: dict, db: Session = Depends(get_db)):
+def create_agent(agent: dict, db: Session = Depends(get_db4)):
     try:
         query = text("""
             INSERT INTO agent_master
@@ -62,7 +62,7 @@ def create_agent(agent: dict, db: Session = Depends(get_db)):
 
 
 @router.get("/list")
-def list_agents(db: Session = Depends(get_db)):
+def list_agents(db: Session = Depends(get_db4)):
     query = text("SELECT * FROM agent_master ORDER BY createdate DESC")
     result = db.execute(query).fetchall()
 
@@ -73,7 +73,7 @@ def list_agents(db: Session = Depends(get_db)):
 
 
 @router.put("/{agent_id}")
-def update_agent(agent_id: int, agent: dict, db: Session = Depends(get_db)):
+def update_agent(agent_id: int, agent: dict, db: Session = Depends(get_db4)):
     try:
         query = text("""
             UPDATE agent_master
@@ -100,7 +100,7 @@ def update_agent(agent_id: int, agent: dict, db: Session = Depends(get_db)):
 
 
 @router.delete("/{agent_id}")
-def delete_agent(agent_id: int, db: Session = Depends(get_db)):
+def delete_agent(agent_id: int, db: Session = Depends(get_db4)):
     try:
         query = text("DELETE FROM agent_master WHERE id = :id")
         result = db.execute(query, {"id": agent_id})

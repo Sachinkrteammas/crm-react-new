@@ -1,7 +1,7 @@
 # from fastapi import APIRouter, HTTPException
 # from pydantic import BaseModel
 # from typing import Optional
-# from database import get_engine
+# from database import get_engine4
 
 # router = APIRouter()
 
@@ -52,7 +52,7 @@
 #     conn = None
 #     cursor = None
 #     try:
-#         conn = get_engine().raw_connection()
+#         conn = get_engine4().raw_connection()
 #         cursor = conn.cursor()
 #         sql = """
 #         INSERT INTO plan_master (
@@ -107,7 +107,7 @@
 #     conn = None
 #     cursor = None
 #     try:
-#         conn = get_engine().raw_connection()
+#         conn = get_engine4().raw_connection()
 #         cursor = conn.cursor()
 #         sql = """
 #         INSERT INTO plan_master (
@@ -162,7 +162,7 @@
 #     conn = None
 #     cursor = None
 #     try:
-#         conn = get_engine().raw_connection()
+#         conn = get_engine4().raw_connection()
 #         cursor = conn.cursor()
 #         cursor.execute("SELECT * FROM plan_master ORDER BY id DESC")
 #         rows = cursor.fetchall()
@@ -181,7 +181,7 @@
 #     conn = None
 #     cursor = None
 #     try:
-#         conn = get_engine().raw_connection()
+#         conn = get_engine4().raw_connection()
 #         cursor = conn.cursor()
 #         cursor.execute("SELECT * FROM plan_master WHERE id=%s", (plan_id,))
 #         row = cursor.fetchone()
@@ -207,7 +207,7 @@
 #     conn = None
 #     cursor = None
 #     try:
-#         conn = get_engine().raw_connection()
+#         conn = get_engine4().raw_connection()
 #         cursor = conn.cursor()
 #         sql = """
 #         UPDATE plan_master SET
@@ -254,7 +254,7 @@
 #     conn = None
 #     cursor = None
 #     try:
-#         conn = get_engine().raw_connection()
+#         conn = get_engine4().raw_connection()
 #         cursor = conn.cursor()
 #         sql = """
 #         UPDATE plan_master SET
@@ -302,7 +302,7 @@
 #     conn = None
 #     cursor = None
 #     try:
-#         conn = get_engine().raw_connection()
+#         conn = get_engine4().raw_connection()
 #         cursor = conn.cursor()
 #         cursor.execute("DELETE FROM plan_master WHERE id=%s", (plan_id,))
 #         conn.commit()
@@ -325,7 +325,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from database import get_engine
+from database import get_engine4
 
 router = APIRouter()
 
@@ -374,7 +374,7 @@ def create_plan(plan: PlanCreateRequest):
     conn = None
     cursor = None
     try:
-        conn = get_engine().raw_connection()
+        conn = get_engine4().raw_connection()
         cursor = conn.cursor()
         sql = """
         INSERT INTO plan_master (
@@ -432,7 +432,7 @@ def get_plans():
     conn = None
     cursor = None
     try:
-        conn = get_engine().raw_connection()
+        conn = get_engine4().raw_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM plan_master ORDER BY id DESC")
         rows = cursor.fetchall()
@@ -452,7 +452,7 @@ def get_plan(plan_id: int):
     conn = None
     cursor = None
     try:
-        conn = get_engine().raw_connection()
+        conn = get_engine4().raw_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM plan_master WHERE id=%s", (plan_id,))
         row = cursor.fetchone()
@@ -475,7 +475,7 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
     conn = None
     cursor = None
     try:
-        conn = get_engine().raw_connection()
+        conn = get_engine4().raw_connection()
         cursor = conn.cursor()
         sql = """
         UPDATE plan_master SET
@@ -525,7 +525,7 @@ def delete_plan(plan_id: int):
     conn = None
     cursor = None
     try:
-        conn = get_engine().raw_connection()
+        conn = get_engine4().raw_connection()
         cursor = conn.cursor()
         cursor.execute("DELETE FROM plan_master WHERE id=%s", (plan_id,))
         conn.commit()

@@ -3,14 +3,14 @@
 from fastapi import APIRouter
 from sqlalchemy import text
 
-from database import get_engine
+from database import get_engine4
 
 router = APIRouter(tags=["core_api"])  # 👈 SINGLE TAG for all endpoints
 
 
 
 def fetch_categories(query: str, params: dict):
-    engine = get_engine()
+    engine = get_engine4()
     with engine.connect() as conn:
         result = conn.execute(text(query), params).mappings()  # ✅ this line is key
         return [{"id": row["id"], "ecrName": row["ecrName"]} for row in result]

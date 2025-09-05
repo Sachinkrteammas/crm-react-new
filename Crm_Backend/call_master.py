@@ -13,7 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 
-from database import get_engine, get_engine2, SessionLocal2, get_db, get_db2, get_db3
+from database import get_engine4, get_engine2, get_db2, get_db4
 
 router = APIRouter(tags=["Call Master"])
 
@@ -28,13 +28,13 @@ def get_call_master_data(
     Category4: Optional[str] = Query(None),
     Category5: Optional[str] = Query(None),
 ):
-    engine = get_engine()
+    engine = get_engine4()
     with engine.connect() as conn:
         # Step 1: Fetch field mappings
         field_meta_query = """
             SELECT fieldNumber, FieldName 
             FROM field_master 
-            WHERE client_id = :client_id 
+            WHERE ClientId = :client_id 
               AND (FieldStatus IS NULL OR FieldStatus != 'D')
             ORDER BY fieldNumber
         """
@@ -50,7 +50,7 @@ def get_call_master_data(
         columns += ["CallDate", "Category1", "Category2", "Category3", "Category4", "Category5"]
 
         # Step 2: WHERE clause setup
-        where_clauses = ["client_id = :client_id"]
+        where_clauses = ["ClientId = :client_id"]
         params = {"client_id": client_id}
 
         if from_date:
@@ -166,7 +166,7 @@ def get_priority_calls(
 
 @router.get("/types", response_model=List[TypeItem])
 def get_types(
-        CLIENT_ID: int = Query(...), db: Session = Depends(get_db3)):
+        CLIENT_ID: int = Query(...), db: Session = Depends(get_db4)):
     sql = text("""
         SELECT DISTINCT CampaignParentName AS id,
                CampaignParentName AS name
@@ -175,11 +175,11 @@ def get_types(
         ORDER BY CampaignParentName
     """)
     rows = db.execute(sql, {"cid": CLIENT_ID}).fetchall()
-    return [dict(r) for r in rows]
+    return [dict(r._mapping) for r in rows]
 
 @router.get("/campaigns", response_model=List[CampaignItem])
 def get_campaigns(
-        CLIENT_ID: int = Query(...), type: str = Query(...), db: Session = Depends(get_db3)):
+        CLIENT_ID: int = Query(...), type: str = Query(...), db: Session = Depends(get_db4)):
     sql = text("""
         SELECT id, CampaignName
         FROM ob_campaign
@@ -188,11 +188,11 @@ def get_campaigns(
           AND CampaignStatus = 'A'
     """)
     rows = db.execute(sql, {"cid": CLIENT_ID, "type": type}).fetchall()
-    return [dict(r) for r in rows]
+    return [dict(r._mapping) for r in rows]
 
 @router.get("/allocations", response_model=List[AllocationItem])
 def get_allocations(
-        CLIENT_ID: int = Query(...), campaign: int = Query(...), db: Session = Depends(get_db3)):
+        CLIENT_ID: int = Query(...), campaign: int = Query(...), db: Session = Depends(get_db4)):
     sql = text("""
         SELECT id, AllocationName
         FROM ob_allocation_name
@@ -200,7 +200,7 @@ def get_allocations(
           AND CampaignId = :camp
     """)
     rows = db.execute(sql, {"cid": CLIENT_ID, "camp": campaign}).fetchall()
-    return [dict(r) for r in rows]
+    return [dict(r._mapping) for r in rows]
 
 @router.get("/outcalls", response_model=List[OutcallItem])
 def get_outcalls(
@@ -215,7 +215,7 @@ def get_outcalls(
     msisdn: Optional[str] = None,
     startDate: Optional[str] = None,
     endDate: Optional[str] = None,
-    db: Session = Depends(get_db3)
+    db: Session = Depends(get_db4)
 ):
     base_sql = [
         "SELECT o.id, o.Category1 AS scenario, o.Category2 AS subScenario1,",
@@ -268,9 +268,9 @@ def download_excel_raw(
         client_id: int,
         from_date: date = Query(...),
         to_date: date = Query(...),
-        db=Depends(get_db),
+        db=Depends(get_db4),
         db2=Depends(get_db2),
-        db3=Depends(get_db3),
+        db3=Depends(get_db4),
 ):
     # Step 1: Client Info
     client_result = db.execute(text("""
@@ -281,7 +281,7 @@ def download_excel_raw(
 
     balance_result = db.execute(text("""
         SELECT * FROM balance_master
-        WHERE client_id = :client_id
+        WHERE clientId = :client_id
         LIMIT 1
     """), {"client_id": client_id}).fetchone()
 
@@ -814,12 +814,12 @@ def download_excel_raw(
 
 
 @router.get("/fields/{client_id}")
-def get_fields_for_client(client_id: int, db: Session = Depends(get_db)):
+def get_fields_for_client(client_id: int, db: Session = Depends(get_db4)):
     # Fetch field_master data for the client
     sql_fields = text("""
-        SELECT id, FieldName, FieldType, FieldValidation, DefinedField, RequiredCheck, Priority, fieldNumber
+        SELECT id, FieldName, FieldType, FieldValidation, RequiredCheck, Priority, fieldNumber
         FROM field_master
-        WHERE client_id = :client_id AND FieldStatus = 1
+        WHERE ClientId = :client_id AND FieldStatus = 1
         ORDER BY Priority ASC
     """)
     fields_result = db.execute(sql_fields, {"client_id": client_id})
@@ -836,7 +836,7 @@ def get_fields_for_client(client_id: int, db: Session = Depends(get_db)):
         sql_dropdown_values = text("""
             SELECT FieldId, FieldValueName
             FROM field_master_value
-            WHERE client_id = :client_id
+            WHERE ClientId = :client_id
               AND FieldId IN :field_ids
             ORDER BY id ASC
         """)
@@ -860,12 +860,12 @@ def get_fields_for_client(client_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/call_tag/{client_id}")
-async def save_call_master(client_id: int, payload: dict = Body(...), db: Session = Depends(get_db)):
+async def save_call_master(client_id: int, payload: dict = Body(...), db: Session = Depends(get_db4)):
     # 1️⃣ Fetch FieldNames ordered by fieldNumber for this client
     field_query = text("""
             SELECT FieldName, fieldNumber
             FROM field_master
-            WHERE client_id = :client_id AND FieldStatus = 1
+            WHERE ClientId = :client_id AND FieldStatus = 1
             ORDER BY fieldNumber
         """)
     result = db.execute(field_query, {"client_id": client_id})
@@ -880,7 +880,7 @@ async def save_call_master(client_id: int, payload: dict = Body(...), db: Sessio
         field_column_mapping[f"Field{field_number}"] = value
 
     # 3️⃣ Prepare insert statement
-    columns = ', '.join(["`client_id`"] + [f"`{col}`" for col in field_column_mapping.keys()])
+    columns = ', '.join(["`ClientId`"] + [f"`{col}`" for col in field_column_mapping.keys()])
     placeholders = ', '.join([":client_id"] + [f":{col}" for col in field_column_mapping.keys()])
 
     param_payload = {"client_id": client_id}

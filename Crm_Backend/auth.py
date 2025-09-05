@@ -2,7 +2,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from database import get_db, get_db3
+from database import get_db, get_db3, get_db4
 from schemas import LoginRequest, LoginResponse, CallMasterRecord
 from passlib.context import CryptContext
 from jose import jwt
@@ -29,7 +29,7 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 @router.post("/login", response_model=LoginResponse)
-def login(request: LoginRequest, db: Session = Depends(get_db)):
+def login(request: LoginRequest, db: Session = Depends(get_db4)):
     query = text("SELECT * FROM registration_master WHERE email = :email")
     result = db.execute(query, {"email": request.email}).mappings().fetchone()
 
@@ -48,7 +48,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/call-master/", response_model=List[CallMasterRecord])
-def get_calls_by_client(client_id: int = Query(...), db: Session = Depends(get_db)):
+def get_calls_by_client(client_id: int = Query(...), db: Session = Depends(get_db4)):
     try:
         query = text("SELECT * FROM call_master WHERE client_id = :client_id LIMIT 3")
         result = db.execute(query, {"client_id": client_id}).mappings().fetchall()

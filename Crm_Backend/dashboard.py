@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from schemas import *
-from database import get_db, get_db2, get_db3
+from database import get_db, get_db2, get_db3, get_db4
 from datetime import date
 from typing import List, Dict, Any
 
@@ -14,7 +14,7 @@ router = APIRouter()
 def get_dashboard_report(
     req: DashboardReq,
     db: Session = Depends(get_db2),
-    db_main: Session = Depends(get_db),
+    db_main: Session = Depends(get_db4),
 ) -> Any:
     # 1) Fetch campaignids
     camp = db_main.execute(
@@ -97,7 +97,7 @@ def get_dashboard_report(
         tag_sql = text(f"""
             SELECT COUNT(cm.Id) AS total_tagged
             FROM call_master cm
-            WHERE cm.client_id = :cid
+            WHERE cm.ClientId = :cid
               AND {cond}
               AND cm.CallType <> 'Upload'
         """)
@@ -143,7 +143,7 @@ def get_dashboard_report(
 @router.post("/active_services", response_model=ActiveService)
 def get_active_services(
     req: ActiveServicesRequest,
-    db: Session = Depends(get_db3),
+    db: Session = Depends(get_db4),
 ):
     # 1) Look up the balance_master entry for this client
     bm = db.execute(
@@ -195,7 +195,7 @@ def get_active_services(
 def get_call_analysis_report(
     req: CallAnalysisRequest,
     db: Session = Depends(get_db2),
-    db_main: Session = Depends(get_db),
+    db_main: Session = Depends(get_db4),
 ):
     # Fetch campaign ids
     camp = db_main.execute(
@@ -254,7 +254,7 @@ def get_call_analysis_report(
 def get_call_distribution_report(
     req: DashboardReq,
     db: Session = Depends(get_db2),
-    db_main: Session = Depends(get_db),
+    db_main: Session = Depends(get_db4),
 ):
     camp = db_main.execute(
         text("SELECT campaignid FROM registration_master WHERE company_id=:cid"),
@@ -321,7 +321,7 @@ def get_call_distribution_report(
 def get_ticket_case_analysis(
     company_id: int,
     req: DashboardReq,
-    db: Session = Depends(get_db3),
+    db: Session = Depends(get_db4),
 ):
     # Build date condition exactly as in PHP
     vt = req.view_type or "Today"
@@ -344,12 +344,12 @@ def get_ticket_case_analysis(
     # --- 1) Case distribution by Category1 ---
     sql_cases = text(f"""
         SELECT 
-          SUM(CASE WHEN Category1 = 'General Enquiry' THEN 1 ELSE 0 END)    AS Enquiry,
-          SUM(CASE WHEN Category1 = 'Service Complaint' THEN 1 ELSE 0 END)  AS Complaint,
+          SUM(CASE WHEN Category1 = 'Enquiry' THEN 1 ELSE 0 END)    AS Enquiry,
+          SUM(CASE WHEN Category1 = 'Complaint' THEN 1 ELSE 0 END)  AS Complaint,
           SUM(CASE WHEN Category1 = 'Escalation' THEN 1 ELSE 0 END)  AS BulkOrder,
           SUM(CASE WHEN Category1 = 'Request' THEN 1 ELSE 0 END)    AS Request,
           SUM(CASE WHEN Category1 NOT IN 
-              ('General Enquiry','Service Complaint','Escalation','Request') 
+              ('Enquiry','Complaint','Escalation','Request') 
             THEN 1 ELSE 0 END)                                    AS Other
         FROM call_master 
         WHERE ClientId = :cid AND {cond}
@@ -439,7 +439,7 @@ def get_ticket_case_analysis(
 @router.post("/ticket_by_source", response_model=List[TicketSourceResponse])
 def get_ticket_by_source(
     req: DashboardReq,
-    db: Session = Depends(get_db3),
+    db: Session = Depends(get_db4),
 ):
     cond = "DATE(CallDate) = CURDATE()"  # adjust with view_type logic if needed
     params = {"cid": req.company_id}
