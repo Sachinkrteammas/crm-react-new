@@ -11,7 +11,7 @@ export default function ClientRequestPage() {
   const [showForm, setShowForm] = useState(false);
 
   const [search, setSearch] = useState("");
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [filtered, setFiltered] = useState([]);
   const [filterType, setFilterType] = useState("company_name");
@@ -145,7 +145,7 @@ export default function ClientRequestPage() {
                 onChange={(e) => setPageSize(Number(e.target.value))}
                 className="form-select d-inline-block w-auto"
               >
-                {[10, 25, 50, 100].map((size) => (
+                {[ 50, 100, 200].map((size) => (
                   <option key={size} value={size}>
                     {size}
                   </option>

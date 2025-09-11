@@ -28,23 +28,123 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
+
+# @router.post("/login", response_model=LoginResponse)
+# def login(request: LoginRequest, db: Session = Depends(get_db4)):
+#     query = text("SELECT * FROM registration_master WHERE email = :email")
+#     result = db.execute(query, {"email": request.email}).mappings().fetchone()
+
+#     if not result or not verify_password(request.password, result["password"]):
+#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+#     token = create_access_token({"sub": result["email"]})
+
+#     response_data = {
+#         "message": "Login successful",
+#         "access_token": token,
+#         "company_id": result["company_id"],
+#         "auth_person": result["auth_person"]
+#     }
+#     return response_data
+
+#     # 1. Check user from registration_master
+#     query = text("SELECT * FROM registration_master WHERE email = :email")
+#     result = db.execute(query, {"email": request.email}).mappings().fetchone()
+
+#     if not result or not verify_password(request.password, result["password"]):
+#         # 🔴 User not found or invalid password → return blank response
+#         return {
+#             "message": "",
+#             "access_token": "",
+#             "company_id": 0,
+#             "auth_person": "",
+#             "user_type": ""
+#         }
+
+#     # 2. Fetch user_type from tbl_user
+#     user_query = text("SELECT user_type FROM tbl_user WHERE Email = :email")
+#     user_result = db.execute(user_query, {"email": request.email}).mappings().fetchone()
+
+#     if not user_result:
+#         # 🔴 If user not found in tbl_user → return blank
+#         return {
+#             "message": "",
+#             "access_token": "",
+#             "company_id": 0,
+#             "auth_person": "",
+#             "user_type": ""
+#         }
+
+#     # 3. Create token
+#     token = create_access_token({"sub": result["email"]})
+
+#     # 4. Final response
+#     return {
+#         "message": "Login successful",
+#         "access_token": token,
+#         "company_id": result["company_id"],
+#         "auth_person": result["auth_person"],
+#         "user_type": user_result["user_type"]  # admin / superadmin / operation
+#     }
+
+
+
+# Step 1: Login Api for Used User_type for Verify User type 
 @router.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db4)):
-    query = text("SELECT * FROM registration_master WHERE email = :email")
-    result = db.execute(query, {"email": request.email}).mappings().fetchone()
+    # Step 1: Superadmin case
+    query_user = text("SELECT * FROM tbl_user WHERE Email = :email")
+    user = db.execute(query_user, {"email": request.email}).mappings().fetchone()
 
-    if not result or not verify_password(request.password, result["password"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if user and verify_password(request.password, user["hash_password"]):
+        if user["user_type"] == "Super-Admin":
+            token = create_access_token({"sub": user["Email"]})
+            return {
+                "message": "Login successful (Superadmin)",
+                "access_token": token,
+                "company_id": None,   # ✅ allowed now
+                "auth_person": user["name"],
+                "user_type": "Super-Admin"
+            }
 
-    token = create_access_token({"sub": result["email"]})
+    # Step 2: Client/Admin case
+    query_reg = text("SELECT * FROM registration_master WHERE email = :email")
+    reg = db.execute(query_reg, {"email": request.email}).mappings().fetchone()
 
-    response_data = {
-        "message": "Login successful",
-        "access_token": token,
-        "company_id": result["company_id"],
-        "auth_person": result["auth_person"]
-    }
-    return response_data
+    if reg and verify_password(request.password, reg["password"]):
+        token = create_access_token({"sub": reg["email"]})
+        return {
+            "message": "Login successful",
+            "access_token": token,
+            "company_id": reg["company_id"],   # ✅ required for clients/admins
+            "auth_person": reg["auth_person"],
+            "user_type": "Client"  # or "Admin" if you want to separate
+        }
+
+    # Step 3: Invalid credentials
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED, 
+        detail="Invalid credentials"
+    )
+
+
+
+@router.get("/clients")
+def list_clients(
+    db: Session = Depends(get_db4),
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user.get("role") != "Super-Admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only Super-Admin can access this."
+        )
+
+    query = text("SELECT company_id, company_name FROM registration_master")
+    clients = db.execute(query).mappings().fetchall()
+    return {"clients": [dict(client) for client in clients]}
+
 
 
 @router.get("/call-master/", response_model=List[CallMasterRecord])

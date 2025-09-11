@@ -174,16 +174,16 @@ function App() {
           <Route element={<Layout />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/real_time_report" element={<RealTimeDashboard />} />
-              <Route path="/cdr-report" element={<CDRReport />} />
-              <Route path="/ob-cdr-report" element={<OBCDRReport />} />
-              <Route path="/ivr-report" element={<IVRReport />} />
-              <Route path="/ob-shared-cdr-report" element={<OBSharedCDRReport />} />
+              <Route path="CdrReports/cdrdataview" element={<CDRReport />} />
+              <Route path="/ObCdrReports/detailscdr" element={<OBCDRReport />} />
+              <Route path="/IvrReports" element={<IVRReport />} />
+              <Route path="ObCdrReports/sharedscdr_external" element={<OBSharedCDRReport />} />
               <Route path="/ivr-funnel-report" element={<IVRFunnelReport />} />
-              <Route path="/call_details" element={<CallDetails />} />
-              <Route path="/out_call_details" element={<OutCallDetails />} />
+              <Route path="/SrDetails" element={<CallDetails />} />
+              <Route path="/ObsrDetails" element={<OutCallDetails />} />
               <Route path="/priority_calls" element={<PriorityCalls />} />
               <Route path="/csat_view" element={<CsatView />} />
-              <Route path="/bill_statement" element={<CurrentBillStatement />} />
+              <Route path="/BillingReports/get_stmt" element={<CurrentBillStatement />} />
               <Route path="/tagging" element={<TaggingPage />} />
               <Route path="/admin_login" element={<ManageAdminLogins />} />
               <Route path="/admin_access" element={<ManageAdminAccess />} />

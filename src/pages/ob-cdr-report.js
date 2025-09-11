@@ -89,7 +89,7 @@ const OBCDRReport = () => {
       <div className="card p-4 mb-4">
         <h5 className="mb-3">OB CDR REPORT</h5>
         <div className="d-flex flex-wrap align-items-center gap-2">
-          <div style={{ minWidth: "200px" }}>
+          {/* <div style={{ minWidth: "200px" }}>
             <select
               className="form-select"
               value={selectedClient}
@@ -97,7 +97,7 @@ const OBCDRReport = () => {
             >
               <option value={companyId}>{companyId ? `Selected Client (${companyId})` : "Select Client"}</option>
             </select>
-          </div>
+          </div> */}
           <DatePicker
             selected={startDate}
             onChange={setStartDate}

@@ -27,6 +27,7 @@ export const login = async (email, password) => {
     localStorage.setItem("token", response.data.access_token);
     localStorage.setItem("username", response.data.auth_person);  // change key if needed
     localStorage.setItem("company_id", response.data.company_id);
+    localStorage.setItem("user_type", response.data.user_type);
 
     return response.data;
   } catch (error) {
@@ -102,6 +103,19 @@ export const getDashboardReport = async (payload) => {
         console.error("Error fetching dashboard report:", error);
         throw error;
     }
+};
+
+
+// services/api.js
+export const getDashboard = async (companyId) => {
+  try {
+    const response = await fetch(`/api/dashboard/${companyId}`);
+    if (!response.ok) throw new Error("Failed to fetch dashboard");
+    return await response.json();
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
 };
 
 

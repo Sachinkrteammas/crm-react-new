@@ -204,20 +204,39 @@ export default function WizardForm({
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [documentFile, setDocumentFile] = useState(null);
 
-  // OTP modal states
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [otpError, setOtpError] = useState("");
-  const backupPassword = "123456"; // default password after OTP
+  // // OTP modal states
+  // const [showOtpModal, setShowOtpModal] = useState(false);
+  // const [otpSent, setOtpSent] = useState(false);
+  // const [otp, setOtp] = useState("");
+  // const [otpError, setOtpError] = useState("");
+  // const backupPassword = "123456"; // default password after OTP
+
+  // const handleChange = (e) => {
+  //   const { name, value, type, checked } = e.target;
+
+  //   let newValue = value;
+
+  //   // Restrict digits for mobile & pincode fields
+  //   if (name === "mobile") {
+  //     newValue = value.replace(/\D/g, "").slice(0, 10);
+  //   }
+  //   if (name === "pincode" || name === "commPincode") {
+  //     newValue = value.replace(/\D/g, "").slice(0, 6);
+  //   }
+
+  //   setFormData((prev) => ({
+  //     ...prev,
+  //     [name]: type === "checkbox" ? checked : newValue,
+  //   }));
+  //   setErrors({ ...errors, [name]: "" });
+  // };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-
     let newValue = value;
 
     // Restrict digits for mobile & pincode fields
-    if (name === "mobile") {
+    if (name.startsWith("mobile")) {
       newValue = value.replace(/\D/g, "").slice(0, 10);
     }
     if (name === "pincode" || name === "commPincode") {
@@ -228,7 +247,33 @@ export default function WizardForm({
       ...prev,
       [name]: type === "checkbox" ? checked : newValue,
     }));
-    setErrors({ ...errors, [name]: "" });
+
+    // Live validation for mobile & email
+    const mobileRegex = /^\d{10}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (name.startsWith("mobile")) {
+      if (!mobileRegex.test(newValue)) {
+        setErrors((prev) => ({ ...prev, [name]: true }));
+      } else {
+        setErrors((prev) => {
+          const { [name]: _, ...rest } = prev;
+          return rest;
+        });
+      }
+    } else if (name.startsWith("email")) {
+      if (!emailRegex.test(newValue)) {
+        setErrors((prev) => ({ ...prev, [name]: true }));
+      } else {
+        setErrors((prev) => {
+          const { [name]: _, ...rest } = prev;
+          return rest;
+        });
+      }
+    } else {
+      // For other fields, just clear error when typing
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
   };
 
   // Validation per step
@@ -273,48 +318,93 @@ export default function WizardForm({
 
     if (step === 2) {
       // Contact Person 1 (mandatory)
-      if (!formData.contactPerson1?.trim())
-        newErrors.contactPerson1 = "Required";
-      if (!formData.designation1?.trim()) newErrors.designation1 = "Required";
+      // if (!formData.contactPerson1?.trim())
+      //   newErrors.contactPerson1 = "Required";
+      // if (!formData.designation1?.trim()) newErrors.designation1 = "Required";
 
-      if (!formData.mobile1?.trim()) newErrors.mobile1 = "Required";
-      else if (!mobileRegex.test(formData.mobile1.trim()))
-        newErrors.mobile1 = "Must be 10 digits";
+      // if (!formData.mobile1?.trim()) newErrors.mobile1 = "Required";
+      // else if (!mobileRegex.test(formData.mobile1.trim()))
+      //   newErrors.mobile1 = "Must be 10 digits";
 
-      if (!formData.email1?.trim()) newErrors.email1 = "Required";
-      else if (!emailRegex.test(formData.email1.trim()))
-        newErrors.email1 = "Invalid email";
+      // if (!formData.email1?.trim()) newErrors.email1 = "Required";
+      // else if (!emailRegex.test(formData.email1.trim()))
+      //   newErrors.email1 = "Invalid email";
 
-      // Contact Person 2 (optional)
-      if (
-        formData.contactPerson2?.trim() ||
-        formData.designation2?.trim() ||
-        formData.mobile2?.trim() ||
-        formData.email2?.trim()
-      ) {
-        if (!formData.contactPerson2?.trim())
-          newErrors.contactPerson2 = "Required";
-        if (!formData.designation2?.trim()) newErrors.designation2 = "Required";
-        if (formData.mobile2 && !mobileRegex.test(formData.mobile2))
-          newErrors.mobile2 = "Must be 10 digits";
-        if (formData.email2 && !emailRegex.test(formData.email2))
-          newErrors.email2 = "Invalid email";
-      }
+      // // Contact Person 2 (optional)
+      // if (
+      //   formData.contactPerson2?.trim() ||
+      //   formData.designation2?.trim() ||
+      //   formData.mobile2?.trim() ||
+      //   formData.email2?.trim()
+      // ) {
+      //   if (!formData.contactPerson2?.trim())
+      //     newErrors.contactPerson2 = "Required";
+      //   if (!formData.designation2?.trim()) newErrors.designation2 = "Required";
+      //   if (formData.mobile2 && !mobileRegex.test(formData.mobile2))
+      //     newErrors.mobile2 = "Must be 10 digits";
+      //   if (formData.email2 && !emailRegex.test(formData.email2))
+      //     newErrors.email2 = "Invalid email";
+      // }
 
-      // Contact Person 3 (optional)
-      if (
-        formData.contactPerson3?.trim() ||
-        formData.designation3?.trim() ||
-        formData.mobile3?.trim() ||
-        formData.email3?.trim()
-      ) {
-        if (!formData.contactPerson3?.trim())
-          newErrors.contactPerson3 = "Required";
-        if (!formData.designation3?.trim()) newErrors.designation3 = "Required";
-        if (formData.mobile3 && !mobileRegex.test(formData.mobile3))
-          newErrors.mobile3 = "Must be 10 digits";
-        if (formData.email3 && !emailRegex.test(formData.email3))
-          newErrors.email3 = "Invalid email";
+      // // Contact Person 3 (optional)
+      // if (
+      //   formData.contactPerson3?.trim() ||
+      //   formData.designation3?.trim() ||
+      //   formData.mobile3?.trim() ||
+      //   formData.email3?.trim()
+      // ) {
+      //   if (!formData.contactPerson3?.trim())
+      //     newErrors.contactPerson3 = "Required";
+      //   if (!formData.designation3?.trim()) newErrors.designation3 = "Required";
+      //   if (formData.mobile3 && !mobileRegex.test(formData.mobile3))
+      //     newErrors.mobile3 = "Must be 10 digits";
+      //   if (formData.email3 && !emailRegex.test(formData.email3))
+      //     newErrors.email3 = "Invalid email";
+      // }
+      if (step === 2) {
+        // Contact Person 1 (mandatory)
+        if (!formData.contactPerson1?.trim()) newErrors.contactPerson1 = true;
+        if (!formData.designation1?.trim()) newErrors.designation1 = true;
+
+        if (!/^\d{10}$/.test(formData.mobile1?.trim() || ""))
+          newErrors.mobile1 = true;
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email1?.trim() || ""))
+          newErrors.email1 = true;
+
+        // Contact Person 2 (optional)
+        if (
+          formData.contactPerson2?.trim() ||
+          formData.designation2?.trim() ||
+          formData.mobile2?.trim() ||
+          formData.email2?.trim()
+        ) {
+          if (!formData.contactPerson2?.trim()) newErrors.contactPerson2 = true;
+          if (!formData.designation2?.trim()) newErrors.designation2 = true;
+
+          if (!/^\d{10}$/.test(formData.mobile2?.trim() || ""))
+            newErrors.mobile2 = true;
+
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email2?.trim() || ""))
+            newErrors.email2 = true;
+        }
+
+        // Contact Person 3 (optional)
+        if (
+          formData.contactPerson3?.trim() ||
+          formData.designation3?.trim() ||
+          formData.mobile3?.trim() ||
+          formData.email3?.trim()
+        ) {
+          if (!formData.contactPerson3?.trim()) newErrors.contactPerson3 = true;
+          if (!formData.designation3?.trim()) newErrors.designation3 = true;
+
+          if (!/^\d{10}$/.test(formData.mobile3?.trim() || ""))
+            newErrors.mobile3 = true;
+
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email3?.trim() || ""))
+            newErrors.email3 = true;
+        }
       }
     }
 
@@ -413,58 +503,56 @@ export default function WizardForm({
   //   );
   // }
 
-
   function FileInput({
-  label,
-  name,
-  existingFile,
-  file,
-  onChange,
-  multiple = false,
-}) {
-  return (
-    <div className="mb-3 d-flex align-items-center">
-      <input
-        type="text"
-        className="form-control col"
-        placeholder={label}
-        value={file ? file.name : ""}
-        readOnly
-      />
-      <button
-        type="button"
-        className="btn btn-outline-primary ms-2"
-        onClick={() => document.getElementById(name).click()}
-      >
-        Choose File
-      </button>
-      <input
-        type="file"
-        id={name}
-        name={name}
-        onChange={onChange}
-        className="d-none"
-        accept=".jpg,.jpeg,.png,.gif,.pdf"
-        multiple={multiple}
-      />
+    label,
+    name,
+    existingFile,
+    file,
+    onChange,
+    multiple = false,
+  }) {
+    return (
+      <div className="mb-3 d-flex align-items-center">
+        <input
+          type="text"
+          className="form-control col"
+          placeholder={label}
+          value={file ? file.name : ""}
+          readOnly
+        />
+        <button
+          type="button"
+          className="btn btn-outline-primary ms-2"
+          onClick={() => document.getElementById(name).click()}
+        >
+          Choose File
+        </button>
+        <input
+          type="file"
+          id={name}
+          name={name}
+          onChange={onChange}
+          className="d-none"
+          accept=".jpg,.jpeg,.png,.gif,.pdf"
+          multiple={multiple}
+        />
 
-      {/* Show existing file only if single file */}
-      {!file && existingFile && !multiple && (
-        <p className="ms-3 mb-0">
-          Existing:{" "}
-          <a
-            href={`http://localhost:8000/${existingFile}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {existingFile.split("/").pop()}
-          </a>
-        </p>
-      )}
-    </div>
-  );
-}
-
+        {/* Show existing file only if single file */}
+        {!file && existingFile && !multiple && (
+          <p className="ms-3 mb-0">
+            Existing:{" "}
+            <a
+              href={`http://localhost:8000/${existingFile}`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {existingFile.split("/").pop()}
+            </a>
+          </p>
+        )}
+      </div>
+    );
+  }
 
   // --- Final Submit ---
   // const handleSubmit = async (e) => {
@@ -1605,13 +1693,13 @@ export default function WizardForm({
                           />
 
                           {/* Company Logo - Hide in Edit Mode */}
-                       <FileInput
-                              label="Company Logo"
-                              name="companyLogo"
-                              existingFile={formData.existingFiles?.companyLogo}
-                              file={formData.companyLogo}
-                              onChange={handleFileChange}
-                            />
+                          <FileInput
+                            label="Company Logo"
+                            name="companyLogo"
+                            existingFile={formData.existingFiles?.companyLogo}
+                            file={formData.companyLogo}
+                            onChange={handleFileChange}
+                          />
                         </div>
                       </div>
 
