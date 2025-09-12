@@ -130,20 +130,20 @@ def login(request: LoginRequest, db: Session = Depends(get_db4)):
 
 
 
-@router.get("/clients")
-def list_clients(
-    db: Session = Depends(get_db4),
-    current_user: dict = Depends(get_current_user)
-):
-    if current_user.get("role") != "Super-Admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only Super-Admin can access this."
-        )
+# @router.get("/clients")
+# def list_clients(
+#     db: Session = Depends(get_db4),
+#     current_user: dict = Depends(get_current_user)
+# ):
+#     if current_user.get("role") != "Super-Admin":
+#         raise HTTPException(
+#             status_code=status.HTTP_403_FORBIDDEN,
+#             detail="Only Super-Admin can access this."
+#         )
 
-    query = text("SELECT company_id, company_name FROM registration_master")
-    clients = db.execute(query).mappings().fetchall()
-    return {"clients": [dict(client) for client in clients]}
+#     query = text("SELECT company_id, company_name FROM registration_master")
+#     clients = db.execute(query).mappings().fetchall()
+#     return {"clients": [dict(client) for client in clients]}
 
 
 

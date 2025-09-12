@@ -1,7 +1,8 @@
 //.....New Updated Code..//
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+// import axios from "axios";
 import "../styles/stepper.css";
+import api from "../api";
 
 export default function WizardForm({
   initialData = null,
@@ -538,7 +539,7 @@ export default function WizardForm({
         />
 
         {/* Show existing file only if single file */}
-        {!file && existingFile && !multiple && (
+        {/* {!file && existingFile && !multiple && (
           <p className="ms-3 mb-0">
             Existing:{" "}
             <a
@@ -549,7 +550,22 @@ export default function WizardForm({
               {existingFile.split("/").pop()}
             </a>
           </p>
-        )}
+        )} */}
+  
+
+{!file && existingFile && !multiple && (
+  <p className="ms-3 mb-0">
+    Existing:{" "}
+    <a
+      href={`${api.defaults.baseURL}/${existingFile}`} // ✅ dynamic baseURL
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {existingFile.split("/").pop()}
+    </a>
+  </p>
+)}
+
       </div>
     );
   }
@@ -829,20 +845,35 @@ export default function WizardForm({
         data.delete("confirmPassword");
       }
 
+      // // --- Build URL & method ---
+      // const url = isEdit
+      //   ? `http://localhost:8000/company/update/${initialData.id}`
+      //   : "http://localhost:8000/company/register";
+      // const method = isEdit ? "put" : "post";
+
+      // console.log("Sending request:", method.toUpperCase(), url);
+
+      // const res = await axios({
+      //   method,
+      //   url,
+      //   data,
+      //   headers: { "Content-Type": "multipart/form-data" },
+      // });
       // --- Build URL & method ---
-      const url = isEdit
-        ? `http://localhost:8000/company/update/${initialData.id}`
-        : "http://localhost:8000/company/register";
-      const method = isEdit ? "put" : "post";
+const url = isEdit
+  ? `/company/update/${initialData.id}`  // ✅ relative path
+  : "/company/register";
+const method = isEdit ? "put" : "post";
 
-      console.log("Sending request:", method.toUpperCase(), url);
+console.log("Sending request:", method.toUpperCase(), url);
 
-      const res = await axios({
-        method,
-        url,
-        data,
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+const res = await api({
+  method,
+  url,
+  data,
+  headers: { "Content-Type": "multipart/form-data" },
+});
+
 
       console.log("Response:", res.data);
 

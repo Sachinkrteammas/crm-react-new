@@ -1,7 +1,7 @@
 
 
 
-from fastapi import APIRouter, Form, File, UploadFile, HTTPException
+from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Request
 from typing import Optional, List
 import os, shutil
 from database import get_engine4
@@ -221,6 +221,7 @@ def save_multiple_files(files: Optional[List[UploadFile]], prefix: str) -> str:
 # ---------------- Company Registration ----------------
 @router.post("/register")
 async def register_company(
+    request: Request,
     companyName: str = Form(...),
     regAddress1: str = Form(...),
     regAddress2: Optional[str] = Form(None),
@@ -306,6 +307,11 @@ async def register_company(
                     detail="Company already exists with this GST, Mobile, or Email."
                 )
 
+
+    # ---------------- Capture client IP and set default for email_verify ----------------
+        client_ip = request.client.host if request.client else "0.0.0.0"
+        email_verify = "YES"  # default value since frontend does not provide
+
         # ✅ Insert new record
         sql = """
         INSERT INTO registration_master (
@@ -318,7 +324,7 @@ async def register_company(
             contact_person3, cp3_designation, cp3_phone, cp3_email,
             incorporation_certificate, pancard, auth_person_address_prof,
             bill_address_prof, authorized_id_prof, company_logo, other_documents,
-            status
+            status, ip, email_verify
         ) VALUES (
             NOW(), %(company_name)s, %(reg1)s, %(reg2)s, %(city)s, %(state)s, %(pincode)s, %(gst)s,
             %(auth_person)s, %(designation)s, %(phone)s, %(email)s, %(password)s,
@@ -327,7 +333,7 @@ async def register_company(
             %(cp2)s, %(cp2d)s, %(cp2p)s, %(cp2e)s,
             %(cp3)s, %(cp3d)s, %(cp3p)s, %(cp3e)s,
             %(incorp)s, %(pancard)s, %(auth_addr)s, %(billing)s, %(auth_id)s, %(logo)s, %(other_docs)s,
-            %(status)s
+            %(status)s,  %(ip)s, %(email_verify)s
         )
         """
 
@@ -369,6 +375,8 @@ async def register_company(
             "logo": logo_path,
             "other_docs": other_docs_combined,
             "status": "active",
+            "ip": client_ip,  # optional IP, can be None
+            "email_verify": email_verify
         }
 
         cursor.execute(sql, values)

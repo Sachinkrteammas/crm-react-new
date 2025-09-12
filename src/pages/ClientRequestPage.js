@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import WizardForm from "./company-registration"; // make sure the path is correct
 import "../styles/stepper.css";
+import api from "../api";
 
 export default function ClientRequestPage() {
   const [companies, setCompanies] = useState([]);
@@ -21,17 +22,33 @@ export default function ClientRequestPage() {
     fetchCompanies();
   }, []);
 
-  const fetchCompanies = async () => {
-    try {
-      const res = await axios.get("http://localhost:8000/company/list");
-      setCompanies(res.data.data || []);
-    } catch (err) {
-      console.error("Error fetching companies:", err);
-      alert("Failed to fetch companies.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const fetchCompanies = async () => {
+  //   try {
+  //     const res = await axios.get("http://localhost:8000/company/list");
+  //     setCompanies(res.data.data || []);
+  //   } catch (err) {
+  //     console.error("Error fetching companies:", err);
+  //     alert("Failed to fetch companies.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  useEffect(() => {
+  fetchCompanies();
+}, []);
+
+const fetchCompanies = async () => {
+  try {
+    const res = await api.get("/company/list");  // ✅ replaced with api
+    setCompanies(res.data.data || []);
+  } catch (err) {
+    console.error("Error fetching companies:", err);
+    alert("Failed to fetch companies.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Filter companies based on search
   // useEffect(() => {
@@ -77,22 +94,48 @@ export default function ClientRequestPage() {
   };
 
   // Handle edit button click
-  const handleEdit = async (companyId) => {
-    try {
-      const res = await axios.get(
-        `http://localhost:8000/company/get/${companyId}`
-      );
-      if (res.data.status === "success" && res.data.data) {
-        setEditingCompany(res.data.data);
-        setShowForm(true);
-      } else {
-        alert("Company not found!");
-      }
-    } catch (err) {
-      console.error("Fetch company by ID failed:", err);
-      alert("Failed to fetch company details.");
+  // const handleEdit = async (companyId) => {
+  //   try {
+  //     const res = await axios.get(
+  //       `http://localhost:8000/company/get/${companyId}`
+  //     );
+  //     if (res.data.status === "success" && res.data.data) {
+  //       setEditingCompany(res.data.data);
+  //       setShowForm(true);
+  //     } else {
+  //       alert("Company not found!");
+  //     }
+  //   } catch (err) {
+  //     console.error("Fetch company by ID failed:", err);
+  //     alert("Failed to fetch company details.");
+  //   }
+  // };
+
+const handleEdit = async (companyId) => {
+  try {
+    const res = await api.get(`/company/get/${companyId}`); // use api instance
+    if (res.data.status === "success" && res.data.data) {
+      const companyData = res.data.data;
+
+      // 🔑 Normalize so "id" is always available
+      const normalizedData = {
+        ...companyData,
+        id: companyData.company_id || companyData.id, // fallback in case API changes
+      };
+
+      setEditingCompany(normalizedData);
+      setShowForm(true);
+    } else {
+      alert("Company not found!");
     }
-  };
+  } catch (err) {
+    console.error("Fetch company by ID failed:", err);
+    alert("Failed to fetch company details.");
+  }
+};
+
+
+
 
   // Close form modal
   const handleFormClose = () => {
@@ -101,32 +144,62 @@ export default function ClientRequestPage() {
   };
 
   // Submit form (create or update)
+  // const handleFormSubmit = async (formData) => {
+  //   try {
+  //     const isEdit = !!editingCompany;
+  //     const url = isEdit
+  //       ? `http://localhost:8000/company/update/${editingCompany.company_id}`
+  //       : "http://localhost:8000/company/register";
+
+  //     await axios({
+  //       method: isEdit ? "put" : "post",
+  //       url,
+  //       data: formData,
+  //       headers: { "Content-Type": "multipart/form-data" },
+  //     });
+
+  //     alert(
+  //       isEdit
+  //         ? "✅ Company updated successfully!"
+  //         : "✅ Company created successfully!"
+  //     );
+  //     fetchCompanies();
+  //     handleFormClose();
+  //   } catch (err) {
+  //     console.error("Error saving company:", err.response || err);
+  //     alert("❌ Failed to save company.");
+  //   }
+  // };
+
+
   const handleFormSubmit = async (formData) => {
-    try {
-      const isEdit = !!editingCompany;
-      const url = isEdit
-        ? `http://localhost:8000/company/update/${editingCompany.company_id}`
-        : "http://localhost:8000/company/register";
+  try {
+    const isEdit = !!editingCompany;
+    const url = isEdit
+      ? `/company/update/${editingCompany.company_id}` // ✅ relative URL
+      : "/company/register";
 
-      await axios({
-        method: isEdit ? "put" : "post",
-        url,
-        data: formData,
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+    await api({
+      method: isEdit ? "put" : "post",
+      url,
+      data: formData,
+      headers: { "Content-Type": "multipart/form-data" },
+    });
 
-      alert(
-        isEdit
-          ? "✅ Company updated successfully!"
-          : "✅ Company created successfully!"
-      );
-      fetchCompanies();
-      handleFormClose();
-    } catch (err) {
-      console.error("Error saving company:", err.response || err);
-      alert("❌ Failed to save company.");
-    }
-  };
+    alert(
+      isEdit
+        ? "✅ Company updated successfully!"
+        : "✅ Company created successfully!"
+    );
+
+    fetchCompanies();
+    handleFormClose();
+  } catch (err) {
+    console.error("Error saving company:", err.response || err);
+    alert("❌ Failed to save company.");
+  }
+};
+
 
   return (
     <div className="mt-4">

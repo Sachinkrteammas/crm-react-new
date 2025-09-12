@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import api from "../api";
 
 // Keep your full PlanCreation form state
 const initialFormState = {
@@ -59,14 +60,23 @@ export default function PlanManagement() {
     fetchPlans();
   }, []);
 
+  // const fetchPlans = async () => {
+  //   try {
+  //     const res = await axios.get("http://localhost:8000/plan/plans"); // fetch plans
+  //     setPlans(res.data.plans || []);
+  //   } catch (err) {
+  //     console.error("Error fetching plans:", err);
+  //   }
+  // };
   const fetchPlans = async () => {
-    try {
-      const res = await axios.get("http://localhost:8000/plan/plans"); // fetch plans
-      setPlans(res.data.plans || []);
-    } catch (err) {
-      console.error("Error fetching plans:", err);
-    }
-  };
+  try {
+    const res = await api.get("/plan/plans"); // ✅ use api instance
+    setPlans(res.data.plans || []);
+  } catch (err) {
+    console.error("Error fetching plans:", err);
+  }
+};
+
 
   // Filtered + Paginated Data
   const filteredPlans = plans.filter(
@@ -130,43 +140,80 @@ export default function PlanManagement() {
     return newErrors;
   };
 
+  // const handleSubmit = async (e) => {
+  //   e.preventDefault();
+
+  //   const validationErrors = validate();
+  //   if (Object.keys(validationErrors).length > 0) {
+  //     setErrors(validationErrors);
+  //     return;
+  //   }
+
+  //   setLoading(true);
+
+  //   try {
+  //     const payload = { ...form };
+
+  //     if (editingPlanId) {
+  //       // ✅ Update existing plan using correct id
+  //       await axios.put(
+  //         `http://localhost:8000/plan/plan/${editingPlanId}`,
+  //         payload
+  //       );
+  //       setModalMessage("✅ Plan updated successfully!");
+  //     } else {
+  //       // ✅ Create new plan
+  //       await axios.post("http://localhost:8000/plan/create_plan", payload);
+  //       setModalMessage("✅ Plan created successfully!");
+  //     }
+
+  //     fetchPlans();
+  //     setForm(initialFormState);
+  //     setEditingPlanId(null);
+  //   } catch (err) {
+  //     console.error("Error saving plan:", err.response || err);
+  //     setModalMessage("❌ Failed to save plan. Try again.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
   const handleSubmit = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const validationErrors = validate();
-    if (Object.keys(validationErrors).length > 0) {
-      setErrors(validationErrors);
-      return;
+  const validationErrors = validate();
+  if (Object.keys(validationErrors).length > 0) {
+    setErrors(validationErrors);
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const payload = { ...form };
+
+    if (editingPlanId) {
+      // ✅ Update existing plan using correct id
+      await api.put(`/plan/plan/${editingPlanId}`, payload);
+      setModalMessage("✅ Plan updated successfully!");
+    } else {
+      // ✅ Create new plan
+      await api.post("/plan/create_plan", payload);
+      setModalMessage("✅ Plan created successfully!");
     }
 
-    setLoading(true);
+    fetchPlans();
+    setForm(initialFormState);
+    setEditingPlanId(null);
+  } catch (err) {
+    console.error("Error saving plan:", err.response || err);
+    setModalMessage("❌ Failed to save plan. Try again.");
+  } finally {
+    setLoading(false);
+  }
+};
 
-    try {
-      const payload = { ...form };
-
-      if (editingPlanId) {
-        // ✅ Update existing plan using correct id
-        await axios.put(
-          `http://localhost:8000/plan/plan/${editingPlanId}`,
-          payload
-        );
-        setModalMessage("✅ Plan updated successfully!");
-      } else {
-        // ✅ Create new plan
-        await axios.post("http://localhost:8000/plan/create_plan", payload);
-        setModalMessage("✅ Plan created successfully!");
-      }
-
-      fetchPlans();
-      setForm(initialFormState);
-      setEditingPlanId(null);
-    } catch (err) {
-      console.error("Error saving plan:", err.response || err);
-      setModalMessage("❌ Failed to save plan. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleEdit = (plan) => {
     setForm({
@@ -209,27 +256,50 @@ export default function PlanManagement() {
     setShowModal(true);
   };
 
+  // const handleDelete = async (planId) => {
+  //   if (!window.confirm("Are you sure you want to delete this plan?")) return;
+  //   try {
+  //     await axios.delete(`http://localhost:8000/plan/plan/${planId}`);
+  //     fetchPlans();
+  //   } catch (err) {
+  //     console.error("Error deleting plan:", err);
+  //   }
+  // };
+
   const handleDelete = async (planId) => {
-    if (!window.confirm("Are you sure you want to delete this plan?")) return;
-    try {
-      await axios.delete(`http://localhost:8000/plan/plan/${planId}`);
-      fetchPlans();
-    } catch (err) {
-      console.error("Error deleting plan:", err);
-    }
-  };
+  if (!window.confirm("Are you sure you want to delete this plan?")) return;
+  try {
+    await api.delete(`/plan/plan/${planId}`); // ✅ use api instance
+    fetchPlans();
+  } catch (err) {
+    console.error("Error deleting plan:", err);
+  }
+};
+
 
   // ✅ Handle View Plan
+  // const handleView = async (planId) => {
+  //   try {
+  //     const res = await axios.get(`http://localhost:8000/plan/plan/${planId}`);
+  //     setViewPlan(res.data.plan);
+  //     setShowViewModal(true);
+  //   } catch (err) {
+  //     console.error("Error fetching plan:", err);
+  //     alert("Failed to load plan details.");
+  //   }
+  // };
+
   const handleView = async (planId) => {
-    try {
-      const res = await axios.get(`http://localhost:8000/plan/plan/${planId}`);
-      setViewPlan(res.data.plan);
-      setShowViewModal(true);
-    } catch (err) {
-      console.error("Error fetching plan:", err);
-      alert("Failed to load plan details.");
-    }
-  };
+  try {
+    const res = await api.get(`/plan/plan/${planId}`); // ✅ use api instance
+    setViewPlan(res.data.plan);
+    setShowViewModal(true);
+  } catch (err) {
+    console.error("Error fetching plan:", err);
+    alert("Failed to load plan details.");
+  }
+};
+
 
   // Reuse your PlanCreation form rendering here
   const renderInput = (label, name, placeholder, type = "text") => (
