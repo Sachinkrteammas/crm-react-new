@@ -6,21 +6,52 @@ import api from "../api";
 
 const Layout = () => {
 const [username, setUsername] = useState("");
-const companyId = localStorage.getItem("company_id");
+const storedCompanyId = localStorage.getItem("company_id");
+const userType = localStorage.getItem("user_type");
+const companyId = userType === "Super-Admin" ? 0 : storedCompanyId;
 const [menuData, setMenuData] = useState([]);
 
-useEffect(() => {
-    const fetchMenu = async () => {
-      try {
-        const res = await api.get(`/dynamic_menu/pages/dynamic-menu/${companyId}`);
-        setMenuData(Array.isArray(res.data) ? res.data : []);
-      } catch (err) {
-        console.error("Failed to fetch menu:", err);
-      }
-    };
+// useEffect(() => {
+//     const fetchMenu = async () => {
+//       try {
+//         const res = await api.get(`/dynamic_menu/pages/dynamic-menu/${companyId}`);
+//         setMenuData(Array.isArray(res.data) ? res.data : []);
+//       } catch (err) {
+//         console.error("Failed to fetch menu:", err);
+//       }
+//     };
 
-    if (companyId) fetchMenu();
-  }, [companyId]);
+//     if (companyId) fetchMenu();
+//   }, [companyId]);
+
+
+  // 🔹 Recursive counter
+  const countPages = (items) => {
+    let count = 0;
+    for (const item of items) {
+      count += 1; // count this menu
+      if (item.children && item.children.length > 0) {
+        count += countPages(item.children);
+      }
+    }
+    return count;
+  };
+
+useEffect(() => {
+  const fetchMenu = async () => {
+    try {
+      const res = await api.get(`/dynamic_menu/pages/dynamic-menu/${companyId}`);
+      setMenuData(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("Failed to fetch menu:", err);
+    }
+  };
+
+  if (companyId !== null && companyId !== undefined) {
+    fetchMenu();
+  }
+}, [companyId]);
+
 
 const renderMenu = (items) => {
   if (!Array.isArray(items)) return null; // <-- Add this check
