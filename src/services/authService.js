@@ -174,55 +174,193 @@ export const getTicketBySource = async (payload) => {
 
 
 // Get Out Call Details (GET with params)
-export const getOutCallDetails = async (company_id, payload) => {
-    try {
-        const response = await api.get("/call/outcalls", {
-            params: { CLIENT_ID: company_id, ...payload },
-        });
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching out call details:", error);
-        throw error;
-    }
-};
+// export const getOutCallDetails = async (company_id, payload) => {
+//     try {
+//         const response = await api.get("/call/outcalls", {
+//             params: { CLIENT_ID: company_id, ...payload },
+//         });
+//         return response.data;
+//     } catch (error) {
+//         console.error("Error fetching out call details:", error);
+//         throw error;
+//     }
+// };
 
-// Get Campaign Types
-export const getCampaignTypes = async (company_id) => {
-    try {
-        const response = await api.get("/call/types", {
-            params: { CLIENT_ID: company_id },
-        });
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching campaign types:", error);
-        throw error;
-    }
-};
+// // Get Campaign Types
+// export const getCampaignTypes = async (company_id) => {
+//     try {
+//         const response = await api.get("/call/types", {
+//             params: { CLIENT_ID: company_id },
+//         });
+//         return response.data;
+//     } catch (error) {
+//         console.error("Error fetching campaign types:", error);
+//         throw error;
+//     }
+// };
 
-// Get Campaigns for a given parent (campaign type)
-export const getCampaigns = async (company_id, parentId) => {
-    try {
-        const response = await api.get("/call/campaigns", {
-            params: { CLIENT_ID: company_id, type: parentId },
-        });
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching campaigns:", error);
-        throw error;
-    }
-};
+// // Get Campaigns for a given parent (campaign type)
+// export const getCampaigns = async (company_id, parentId) => {
+//     try {
+//         const response = await api.get("/call/campaigns", {
+//             params: { CLIENT_ID: company_id, type: parentId },
+//         });
+//         return response.data;
+//     } catch (error) {
+//         console.error("Error fetching campaigns:", error);
+//         throw error;
+//     }
+// };
 
-// Get Allocations for a given campaign
-export const getAllocations = async (company_id, campaignId) => {
-    try {
-        const response = await api.get("/call/allocations", {
-            params: { CLIENT_ID: company_id, campaign: campaignId },
-        });
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching allocations:", error);
-        throw error;
-    }
+// // Get Allocations for a given campaign
+// export const getAllocations = async (company_id, campaignId) => {
+//     try {
+//         const response = await api.get("/call/allocations", {
+//             params: { CLIENT_ID: company_id, campaign: campaignId },
+//         });
+//         return response.data;
+//     } catch (error) {
+//         console.error("Error fetching allocations:", error);
+//         throw error;
+//     }
 
     
+// };
+
+
+
+// // ------------------ OutCall / Campaign / Allocation ------------------
+// export const getOutCallDetails = async (company_id, payload) => {
+//     try {
+//         const response = await api.get("/call/outcalls", {
+//             params: { CLIENT_ID: company_id, ...payload },
+//         });
+//         return response.data;
+//     } catch (error) {
+//         console.error("Error fetching out call details:", error);
+//         throw error;
+//     }
+// };
+
+// export const getCampaignTypes = async (company_id) => {
+//     try {
+//         const response = await api.get("/call/types", { params: { CLIENT_ID: company_id } });
+//         return response.data;
+//     } catch (error) {
+//         console.error("Error fetching campaign types:", error);
+//         throw error;
+//     }
+// };
+
+// export const getCampaigns = async (company_id, parentId) => {
+//     try {
+//         const response = await api.get("/call/campaigns", { params: { CLIENT_ID: company_id, type: parentId } });
+//         return response.data;
+//     } catch (error) {
+//         console.error("Error fetching campaigns:", error);
+//         throw error;
+//     }
+// };
+
+// export const getAllocations = async (company_id, campaignId) => {
+//     try {
+//         const response = await api.get("/call/allocations", { params: { CLIENT_ID: company_id, campaign: campaignId } });
+//         return response.data;
+//     } catch (error) {
+//         console.error("Error fetching allocations:", error);
+//         throw error;
+//     }
+// };
+
+// // ------------------ Dynamic Scenarios / Sub-Scenarios ------------------
+// export const getScenarios = async (company_id, allocationId, scenarioLevel, parentScenario = null) => {
+//     try {
+//         const params = {
+//             CLIENT_ID: company_id,
+//             allocation: allocationId,
+//             scenario_level: scenarioLevel
+//         };
+//         if (parentScenario) params.parent_scenario = parentScenario;
+
+//         const response = await api.get("/call/scenarios", { params });
+//         return response.data;
+//     } catch (error) {
+//         console.error("Error fetching scenarios:", error);
+//         throw error;
+//     }
+// };
+
+
+
+
+
+// ---------------- OutCall / Campaign / Allocation ----------------
+export const getOutCallDetails = async (company_id, filters) => {
+  try {
+    const response = await api.get("/call/outcalls", {
+      params: { CLIENT_ID: company_id, ...filters },
+    });
+    return response.data || [];
+  } catch (error) {
+    console.error("Error fetching out call details:", error);
+    return [];
+  }
+};
+
+// Get all campaign types for a company
+export const getCampaignTypes = async (company_id) => {
+  try {
+    const response = await api.get("/call/types", { params: { CLIENT_ID: company_id } });
+    return response.data || [];
+  } catch (error) {
+    console.error("Error fetching campaign types:", error);
+    return [];
+  }
+};
+
+// Get campaigns under a campaign type
+export const getCampaigns = async (company_id, campaignType) => {
+  if (!campaignType) return [];
+  try {
+    const response = await api.get("/call/campaigns", {
+      params: { CLIENT_ID: company_id, campaignType }, // <-- FIXED PARAM NAME
+    });
+    return response.data || [];
+  } catch (error) {
+    console.error("Error fetching campaigns:", error);
+    return [];
+  }
+};
+
+// Get allocations under a campaign
+export const getAllocations = async (company_id, campaignId) => {
+  if (!campaignId) return [];
+  try {
+    const response = await api.get("/call/allocations", {
+      params: { CLIENT_ID: company_id, campaign: campaignId },
+    });
+    return response.data || [];
+  } catch (error) {
+    console.error("Error fetching allocations:", error);
+    return [];
+  }
+};
+
+// Dynamic scenarios / sub-scenarios
+export const getScenarios = async (company_id, allocationId, scenarioLevel, parentScenario = null) => {
+  if (!allocationId) return [];
+  try {
+    const params = {
+      CLIENT_ID: company_id,
+      allocation: allocationId,
+      scenario_level: scenarioLevel,
+    };
+    if (parentScenario) params.parent_scenario = parentScenario;
+
+    const response = await api.get("/call/scenarios", { params });
+    return response.data || [];
+  } catch (error) {
+    console.error("Error fetching scenarios:", error);
+    return [];
+  }
 };
