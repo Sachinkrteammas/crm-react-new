@@ -230,87 +230,46 @@ export const getTicketBySource = async (payload) => {
 
 
 // // ------------------ OutCall / Campaign / Allocation ------------------
-// export const getOutCallDetails = async (company_id, payload) => {
-//     try {
-//         const response = await api.get("/call/outcalls", {
-//             params: { CLIENT_ID: company_id, ...payload },
-//         });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error fetching out call details:", error);
-//         throw error;
-//     }
-// };
-
-// export const getCampaignTypes = async (company_id) => {
-//     try {
-//         const response = await api.get("/call/types", { params: { CLIENT_ID: company_id } });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error fetching campaign types:", error);
-//         throw error;
-//     }
-// };
-
-// export const getCampaigns = async (company_id, parentId) => {
-//     try {
-//         const response = await api.get("/call/campaigns", { params: { CLIENT_ID: company_id, type: parentId } });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error fetching campaigns:", error);
-//         throw error;
-//     }
-// };
-
-// export const getAllocations = async (company_id, campaignId) => {
-//     try {
-//         const response = await api.get("/call/allocations", { params: { CLIENT_ID: company_id, campaign: campaignId } });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error fetching allocations:", error);
-//         throw error;
-//     }
-// };
-
-// // ------------------ Dynamic Scenarios / Sub-Scenarios ------------------
-// export const getScenarios = async (company_id, allocationId, scenarioLevel, parentScenario = null) => {
-//     try {
-//         const params = {
-//             CLIENT_ID: company_id,
-//             allocation: allocationId,
-//             scenario_level: scenarioLevel
-//         };
-//         if (parentScenario) params.parent_scenario = parentScenario;
-
-//         const response = await api.get("/call/scenarios", { params });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error fetching scenarios:", error);
-//         throw error;
-//     }
-// };
+const toIntIfPresent = (v) => {
+  if (v === undefined || v === null || v === "") return undefined;
+  const n = parseInt(v, 10);
+  return Number.isNaN(n) ? undefined : n;
+};
 
 
-
-
-
-// ---------------- OutCall / Campaign / Allocation ----------------
-export const getOutCallDetails = async (company_id, filters) => {
+ // Get OutCall Details with optional filters
+export const getOutCallDetails = async (company_id, filters = {}) => {
   try {
-    const response = await api.get("/call/outcalls", {
-      params: { CLIENT_ID: company_id, ...filters },
+    // Build params only with non-empty fields
+    const params = { CLIENT_ID: company_id };
+
+    Object.entries(filters).forEach(([k, v]) => {
+      if (v === undefined || v === null || v === "") return;
+      params[k] = v;
     });
-    return response.data || [];
+
+    // Convert only campaign & allocation to integers (backend expects int for these)
+    const campaignInt = toIntIfPresent(params.campaign);
+    const allocationInt = toIntIfPresent(params.allocation);
+    if (campaignInt !== undefined) params.campaign = campaignInt;
+    if (allocationInt !== undefined) params.allocation = allocationInt;
+
+    // Note: Do NOT parse scenario or subScenario* to int — your backend compares those as strings.
+    const response = await api.get("/call/outcalls", { params });
+    return response.data || { data: [], counts: {}, breadcrumb: [] };
   } catch (error) {
-    console.error("Error fetching out call details:", error);
-    return [];
+    console.error("Error fetching OutCall details:", error);
+    // bubble up useful shape so frontend doesn't break
+    return { data: [], counts: {}, breadcrumb: [] };
   }
 };
 
 // Get all campaign types for a company
 export const getCampaignTypes = async (company_id) => {
   try {
-    const response = await api.get("/call/types", { params: { CLIENT_ID: company_id } });
+    const response = await api.get("/call/types", {
+      params: { CLIENT_ID: company_id },
+    });
     return response.data || [];
   } catch (error) {
     console.error("Error fetching campaign types:", error);
@@ -318,12 +277,12 @@ export const getCampaignTypes = async (company_id) => {
   }
 };
 
-// Get campaigns under a campaign type
+// Get campaigns under a specific campaign type
 export const getCampaigns = async (company_id, campaignType) => {
   if (!campaignType) return [];
   try {
     const response = await api.get("/call/campaigns", {
-      params: { CLIENT_ID: company_id, campaignType }, // <-- FIXED PARAM NAME
+      params: { CLIENT_ID: company_id, campaignType },
     });
     return response.data || [];
   } catch (error) {
@@ -332,12 +291,15 @@ export const getCampaigns = async (company_id, campaignType) => {
   }
 };
 
-// Get allocations under a campaign
+
+ // Get allocations under a campaign
 export const getAllocations = async (company_id, campaignId) => {
-  if (!campaignId) return [];
+  // campaignId must be numeric id; if it's empty or not parseable, return [].
+  const cid = toIntIfPresent(campaignId);
+  if (cid === undefined) return [];
   try {
     const response = await api.get("/call/allocations", {
-      params: { CLIENT_ID: company_id, campaign: campaignId },
+      params: { CLIENT_ID: company_id, campaign: cid },
     });
     return response.data || [];
   } catch (error) {
@@ -346,17 +308,28 @@ export const getAllocations = async (company_id, campaignId) => {
   }
 };
 
-// Dynamic scenarios / sub-scenarios
-export const getScenarios = async (company_id, allocationId, scenarioLevel, parentScenario = null) => {
-  if (!allocationId) return [];
+/**
+ * getScenarios:
+ * - allocationId is numeric id (we parse it)
+ * - scenarioLevel is numeric (1..4)
+ * - parentScenario: backend expects a string (the parent category name) — do NOT parse to int
+ */
+export const getScenarios = async (
+  company_id,
+  allocationId,
+  scenarioLevel,
+  parentScenario = null
+) => {
+  const alloc = toIntIfPresent(allocationId);
+  if (alloc === undefined) return []; 
   try {
     const params = {
       CLIENT_ID: company_id,
-      allocation: allocationId,
+      allocation: alloc,
       scenario_level: scenarioLevel,
     };
-    if (parentScenario) params.parent_scenario = parentScenario;
-
+    if (parentScenario !== undefined && parentScenario !== null && parentScenario !== "")
+      params.parent_scenario = parentScenario; 
     const response = await api.get("/call/scenarios", { params });
     return response.data || [];
   } catch (error) {
