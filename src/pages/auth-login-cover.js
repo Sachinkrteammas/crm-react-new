@@ -168,7 +168,9 @@
 
 // export default AuthLoginCover;
 
-//....Login with Toast Notification....////
+
+
+//....Login with Success Message & Password Toggle....////
 import React, { useState } from "react";
 import { login } from "../services/authService";
 import { Link, useNavigate } from "react-router-dom";
@@ -177,7 +179,8 @@ const AuthLoginCover = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [formError, setFormError] = useState("");
-  const [toast, setToast] = useState({ show: false, type: "", message: "" });
+  const [successMessage, setSuccessMessage] = useState(""); // ✅ success message state
+  const [showPassword, setShowPassword] = useState(false); // ✅ toggle state
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -187,89 +190,18 @@ const AuthLoginCover = () => {
       console.log("Logged in with token:", token);
 
       setFormError("");
-
-      setToast({
-        show: true,
-        type: "success",
-        message: "Login successful! Redirecting...",
-      });
+      setSuccessMessage("Login successful! Redirecting..."); // ✅ show success
 
       setTimeout(() => {
-        setToast({ show: false, type: "", message: "" });
+        setSuccessMessage("");
         navigate("/dashboard");
       }, 1500);
     } catch (err) {
       console.error(err);
       setFormError("Invalid email or password");
-      // setToast({
-      //   show: true,
-      //   type: "error",
-      //   message: "Invalid email or password",
-      // });
-
-      // setTimeout(() => {
-      //   setToast({ show: false, type: "", message: "" });
-      // }, 2000);
+      setSuccessMessage(""); // clear success if login fails
     }
   };
-
-  //   const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   try {
-  //     const data = await login(email, password); // response from backend
-
-  //     if (data && data.access_token) {
-  //       // ✅ Store token + user info
-  //       localStorage.setItem("token", data.access_token);
-  //       localStorage.setItem("userType", data.user_type);
-
-  //       setFormError("");
-
-  //       setToast({
-  //         show: true,
-  //         type: "success",
-  //         message: "Login successful! Redirecting...",
-  //       });
-
-  //       // Redirect based on user_type
-  //       setTimeout(() => {
-  //         setToast({ show: false, type: "", message: "" });
-
-  //         if (data.user_type === "admin") {
-  //           navigate("/dashboard"); // Admin → dashboard directly
-  //         } else if (data.user_type === "superadmin") {
-  //           navigate("/select-dashboard"); // SuperAdmin → dashboard selection
-  //         } else {
-  //           navigate("/dashboard"); // Fallback
-  //         }
-  //       }, 1500);
-  //     } else {
-  //       // ❌ Blank response = user not found
-  //       setFormError("Invalid email or password");
-  //       setToast({
-  //         show: true,
-  //         type: "error",
-  //         message: "Invalid email or password",
-  //       });
-
-  //       setTimeout(() => {
-  //         setToast({ show: false, type: "", message: "" });
-  //       }, 2000);
-  //     }
-  //   } catch (err) {
-  //     console.error(err);
-  //     setFormError("Something went wrong. Please try again.");
-  //     setToast({
-  //       show: true,
-  //       type: "error",
-  //       message: "Something went wrong",
-  //     });
-
-  //     setTimeout(() => {
-  //       setToast({ show: false, type: "", message: "" });
-  //     }, 2000);
-  //   }
-  // };
 
   return (
     <div className="authentication-wrapper authentication-cover">
@@ -300,7 +232,15 @@ const AuthLoginCover = () => {
               Please sign-in to your account and start the adventure
             </p>
 
+            {/* ✅ Success message at top of form */}
+            {successMessage && (
+              <div className="alert alert-success text-center mb-4">
+                {successMessage}
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="mb-6">
+              {/* Email */}
               <div className="mb-6">
                 <label htmlFor="email" className="form-label">
                   Email or Username
@@ -316,24 +256,42 @@ const AuthLoginCover = () => {
                 />
               </div>
 
-              <div className="mb-6">
+              {/* Password with eye toggle */}
+              <div className="mb-6 position-relative">
                 <label className="form-label" htmlFor="password">
                   Password
                 </label>
-                <input
-                  type="password"
-                  id="password"
-                  className={`form-control ${formError ? "is-invalid" : ""}`}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="********"
-                  required
-                />
-                {formError && (
-                  <div className="invalid-feedback">{formError}</div>
-                )}
+                <div className="position-relative">
+                  <input
+                    type={showPassword ? "text" : "password"} // toggle type
+                    id="password"
+                    className={`form-control ${formError ? "is-invalid" : ""}`}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="********"
+                    required
+                  />
+                  {/* Eye icon */}
+                  <i
+                    className={`bx ${showPassword ? "bx-hide" : "bx-show"}`}
+                    style={{
+                      position: "absolute",
+                      right: "10px",
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      cursor: "pointer",
+                      fontSize: "1.2rem",
+                      color: "#6c757d",
+                    }}
+                    onClick={() => setShowPassword(!showPassword)}
+                  ></i>
+                  {formError && (
+                    <div className="invalid-feedback">{formError}</div>
+                  )}
+                </div>
               </div>
 
+              {/* Remember & Forgot */}
               <div className="my-8 d-flex justify-content-between">
                 <div className="form-check mb-0 ms-2">
                   <input
@@ -342,8 +300,7 @@ const AuthLoginCover = () => {
                     id="remember-me"
                   />
                   <label className="form-check-label" htmlFor="remember-me">
-                    {" "}
-                    Remember Me{" "}
+                    Remember Me
                   </label>
                 </div>
                 <Link to="/forgot-password">Forgot Password?</Link>
@@ -354,26 +311,6 @@ const AuthLoginCover = () => {
               </button>
             </form>
           </div>
-
-          {/* ✅ Toast Notification */}
-          {toast.show && (
-            <div
-              className={`toast align-items-center text-white border-0 position-absolute top-0 end-0 m-3 show 
-                ${toast.type === "success" ? "bg-success" : "bg-danger"}`}
-              role="alert"
-            >
-              <div className="d-flex">
-                <div className="toast-body">{toast.message}</div>
-                <button
-                  type="button"
-                  className="btn-close btn-close-white me-2 m-auto"
-                  onClick={() =>
-                    setToast({ show: false, type: "", message: "" })
-                  }
-                ></button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -381,4 +318,3 @@ const AuthLoginCover = () => {
 };
 
 export default AuthLoginCover;
-
