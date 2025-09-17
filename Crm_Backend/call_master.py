@@ -175,9 +175,10 @@ def safe_query(db: Session, sql: str, params: dict = None) -> list[dict]:
     return [dict(r._mapping) for r in result.fetchall()]
 
 
-# ----------------- /types -----------------
-@router.get("/types", response_model=List[dict])
-def get_types(CLIENT_ID: int = Query(...), db: Session = Depends(get_db4)):
+
+# ----------------- /campaign-types -----------------
+@router.get("/campaign-types", response_model=List[dict])
+def get_campaign_types(CLIENT_ID: int = Query(...), db: Session = Depends(get_db4)):
     sql = """
         SELECT DISTINCT CampaignParentName AS id,
                         CampaignParentName AS name
@@ -186,7 +187,6 @@ def get_types(CLIENT_ID: int = Query(...), db: Session = Depends(get_db4)):
         ORDER BY CampaignParentName
     """
     return safe_query(db, sql, {"cid": CLIENT_ID})
-
 
 
 # ----------------- /campaigns -----------------
@@ -207,7 +207,6 @@ def get_campaigns(
     return safe_query(db, sql, {"cid": CLIENT_ID, "ctype": campaignType})
 
 
-
 # ----------------- /allocations -----------------
 @router.get("/allocations", response_model=List[dict])
 def get_allocations(
@@ -225,8 +224,7 @@ def get_allocations(
     return safe_query(db, sql, {"cid": CLIENT_ID, "camp": campaign})
 
 
-
-# ---------------- 4-7. Scenarios and Sub-Scenarios ----------------
+# ----------------- /scenarios -----------------
 @router.get("/scenarios", response_model=List[dict])
 def get_scenarios(
     CLIENT_ID: int = Query(...),
@@ -235,11 +233,6 @@ def get_scenarios(
     parent_scenario: Optional[str] = None,
     db: Session = Depends(get_db4)
 ):
-    """
-    Fetch scenarios/sub-scenarios dynamically based on allocation
-    and parent selection.
-    """
-    # Map level to column
     level_map = {1: "Category1", 2: "Category2", 3: "Category3", 4: "Category4"}
     col_name = level_map.get(scenario_level)
     if not col_name:
@@ -256,16 +249,13 @@ def get_scenarios(
         base_sql += " AND AllocationId = :alloc"
         params["alloc"] = allocation
 
-    # Filter by parent scenario if level > 1
     if parent_scenario and scenario_level > 1:
         prev_col = level_map[scenario_level - 1]
         base_sql += f" AND {prev_col} = :parent"
         params["parent"] = parent_scenario
 
     base_sql += f" ORDER BY {col_name}"
-
     return safe_query(db, base_sql, params)
-
 
 
 # ---------------- /outcalls Endpoint ----------------
@@ -366,9 +356,6 @@ def get_outcalls(
         "counts": counts,
         "breadcrumb": breadcrumb
     }
-
-
-
 
 
 

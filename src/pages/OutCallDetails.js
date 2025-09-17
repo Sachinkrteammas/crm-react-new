@@ -317,7 +317,543 @@
 //   );
 // }
 
-// components/OutCallDetails.js (or wherever your file is)
+// // components/OutCallDetails.js (or wherever your file is)
+// import React, { useState, useEffect } from "react";
+// import {
+//   getOutCallDetails,
+//   getCampaignTypes,
+//   getCampaigns,
+//   getAllocations,
+//   getScenarios,
+// } from "../services/authService";
+// import * as XLSX from "xlsx";
+// import { saveAs } from "file-saver";
+// import "../styles/loader.css";
+
+// export default function OutCallDetails() {
+//   const company_id = localStorage.getItem("company_id");
+
+//   const [form, setForm] = useState({
+//     campaignType: "",
+//     campaign: "",
+//     allocation: "",
+//     scenario: "",
+//     subScenario1: "",
+//     subScenario2: "",
+//     subScenario3: "",
+//     msisdn: "",
+//     startDate: "",
+//     endDate: "",
+//   });
+
+//   const [types, setTypes] = useState([]);
+//   const [campaigns, setCampaigns] = useState([]);
+//   const [allocs, setAllocs] = useState([]);
+//   const [scenarioOptions, setScenarioOptions] = useState([]);
+//   const [sub1Options, setSub1Options] = useState([]);
+//   const [sub2Options, setSub2Options] = useState([]);
+//   const [sub3Options, setSub3Options] = useState([]);
+
+//   const [tableData, setTableData] = useState([]);
+//   const [counts, setCounts] = useState({});
+//   const [breadcrumb, setBreadcrumb] = useState([]);
+//   const [loading, setLoading] = useState(false);
+
+//   const [dateError, setDateError] = useState(""); // ✅ inline error for dat
+
+//   const SCENARIO_KEYS = [
+//     "scenario",
+//     "subScenario1",
+//     "subScenario2",
+//     "subScenario3",
+//   ];
+
+//   useEffect(() => {
+//     if (!company_id) return;
+//     (async () => {
+//       const t = await getCampaignTypes(company_id);
+//       setTypes(t || []);
+//     })();
+//   }, [company_id]);
+
+//   // Generic safe setter for form
+//   const updateForm = (name, value) => setForm((p) => ({ ...p, [name]: value }));
+
+//   const handleChange = async (e) => {
+//     const { name, value } = e.target;
+//     updateForm(name, value);
+
+//     try {
+//       // When user selects a campaign type (string), fetch campaigns (these are objects with id & name)
+//       if (name === "campaignType") {
+//         setCampaigns([]);
+//         setAllocs([]);
+//         updateForm("campaign", "");
+//         updateForm("allocation", "");
+//         if (value) {
+//           const res = await getCampaigns(company_id, value);
+//           setCampaigns(res || []);
+//         }
+//       }
+
+//       // When campaign selected (we expect id), fetch allocations
+//       if (name === "campaign") {
+//         setAllocs([]);
+//         updateForm("allocation", "");
+//         if (value) {
+//           const res = await getAllocations(company_id, value);
+//           setAllocs(res || []);
+//         }
+//       }
+
+//       // When allocation selected (id), fetch scenario options (these are name/id pairs)
+//       if (name === "allocation") {
+//         setScenarioOptions([]);
+//         setSub1Options([]);
+//         setSub2Options([]);
+//         setSub3Options([]);
+//         updateForm("scenario", "");
+//         updateForm("subScenario1", "");
+//         updateForm("subScenario2", "");
+//         updateForm("subScenario3", "");
+//         if (value) {
+//           const res = await getScenarios(company_id, value, 1);
+//           setScenarioOptions(res || []);
+//         }
+//       }
+
+//       // scenario selected => fetch subScenario1 (parentScenario is string name OR id depending on backend)
+//       if (name === "scenario") {
+//         setSub1Options([]);
+//         setSub2Options([]);
+//         setSub3Options([]);
+//         updateForm("subScenario1", "");
+//         updateForm("subScenario2", "");
+//         updateForm("subScenario3", "");
+//         if (value) {
+//           // backend's parent_scenario is string, but your getScenarios allows passing the value directly.
+//           const res = await getScenarios(company_id, form.allocation, 2, value);
+//           setSub1Options(res || []);
+//         }
+//       }
+
+//       if (name === "subScenario1") {
+//         setSub2Options([]);
+//         setSub3Options([]);
+//         updateForm("subScenario2", "");
+//         updateForm("subScenario3", "");
+//         if (value) {
+//           const res = await getScenarios(company_id, form.allocation, 3, value);
+//           setSub2Options(res || []);
+//         }
+//       }
+
+//       if (name === "subScenario2") {
+//         setSub3Options([]);
+//         updateForm("subScenario3", "");
+//         if (value) {
+//           const res = await getScenarios(company_id, form.allocation, 4, value);
+//           setSub3Options(res || []);
+//         }
+//       }
+//     } catch (err) {
+//       console.error(err);
+//     }
+//   };
+
+//   const handleView = async (e) => {
+//     e.preventDefault();
+//     if (!company_id) return;
+
+//     // Build filters: only include non-empty values
+//     const filters = Object.fromEntries(
+//       Object.entries(form).filter(
+//         ([_, v]) => v !== "" && v !== null && v !== undefined
+//       )
+//     );
+
+//     setLoading(true);
+//     try {
+//       const res = await getOutCallDetails(company_id, filters);
+//       // res should be { data: [], counts: {}, breadcrumb: [] }
+//       setTableData(res.data || []);
+//       setCounts(res.counts || {});
+//       setBreadcrumb(res.breadcrumb || []);
+//     } catch (err) {
+//       console.error(err);
+//       setTableData([]);
+//       setCounts({});
+//       setBreadcrumb([]);
+//     } finally {
+//       setLoading(false);
+//     }
+//   };
+
+//   // const handleExport = () => {
+//   //   if (!tableData.length) return alert("No data to export.");
+//   //   const worksheet = XLSX.utils.json_to_sheet(tableData);
+//   //   const workbook = XLSX.utils.book_new();
+//   //   XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+//   //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+//   //   saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "out_call_details.xlsx");
+//   // };
+
+//   //   const handleExport = () => {
+//   //   if (!tableData.length && !Object.keys(counts || {}).length && !breadcrumb?.length) {
+//   //     return alert("No data to export.");
+//   //   }
+
+//   //   const workbook = XLSX.utils.book_new();
+
+//   //   // --- Sheet 1: Raw Data ---
+//   //   if (tableData.length) {
+//   //     const sheet1 = XLSX.utils.json_to_sheet(tableData);
+//   //     XLSX.utils.book_append_sheet(workbook, sheet1, "Raw Data");
+//   //   }
+
+//   //   // --- Sheet 2: Counts ---
+//   //   if (Object.keys(counts || {}).length) {
+//   //     let countsData = [];
+
+//   //     SCENARIO_KEYS.forEach((key) => {
+//   //       if (counts[key]) {
+//   //         countsData.push([`${key.toUpperCase()} Counts`]); // heading row
+//   //         countsData.push(["Name", "Total"]); // header
+//   //         counts[key].forEach((c) => {
+//   //           countsData.push([c.name, c.total]);
+//   //         });
+//   //         countsData.push([]); // empty row for spacing
+//   //       }
+//   //     });
+
+//   //     if (counts.total) {
+//   //       countsData.push(["Grand Total", counts.total]);
+//   //     }
+
+//   //     const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
+//   //     XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
+//   //   }
+
+//   //   // --- Sheet 3: Filters ---
+//   //   if (breadcrumb?.length) {
+//   //     let filtersData = [["Level", "Value"]];
+//   //     breadcrumb.forEach((b) => {
+//   //       filtersData.push([b.level, b.value]);
+//   //     });
+
+//   //     const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
+//   //     XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
+//   //   }
+
+//   //   // --- Export file ---
+//   //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+//   //   saveAs(
+//   //     new Blob([excelBuffer], { type: "application/octet-stream" }),
+//   //     "out_call_details.xlsx"
+//   //   );
+//   // };
+
+//   const handleExport = () => {
+//     if (
+//       !tableData.length &&
+//       !Object.keys(counts || {}).length &&
+//       !breadcrumb?.length
+//     ) {
+//       return alert("No data to export.");
+//     }
+
+//     const workbook = XLSX.utils.book_new();
+
+//     // --- Sheet 1: Raw Data ---
+//     if (tableData.length) {
+//       const sheet1 = XLSX.utils.json_to_sheet(tableData);
+//       XLSX.utils.book_append_sheet(workbook, sheet1, "Raw Data");
+//     }
+
+//     // --- Sheet 2: Counts ---
+//     if (Object.keys(counts || {}).length) {
+//       let countsData = [];
+//       let merges = [];
+
+//       let rowIndex = 0;
+
+//       SCENARIO_KEYS.forEach((key) => {
+//         if (counts[key]) {
+//           // Section header (merged across 2 columns)
+//           countsData.push([`${key.toUpperCase()} COUNTS`]);
+//           merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
+//           rowIndex++;
+
+//           // Table header
+//           countsData.push(["Name", "Total"]);
+//           rowIndex++;
+
+//           // Data rows
+//           counts[key].forEach((c) => {
+//             countsData.push([c.name, c.total]);
+//             rowIndex++;
+//           });
+
+//           // Empty row for spacing
+//           countsData.push([]);
+//           rowIndex++;
+//         }
+//       });
+
+//       if (counts.total) {
+//         countsData.push(["Grand Total", counts.total]);
+//       }
+
+//       const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
+//       sheet2["!merges"] = merges; // apply merged headers
+//       XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
+//     }
+
+//     // --- Sheet 3: Filters ---
+//     if (breadcrumb?.length) {
+//       let filtersData = [["Level", "Value"]];
+//       breadcrumb.forEach((b) => {
+//         filtersData.push([b.level, b.value]);
+//       });
+
+//       const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
+//       XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
+//     }
+
+//     // --- Export file ---
+//     const excelBuffer = XLSX.write(workbook, {
+//       bookType: "xlsx",
+//       type: "array",
+//     });
+//     saveAs(
+//       new Blob([excelBuffer], { type: "application/octet-stream" }),
+//       "out_call_details.xlsx"
+//     );
+//   };
+
+//   return (
+//     <>
+//       {loading && (
+//         <div className="loader-overlay">
+//           <div className="bar" />
+//           <div className="bar" />
+//           <div className="bar" />
+//         </div>
+//       )}
+
+//       <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
+//         <div className="card p-4">
+//           <h5 className="mb-4">Out Call Details</h5>
+//           <form onSubmit={handleView}>
+//             <div className="row mb-3">
+//               {/* campaignType (string id), campaign (numeric id), allocation (numeric id), scenario (string id) */}
+//               {[
+//                 {
+//                   name: "campaignType",
+//                   label: "Campaign Type",
+//                   options: types,
+//                 },
+//                 { name: "campaign", label: "Campaign", options: campaigns },
+//                 { name: "allocation", label: "Allocation", options: allocs },
+//                 {
+//                   name: "scenario",
+//                   label: "Scenario",
+//                   options: scenarioOptions,
+//                 },
+//               ].map((f) => (
+//                 <div className="col-md-3 mb-2" key={f.name}>
+//                   <select
+//                     className="form-select"
+//                     name={f.name}
+//                     value={form[f.name]}
+//                     onChange={handleChange}
+//                     disabled={!f.options || f.options.length === 0}
+//                   >
+//                     <option value="">Select {f.label}</option>
+//                     {f.options &&
+//                       f.options.map((o) => (
+//                         // ALWAYS use id as value. Backend expects numeric id for campaign/allocation
+//                         <option key={o.id} value={o.id}>
+//                           {o.name}
+//                         </option>
+//                       ))}
+//                   </select>
+//                 </div>
+//               ))}
+//             </div>
+
+//             <div className="row mb-3">
+//               {[
+//                 {
+//                   name: "subScenario1",
+//                   label: "Sub Scenario 1",
+//                   options: sub1Options,
+//                 },
+//                 {
+//                   name: "subScenario2",
+//                   label: "Sub Scenario 2",
+//                   options: sub2Options,
+//                 },
+//                 {
+//                   name: "subScenario3",
+//                   label: "Sub Scenario 3",
+//                   options: sub3Options,
+//                 },
+//                 { name: "msisdn", label: "MSISDN", options: null },
+//               ].map((f) => (
+//                 <div className="col-md-3 mb-2" key={f.name}>
+//                   {f.options ? (
+//                     <select
+//                       className="form-select"
+//                       name={f.name}
+//                       value={form[f.name]}
+//                       onChange={handleChange}
+//                       disabled={!f.options || f.options.length === 0}
+//                     >
+//                       <option value="">Select {f.label}</option>
+//                       {f.options.map((o) => (
+//                         <option key={o.id} value={o.id}>
+//                           {o.name}
+//                         </option>
+//                       ))}
+//                     </select>
+//                   ) : (
+//                     <input
+//                       type="text"
+//                       className="form-control"
+//                       placeholder={f.label}
+//                       name={f.name}
+//                       value={form[f.name]}
+//                       onChange={handleChange}
+//                     />
+//                   )}
+//                 </div>
+//               ))}
+//             </div>
+
+//             <div className="row mb-3">
+//               <div className="col-md-3 mb-2">
+//                 <input
+//                   type="date"
+//                   className="form-control"
+//                   name="startDate"
+//                   value={form.startDate}
+//                   onChange={handleChange}
+//                 />
+//               </div>
+//               <div className="col-md-3 mb-2">
+//                 <input
+//                   type="date"
+//                   className="form-control"
+//                   name="endDate"
+//                   value={form.endDate}
+//                   onChange={handleChange}
+//                 />
+//               </div>
+//               <div className="col-md-6 mb-2 d-flex gap-2">
+//                 <button className="btn btn-primary" type="submit">
+//                   View
+//                 </button>
+//                 <button
+//                   className="btn btn-success"
+//                   type="button"
+//                   onClick={handleExport}
+//                 >
+//                   Export
+//                 </button>
+//               </div>
+//             </div>
+//           </form>
+
+//           {/* Counts */}
+//           {Object.keys(counts || {}).length > 0 && (
+//             <div className="card mt-3 p-3">
+//               <h6 className="mb-3">Counts</h6>
+//               <table className="table table-bordered table-sm">
+//                 <thead>
+//                   <tr>
+//                     <th>Name</th>
+//                     <th>Total</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {SCENARIO_KEYS.map((key) =>
+//                     counts[key] ? (
+//                       <React.Fragment key={key}>
+//                         {/* Section Header */}
+//                         <tr className="table-secondary">
+//                           <td colSpan={2} className="fw-bold text-capitalize">
+//                             {key}
+//                           </td>
+//                         </tr>
+//                         {/* Data Rows */}
+//                         {counts[key].map((c, i) => (
+//                           <tr key={i}>
+//                             <td>{c.name}</td>
+//                             <td>{c.total}</td>
+//                           </tr>
+//                         ))}
+//                       </React.Fragment>
+//                     ) : null
+//                   )}
+//                   {counts.total && (
+//                     <tr className="table-dark">
+//                       <td className="fw-bold">Grand Total</td>
+//                       <td className="fw-bold">{counts.total}</td>
+//                     </tr>
+//                   )}
+//                 </tbody>
+//               </table>
+//             </div>
+//           )}
+
+//           {/* Breadcrumb */}
+//           {breadcrumb && breadcrumb.length > 0 && (
+//             <div className="mt-3">
+//               <h6>Filters Applied</h6>
+//               <ul>
+//                 {breadcrumb.map((b, i) => (
+//                   <li key={i}>
+//                     {b.level}: {b.value}
+//                   </li>
+//                 ))}
+//               </ul>
+//             </div>
+//           )}
+
+//           {/* Table */}
+//           {tableData && tableData.length > 0 ? (
+//             <div className="card mt-4 p-3">
+//               <table className="table table-bordered table-striped">
+//                 <thead>
+//                   <tr>
+//                     {Object.keys(tableData[0]).map((k) => (
+//                       <th key={k}>{k}</th>
+//                     ))}
+//                   </tr>
+//                 </thead>
+//                 <tbody>
+//                   {tableData.map((row, rIdx) => (
+//                     <tr key={rIdx}>
+//                       {Object.keys(row).map((k) => (
+//                         <td key={k}>{row[k] ?? ""}</td>
+//                       ))}
+//                     </tr>
+//                   ))}
+//                 </tbody>
+//               </table>
+//             </div>
+//           ) : !loading ? (
+//             <p className="mt-3">No data found.</p>
+//           ) : null}
+//         </div>
+//       </div>
+//     </>
+//   );
+// }
+
+
+// components/OutCallDetails.js iwth fixed start and end date validation for show data..//
 import React, { useState, useEffect } from "react";
 import {
   getOutCallDetails,
@@ -359,6 +895,8 @@ export default function OutCallDetails() {
   const [breadcrumb, setBreadcrumb] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const [dateError, setDateError] = useState(""); // ✅ inline error for date
+
   const SCENARIO_KEYS = [
     "scenario",
     "subScenario1",
@@ -382,7 +920,6 @@ export default function OutCallDetails() {
     updateForm(name, value);
 
     try {
-      // When user selects a campaign type (string), fetch campaigns (these are objects with id & name)
       if (name === "campaignType") {
         setCampaigns([]);
         setAllocs([]);
@@ -394,7 +931,6 @@ export default function OutCallDetails() {
         }
       }
 
-      // When campaign selected (we expect id), fetch allocations
       if (name === "campaign") {
         setAllocs([]);
         updateForm("allocation", "");
@@ -404,7 +940,6 @@ export default function OutCallDetails() {
         }
       }
 
-      // When allocation selected (id), fetch scenario options (these are name/id pairs)
       if (name === "allocation") {
         setScenarioOptions([]);
         setSub1Options([]);
@@ -420,7 +955,6 @@ export default function OutCallDetails() {
         }
       }
 
-      // scenario selected => fetch subScenario1 (parentScenario is string name OR id depending on backend)
       if (name === "scenario") {
         setSub1Options([]);
         setSub2Options([]);
@@ -429,7 +963,6 @@ export default function OutCallDetails() {
         updateForm("subScenario2", "");
         updateForm("subScenario3", "");
         if (value) {
-          // backend's parent_scenario is string, but your getScenarios allows passing the value directly.
           const res = await getScenarios(company_id, form.allocation, 2, value);
           setSub1Options(res || []);
         }
@@ -463,6 +996,20 @@ export default function OutCallDetails() {
     e.preventDefault();
     if (!company_id) return;
 
+    // ✅ Ensure both dates are entered
+    if (!form.startDate || !form.endDate) {
+      setDateError("Please select both Start Date and End Date before viewing data.");
+      return;
+    }
+
+    // ✅ Ensure start <= end
+    if (new Date(form.startDate) > new Date(form.endDate)) {
+      setDateError("Start Date cannot be after End Date.");
+      return;
+    }
+
+    setDateError(""); // clear old error if dates are valid
+
     // Build filters: only include non-empty values
     const filters = Object.fromEntries(
       Object.entries(form).filter(
@@ -473,7 +1020,6 @@ export default function OutCallDetails() {
     setLoading(true);
     try {
       const res = await getOutCallDetails(company_id, filters);
-      // res should be { data: [], counts: {}, breadcrumb: [] }
       setTableData(res.data || []);
       setCounts(res.counts || {});
       setBreadcrumb(res.breadcrumb || []);
@@ -486,70 +1032,6 @@ export default function OutCallDetails() {
       setLoading(false);
     }
   };
-
-  // const handleExport = () => {
-  //   if (!tableData.length) return alert("No data to export.");
-  //   const worksheet = XLSX.utils.json_to_sheet(tableData);
-  //   const workbook = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-  //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  //   saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "out_call_details.xlsx");
-  // };
-
-  //   const handleExport = () => {
-  //   if (!tableData.length && !Object.keys(counts || {}).length && !breadcrumb?.length) {
-  //     return alert("No data to export.");
-  //   }
-
-  //   const workbook = XLSX.utils.book_new();
-
-  //   // --- Sheet 1: Raw Data ---
-  //   if (tableData.length) {
-  //     const sheet1 = XLSX.utils.json_to_sheet(tableData);
-  //     XLSX.utils.book_append_sheet(workbook, sheet1, "Raw Data");
-  //   }
-
-  //   // --- Sheet 2: Counts ---
-  //   if (Object.keys(counts || {}).length) {
-  //     let countsData = [];
-
-  //     SCENARIO_KEYS.forEach((key) => {
-  //       if (counts[key]) {
-  //         countsData.push([`${key.toUpperCase()} Counts`]); // heading row
-  //         countsData.push(["Name", "Total"]); // header
-  //         counts[key].forEach((c) => {
-  //           countsData.push([c.name, c.total]);
-  //         });
-  //         countsData.push([]); // empty row for spacing
-  //       }
-  //     });
-
-  //     if (counts.total) {
-  //       countsData.push(["Grand Total", counts.total]);
-  //     }
-
-  //     const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
-  //     XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
-  //   }
-
-  //   // --- Sheet 3: Filters ---
-  //   if (breadcrumb?.length) {
-  //     let filtersData = [["Level", "Value"]];
-  //     breadcrumb.forEach((b) => {
-  //       filtersData.push([b.level, b.value]);
-  //     });
-
-  //     const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
-  //     XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
-  //   }
-
-  //   // --- Export file ---
-  //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  //   saveAs(
-  //     new Blob([excelBuffer], { type: "application/octet-stream" }),
-  //     "out_call_details.xlsx"
-  //   );
-  // };
 
   const handleExport = () => {
     if (
@@ -572,27 +1054,22 @@ export default function OutCallDetails() {
     if (Object.keys(counts || {}).length) {
       let countsData = [];
       let merges = [];
-
       let rowIndex = 0;
 
       SCENARIO_KEYS.forEach((key) => {
         if (counts[key]) {
-          // Section header (merged across 2 columns)
           countsData.push([`${key.toUpperCase()} COUNTS`]);
           merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
           rowIndex++;
 
-          // Table header
           countsData.push(["Name", "Total"]);
           rowIndex++;
 
-          // Data rows
           counts[key].forEach((c) => {
             countsData.push([c.name, c.total]);
             rowIndex++;
           });
 
-          // Empty row for spacing
           countsData.push([]);
           rowIndex++;
         }
@@ -603,7 +1080,7 @@ export default function OutCallDetails() {
       }
 
       const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
-      sheet2["!merges"] = merges; // apply merged headers
+      sheet2["!merges"] = merges;
       XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
     }
 
@@ -618,7 +1095,6 @@ export default function OutCallDetails() {
       XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
     }
 
-    // --- Export file ---
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
       type: "array",
@@ -644,20 +1120,11 @@ export default function OutCallDetails() {
           <h5 className="mb-4">Out Call Details</h5>
           <form onSubmit={handleView}>
             <div className="row mb-3">
-              {/* campaignType (string id), campaign (numeric id), allocation (numeric id), scenario (string id) */}
               {[
-                {
-                  name: "campaignType",
-                  label: "Campaign Type",
-                  options: types,
-                },
+                { name: "campaignType", label: "Campaign Type", options: types },
                 { name: "campaign", label: "Campaign", options: campaigns },
                 { name: "allocation", label: "Allocation", options: allocs },
-                {
-                  name: "scenario",
-                  label: "Scenario",
-                  options: scenarioOptions,
-                },
+                { name: "scenario", label: "Scenario", options: scenarioOptions },
               ].map((f) => (
                 <div className="col-md-3 mb-2" key={f.name}>
                   <select
@@ -670,7 +1137,6 @@ export default function OutCallDetails() {
                     <option value="">Select {f.label}</option>
                     {f.options &&
                       f.options.map((o) => (
-                        // ALWAYS use id as value. Backend expects numeric id for campaign/allocation
                         <option key={o.id} value={o.id}>
                           {o.name}
                         </option>
@@ -682,21 +1148,9 @@ export default function OutCallDetails() {
 
             <div className="row mb-3">
               {[
-                {
-                  name: "subScenario1",
-                  label: "Sub Scenario 1",
-                  options: sub1Options,
-                },
-                {
-                  name: "subScenario2",
-                  label: "Sub Scenario 2",
-                  options: sub2Options,
-                },
-                {
-                  name: "subScenario3",
-                  label: "Sub Scenario 3",
-                  options: sub3Options,
-                },
+                { name: "subScenario1", label: "Sub Scenario 1", options: sub1Options },
+                { name: "subScenario2", label: "Sub Scenario 2", options: sub2Options },
+                { name: "subScenario3", label: "Sub Scenario 3", options: sub3Options },
                 { name: "msisdn", label: "MSISDN", options: null },
               ].map((f) => (
                 <div className="col-md-3 mb-2" key={f.name}>
@@ -761,6 +1215,9 @@ export default function OutCallDetails() {
                 </button>
               </div>
             </div>
+
+            {/* ✅ Inline date error */}
+            {dateError && <p className="text-danger small">{dateError}</p>}
           </form>
 
           {/* Counts */}
@@ -778,13 +1235,11 @@ export default function OutCallDetails() {
                   {SCENARIO_KEYS.map((key) =>
                     counts[key] ? (
                       <React.Fragment key={key}>
-                        {/* Section Header */}
                         <tr className="table-secondary">
                           <td colSpan={2} className="fw-bold text-capitalize">
                             {key}
                           </td>
                         </tr>
-                        {/* Data Rows */}
                         {counts[key].map((c, i) => (
                           <tr key={i}>
                             <td>{c.name}</td>
@@ -849,3 +1304,4 @@ export default function OutCallDetails() {
     </>
   );
 }
+

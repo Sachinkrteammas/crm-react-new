@@ -237,37 +237,10 @@ const toIntIfPresent = (v) => {
 };
 
 
- // Get OutCall Details with optional filters
-export const getOutCallDetails = async (company_id, filters = {}) => {
-  try {
-    // Build params only with non-empty fields
-    const params = { CLIENT_ID: company_id };
-
-    Object.entries(filters).forEach(([k, v]) => {
-      if (v === undefined || v === null || v === "") return;
-      params[k] = v;
-    });
-
-    // Convert only campaign & allocation to integers (backend expects int for these)
-    const campaignInt = toIntIfPresent(params.campaign);
-    const allocationInt = toIntIfPresent(params.allocation);
-    if (campaignInt !== undefined) params.campaign = campaignInt;
-    if (allocationInt !== undefined) params.allocation = allocationInt;
-
-    // Note: Do NOT parse scenario or subScenario* to int — your backend compares those as strings.
-    const response = await api.get("/call/outcalls", { params });
-    return response.data || { data: [], counts: {}, breadcrumb: [] };
-  } catch (error) {
-    console.error("Error fetching OutCall details:", error);
-    // bubble up useful shape so frontend doesn't break
-    return { data: [], counts: {}, breadcrumb: [] };
-  }
-};
-
 // Get all campaign types for a company
 export const getCampaignTypes = async (company_id) => {
   try {
-    const response = await api.get("/call/types", {
+    const response = await api.get("/call/campaign-types", {
       params: { CLIENT_ID: company_id },
     });
     return response.data || [];
@@ -277,9 +250,8 @@ export const getCampaignTypes = async (company_id) => {
   }
 };
 
-// Get campaigns under a specific campaign type
+// Get all campaigns for a company based on campaign type
 export const getCampaigns = async (company_id, campaignType) => {
-  if (!campaignType) return [];
   try {
     const response = await api.get("/call/campaigns", {
       params: { CLIENT_ID: company_id, campaignType },
@@ -291,15 +263,11 @@ export const getCampaigns = async (company_id, campaignType) => {
   }
 };
 
-
- // Get allocations under a campaign
-export const getAllocations = async (company_id, campaignId) => {
-  // campaignId must be numeric id; if it's empty or not parseable, return [].
-  const cid = toIntIfPresent(campaignId);
-  if (cid === undefined) return [];
+// Get all allocations for a campaign
+export const getAllocations = async (company_id, campaign) => {
   try {
     const response = await api.get("/call/allocations", {
-      params: { CLIENT_ID: company_id, campaign: cid },
+      params: { CLIENT_ID: company_id, campaign },
     });
     return response.data || [];
   } catch (error) {
@@ -308,32 +276,39 @@ export const getAllocations = async (company_id, campaignId) => {
   }
 };
 
-/**
- * getScenarios:
- * - allocationId is numeric id (we parse it)
- * - scenarioLevel is numeric (1..4)
- * - parentScenario: backend expects a string (the parent category name) — do NOT parse to int
- */
+// Get scenarios or sub-scenarios dynamically
 export const getScenarios = async (
   company_id,
-  allocationId,
-  scenarioLevel,
-  parentScenario = null
+  allocation,
+  scenario_level = 1,
+  parent_scenario = null
 ) => {
-  const alloc = toIntIfPresent(allocationId);
-  if (alloc === undefined) return []; 
   try {
-    const params = {
-      CLIENT_ID: company_id,
-      allocation: alloc,
-      scenario_level: scenarioLevel,
-    };
-    if (parentScenario !== undefined && parentScenario !== null && parentScenario !== "")
-      params.parent_scenario = parentScenario; 
-    const response = await api.get("/call/scenarios", { params });
+    const response = await api.get("/call/scenarios", {
+      params: {
+        CLIENT_ID: company_id,
+        allocation,
+        scenario_level,
+        parent_scenario,
+      },
+    });
     return response.data || [];
   } catch (error) {
     console.error("Error fetching scenarios:", error);
     return [];
   }
 };
+
+// Get outcall details with filters
+export const getOutCallDetails = async (company_id, filters = {}) => {
+  try {
+    const response = await api.get("/call/outcalls", {
+      params: { CLIENT_ID: company_id, ...filters },
+    });
+    return response.data || { data: [], counts: {}, breadcrumb: [] };
+  } catch (error) {
+    console.error("Error fetching out call details:", error);
+    return { data: [], counts: {}, breadcrumb: [] };
+  }
+};
+
