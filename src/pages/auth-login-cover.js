@@ -173,6 +173,7 @@
 //....Login with Success Message & Password Toggle....////
 import React, { useState } from "react";
 import { login } from "../services/authService";
+import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from "react-router-dom";
 
 const AuthLoginCover = () => {
@@ -257,39 +258,39 @@ const AuthLoginCover = () => {
               </div>
 
               {/* Password with eye toggle */}
-              <div className="mb-6 position-relative">
-                <label className="form-label" htmlFor="password">
-                  Password
-                </label>
-                <div className="position-relative">
-                  <input
-                    type={showPassword ? "text" : "password"} // toggle type
-                    id="password"
-                    className={`form-control ${formError ? "is-invalid" : ""}`}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="********"
-                    required
-                  />
-                  {/* Eye icon */}
-                  <i
-                    className={`bx ${showPassword ? "bx-hide" : "bx-show"}`}
-                    style={{
-                      position: "absolute",
-                      right: "10px",
-                      top: "50%",
-                      transform: "translateY(-50%)",
-                      cursor: "pointer",
-                      fontSize: "1.2rem",
-                      color: "#6c757d",
-                    }}
-                    onClick={() => setShowPassword(!showPassword)}
-                  ></i>
-                  {formError && (
-                    <div className="invalid-feedback">{formError}</div>
-                  )}
-                </div>
-              </div>
+<div className="mb-6">
+  <label className="form-label" htmlFor="password">
+    Password
+  </label>
+  <div className="position-relative">
+    <input
+      type={showPassword ? "text" : "password"}
+      id="password"
+      className={`form-control pe-5 ${formError ? "is-invalid" : ""}`} 
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      placeholder="********"
+      required
+    />
+    {/* Eye/EyeOff icon */}
+    <span
+      onClick={() => setShowPassword(!showPassword)}
+      style={{
+        position: "absolute",
+        right: "12px",
+        top: "50%",
+        transform: "translateY(-50%)",
+        cursor: "pointer",
+        color: "#6c757d",
+      }}
+    >
+      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+    </span>
+
+    {formError && <div className="invalid-feedback">{formError}</div>}
+  </div>
+</div>
+
 
               {/* Remember & Forgot */}
               <div className="my-8 d-flex justify-content-between">
