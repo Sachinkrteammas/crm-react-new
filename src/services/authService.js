@@ -172,77 +172,17 @@ export const getTicketBySource = async (payload) => {
     }
 };
 
-
-// Get Out Call Details (GET with params)
-// export const getOutCallDetails = async (company_id, payload) => {
-//     try {
-//         const response = await api.get("/call/outcalls", {
-//             params: { CLIENT_ID: company_id, ...payload },
-//         });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error fetching out call details:", error);
-//         throw error;
-//     }
-// };
-
-// // Get Campaign Types
-// export const getCampaignTypes = async (company_id) => {
-//     try {
-//         const response = await api.get("/call/types", {
-//             params: { CLIENT_ID: company_id },
-//         });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error fetching campaign types:", error);
-//         throw error;
-//     }
-// };
-
-// // Get Campaigns for a given parent (campaign type)
-// export const getCampaigns = async (company_id, parentId) => {
-//     try {
-//         const response = await api.get("/call/campaigns", {
-//             params: { CLIENT_ID: company_id, type: parentId },
-//         });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error fetching campaigns:", error);
-//         throw error;
-//     }
-// };
-
-// // Get Allocations for a given campaign
-// export const getAllocations = async (company_id, campaignId) => {
-//     try {
-//         const response = await api.get("/call/allocations", {
-//             params: { CLIENT_ID: company_id, campaign: campaignId },
-//         });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error fetching allocations:", error);
-//         throw error;
-//     }
-
-    
-// };
-
-
-
-// // ------------------ OutCall / Campaign / Allocation ------------------
+// ---------------- OutCall / Campaign / Allocation ----------------
 const toIntIfPresent = (v) => {
   if (v === undefined || v === null || v === "") return undefined;
   const n = parseInt(v, 10);
   return Number.isNaN(n) ? undefined : n;
 };
 
-
 // Get all campaign types for a company
 export const getCampaignTypes = async (company_id) => {
   try {
-    const response = await api.get("/call/campaign-types", {
-      params: { CLIENT_ID: company_id },
-    });
+    const response = await api.get("/call/campaign-types", { params: { CLIENT_ID: company_id } });
     return response.data || [];
   } catch (error) {
     console.error("Error fetching campaign types:", error);
@@ -253,9 +193,7 @@ export const getCampaignTypes = async (company_id) => {
 // Get all campaigns for a company based on campaign type
 export const getCampaigns = async (company_id, campaignType) => {
   try {
-    const response = await api.get("/call/campaigns", {
-      params: { CLIENT_ID: company_id, campaignType },
-    });
+    const response = await api.get("/call/campaigns", { params: { CLIENT_ID: company_id, campaignType } });
     return response.data || [];
   } catch (error) {
     console.error("Error fetching campaigns:", error);
@@ -266,9 +204,7 @@ export const getCampaigns = async (company_id, campaignType) => {
 // Get all allocations for a campaign
 export const getAllocations = async (company_id, campaign) => {
   try {
-    const response = await api.get("/call/allocations", {
-      params: { CLIENT_ID: company_id, campaign },
-    });
+    const response = await api.get("/call/allocations", { params: { CLIENT_ID: company_id, campaign } });
     return response.data || [];
   } catch (error) {
     console.error("Error fetching allocations:", error);
@@ -277,20 +213,10 @@ export const getAllocations = async (company_id, campaign) => {
 };
 
 // Get scenarios or sub-scenarios dynamically
-export const getScenarios = async (
-  company_id,
-  allocation,
-  scenario_level = 1,
-  parent_scenario = null
-) => {
+export const getScenarios = async (company_id, allocation, scenario_level = 1, parent_scenario = null) => {
   try {
     const response = await api.get("/call/scenarios", {
-      params: {
-        CLIENT_ID: company_id,
-        allocation,
-        scenario_level,
-        parent_scenario,
-      },
+      params: { CLIENT_ID: company_id, allocation, scenario_level, parent_scenario },
     });
     return response.data || [];
   } catch (error) {
@@ -302,13 +228,12 @@ export const getScenarios = async (
 // Get outcall details with filters
 export const getOutCallDetails = async (company_id, filters = {}) => {
   try {
-    const response = await api.get("/call/outcalls", {
-      params: { CLIENT_ID: company_id, ...filters },
-    });
-    return response.data || { data: [], counts: {}, breadcrumb: [] };
+    const response = await api.get("/call/outcalls", { params: { CLIENT_ID: company_id, ...filters } });
+    return response.data || { data: [], countsFiltered: {}, countsAll: {}, breadcrumb: [] };
   } catch (error) {
     console.error("Error fetching out call details:", error);
-    return { data: [], counts: {}, breadcrumb: [] };
+    return { data: [], countsFiltered: {}, countsAll: {}, breadcrumb: [] };
   }
 };
+
 

@@ -1,859 +1,4 @@
-// import React, { useState, useEffect } from "react";
-// import {
-//   getCampaignTypes,
-//   getCampaigns,
-//   getAllocations,
-//   getOutCallDetails
-// } from '../services/authService';
-// import * as XLSX from "xlsx";
-// import { saveAs } from "file-saver";
-// import "../styles/loader.css";
-
-// export default function OutCallDetails() {
-//   const [form, setForm] = useState({
-//         campaignType: "",
-//         campaign: "",
-//         allocation: "",
-//         scenario: "",
-//         subScenario1: "",
-//         subScenario2: "",
-//         subScenario3: "",
-//         msisdn: "",
-//         startDate: "",
-//         endDate: ""
-//     });
-
-//     const [types, setTypes] = useState([]);
-//     const [campaigns, setCampaigns] = useState([]);
-//     const [allocs, setAllocs] = useState([]);
-//     const [data, setData] = useState([]);
-//     const [loading, setLoading] = useState(false);
-//     const [showTable, setShowTable] = useState(false);
-
-//     const company_id = localStorage.getItem('company_id');
-
-//     useEffect(() => {
-//         if (company_id) {
-//             getCampaignTypes(company_id)
-//                 .then(res => setTypes(res.data))
-//                 .catch(err => console.error(err));
-//         }
-//     }, [company_id]);
-
-//     const handleChange = (e) => {
-//         const { name, value } = e.target;
-//         setForm((prev) => ({ ...prev, [name]: value }));
-
-//         if (name === "campaignType") {
-//             setCampaigns([]);
-//             setAllocs([]);
-//             if (value) {
-//                 getCampaigns(company_id, value)
-//                     .then(res => setCampaigns(res.data))
-//                     .catch(err => console.error(err));
-//             }
-//         }
-//         if (name === "campaign") {
-//             setAllocs([]);
-//             if (value) {
-//                 getAllocations(company_id, value)
-//                     .then(res => setAllocs(res.data))
-//                     .catch(err => console.error(err));
-//             }
-//         }
-//     };
-
-//     const handleView = async (e) => {
-//         e.preventDefault();
-
-//         if (company_id) {
-//             // Create a sanitized filter object without empty strings
-//             const sanitizedFilters = {};
-//             for (const key in form) {
-//                 if (form[key] !== "") {
-//                     sanitizedFilters[key] = form[key];
-//                 }
-//             }
-
-//             setLoading(true);
-//             try {
-//                 const res = await getOutCallDetails(company_id, sanitizedFilters);
-//                 setData(res);
-//                 setShowTable(true);
-//             } catch (err) {
-//                 console.error(err);
-//             } finally {
-//                 setLoading(false);
-//             }
-//         }
-//     };
-
-//     const handleExport = (e) => {
-//         e.preventDefault();
-//         if (data.length === 0) {
-//             alert("No data to export.");
-//             return;
-//         }
-
-//           // Create a worksheet
-//         const worksheet = XLSX.utils.json_to_sheet(data);
-
-//           // Create a new workbook and append the worksheet
-//         const workbook = XLSX.utils.book_new();
-//         XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-
-//           // Generate a buffer
-//         const excelBuffer = XLSX.write(workbook, {
-//             bookType: "xlsx",
-//             type: "array",
-//         });
-
-//           // Save file
-//         const file = new Blob([excelBuffer], {
-//             type: "application/octet-stream",
-//         });
-//         saveAs(file, "out_call_details.xlsx");
-//     };
-
-//   return (
-//   <>
-//       {loading && (
-//         <div className="loader-overlay">
-//           <div className="bar"></div>
-//           <div className="bar"></div>
-//           <div className="bar"></div>
-//           <div className="bar"></div>
-//           <div className="bar"></div>
-//         </div>
-//       )}
-
-//     <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
-//     <div className="card p-4">
-//       <h5 className="mb-4">Out Call Details</h5>
-//       <form onSubmit={handleView}>
-//       <div className="row mb-3">
-//         <div className="col-md-3 mb-2">
-//           <select
-//               className="form-select"
-//               name="campaignType"
-//               value={form.campaignType}
-//               onChange={handleChange}
-//             >
-//               <option value="">Select Campaign Type</option>
-//               {Array.isArray(types) && types.map(t => (
-//                 <option key={t.id} value={t.id}>{t.name}</option>
-//               ))}
-//             </select>
-//         </div>
-//         <div className="col-md-3 mb-2">
-//           <select
-//               className="form-select"
-//               name="campaign"
-//               value={form.campaign}
-//               onChange={handleChange}
-//               disabled={!campaigns.length}
-//             >
-//               <option value="">Select Campaign</option>
-//               {campaigns.map(c => (
-//                 <option key={c.id} value={c.id}>{c.name}</option>
-//               ))}
-//             </select>
-//         </div>
-//         <div className="col-md-3 mb-2">
-//           <select
-//               className="form-select"
-//               name="allocation"
-//               value={form.allocation}
-//               onChange={handleChange}
-//               disabled={!allocs.length}
-//             >
-//               <option value="">Select Allocation</option>
-//               {allocs.map(a => (
-//                 <option key={a.id} value={a.id}>{a.name}</option>
-//               ))}
-//             </select>
-//         </div>
-//         <div className="col-md-3 mb-2">
-//           <input
-//             type="text"
-//             className="form-control"
-//             placeholder="Select Scenario"
-//             name="scenario"
-//             value={form.scenario}
-//             onChange={handleChange}
-//           />
-//         </div>
-//       </div>
-
-//       <div className="row mb-3">
-//         <div className="col-md-3 mb-2">
-//           <input
-//             type="text"
-//             className="form-control"
-//             placeholder="Select Sub Scenario 1"
-//             name="subScenario1"
-//             value={form.subScenario1}
-//             onChange={handleChange}
-//           />
-//         </div>
-//         <div className="col-md-3 mb-2">
-//           <input
-//             type="text"
-//             className="form-control"
-//             placeholder="Select Sub Scenario 2"
-//             name="subScenario2"
-//             value={form.subScenario2}
-//             onChange={handleChange}
-//           />
-//         </div>
-//         <div className="col-md-3 mb-2">
-//           <input
-//             type="text"
-//             className="form-control"
-//             placeholder="Select Sub Scenario 3"
-//             name="subScenario3"
-//             value={form.subScenario3}
-//             onChange={handleChange}
-//           />
-//         </div>
-//         <div className="col-md-3 mb-2">
-//           <input
-//             type="text"
-//             className="form-control"
-//             placeholder="MSISDN"
-//             name="msisdn"
-//             value={form.msisdn}
-//             onChange={handleChange}
-//           />
-//         </div>
-//       </div>
-
-//       <div className="row mb-3">
-//         <div className="col-md-3 mb-2">
-//           <input
-//             type="date"
-//             className="form-control"
-//             name="startDate"
-//             value={form.startDate}
-//             onChange={handleChange}
-//           />
-//         </div>
-//         <div className="col-md-3 mb-2">
-//           <input
-//             type="date"
-//             className="form-control"
-//             name="endDate"
-//             value={form.endDate}
-//             onChange={handleChange}
-//           />
-//         </div>
-//         <div className="col-md-6 d-flex gap-2">
-//           <button className="btn btn-primary" onClick={handleExport}>
-//             Export
-//           </button>
-//           <button type="submit" className="btn btn-primary">
-//             View
-//           </button>
-//         </div>
-//       </div>
-//       </form>
-
-//       {!loading && showTable && (
-//       <div className="card p-4">
-//       <div className="table-responsive" style={{ maxHeight: "500px", overflow: "auto" }}>
-//         <table className="table table-bordered table-sm">
-//           <thead className="table-light">
-//             <tr>
-//               <th>View</th>
-//               <th>Recording</th>
-//               <th>Out Call ID</th>
-//               <th>Call From</th>
-//               <th>Scenarios</th>
-//               <th>Sub Scenarios 1</th>
-//               <th>Name</th>
-//               <th>Contact Number</th>
-//               {/* Add more columns as needed */}
-//             </tr>
-//           </thead>
-//           <tbody>
-//               {Array.isArray(data) && data.length > 0 ? (
-//                 data.map((row, idx) => (
-//                   <tr key={idx}>
-//                     <td>
-//                       <button className="btn btn-sm btn-outline-primary">
-//                         🔍
-//                       </button>
-//                     </td>
-//                     <td>
-//                       <button className="btn btn-sm btn-outline-secondary">
-//                         ⏬
-//                       </button>
-//                     </td>
-//                     <td>{row.id}</td>
-//                     <td>{row.callFrom}</td>
-//                     <td>{row.scenario}</td>
-//                     <td>{row.subScenario1}</td>
-//                     <td>{row.name}</td>
-//                     <td>{row.contactNumber}</td>
-//                     {/* Add more cells as needed */}
-//                   </tr>
-//                 ))
-//               ) : (
-//                 <tr>
-//                   <td colSpan="23" className="text-center">
-//                     No data available for selected date range.
-//                   </td>
-//                 </tr>
-//               )}
-//             </tbody>
-
-//         </table>
-//       </div>
-//       </div>
-//       )}
-//     </div>
-//     </div>
-//     </>
-//   );
-// }
-
-// // components/OutCallDetails.js (or wherever your file is)
-// import React, { useState, useEffect } from "react";
-// import {
-//   getOutCallDetails,
-//   getCampaignTypes,
-//   getCampaigns,
-//   getAllocations,
-//   getScenarios,
-// } from "../services/authService";
-// import * as XLSX from "xlsx";
-// import { saveAs } from "file-saver";
-// import "../styles/loader.css";
-
-// export default function OutCallDetails() {
-//   const company_id = localStorage.getItem("company_id");
-
-//   const [form, setForm] = useState({
-//     campaignType: "",
-//     campaign: "",
-//     allocation: "",
-//     scenario: "",
-//     subScenario1: "",
-//     subScenario2: "",
-//     subScenario3: "",
-//     msisdn: "",
-//     startDate: "",
-//     endDate: "",
-//   });
-
-//   const [types, setTypes] = useState([]);
-//   const [campaigns, setCampaigns] = useState([]);
-//   const [allocs, setAllocs] = useState([]);
-//   const [scenarioOptions, setScenarioOptions] = useState([]);
-//   const [sub1Options, setSub1Options] = useState([]);
-//   const [sub2Options, setSub2Options] = useState([]);
-//   const [sub3Options, setSub3Options] = useState([]);
-
-//   const [tableData, setTableData] = useState([]);
-//   const [counts, setCounts] = useState({});
-//   const [breadcrumb, setBreadcrumb] = useState([]);
-//   const [loading, setLoading] = useState(false);
-
-//   const [dateError, setDateError] = useState(""); // ✅ inline error for dat
-
-//   const SCENARIO_KEYS = [
-//     "scenario",
-//     "subScenario1",
-//     "subScenario2",
-//     "subScenario3",
-//   ];
-
-//   useEffect(() => {
-//     if (!company_id) return;
-//     (async () => {
-//       const t = await getCampaignTypes(company_id);
-//       setTypes(t || []);
-//     })();
-//   }, [company_id]);
-
-//   // Generic safe setter for form
-//   const updateForm = (name, value) => setForm((p) => ({ ...p, [name]: value }));
-
-//   const handleChange = async (e) => {
-//     const { name, value } = e.target;
-//     updateForm(name, value);
-
-//     try {
-//       // When user selects a campaign type (string), fetch campaigns (these are objects with id & name)
-//       if (name === "campaignType") {
-//         setCampaigns([]);
-//         setAllocs([]);
-//         updateForm("campaign", "");
-//         updateForm("allocation", "");
-//         if (value) {
-//           const res = await getCampaigns(company_id, value);
-//           setCampaigns(res || []);
-//         }
-//       }
-
-//       // When campaign selected (we expect id), fetch allocations
-//       if (name === "campaign") {
-//         setAllocs([]);
-//         updateForm("allocation", "");
-//         if (value) {
-//           const res = await getAllocations(company_id, value);
-//           setAllocs(res || []);
-//         }
-//       }
-
-//       // When allocation selected (id), fetch scenario options (these are name/id pairs)
-//       if (name === "allocation") {
-//         setScenarioOptions([]);
-//         setSub1Options([]);
-//         setSub2Options([]);
-//         setSub3Options([]);
-//         updateForm("scenario", "");
-//         updateForm("subScenario1", "");
-//         updateForm("subScenario2", "");
-//         updateForm("subScenario3", "");
-//         if (value) {
-//           const res = await getScenarios(company_id, value, 1);
-//           setScenarioOptions(res || []);
-//         }
-//       }
-
-//       // scenario selected => fetch subScenario1 (parentScenario is string name OR id depending on backend)
-//       if (name === "scenario") {
-//         setSub1Options([]);
-//         setSub2Options([]);
-//         setSub3Options([]);
-//         updateForm("subScenario1", "");
-//         updateForm("subScenario2", "");
-//         updateForm("subScenario3", "");
-//         if (value) {
-//           // backend's parent_scenario is string, but your getScenarios allows passing the value directly.
-//           const res = await getScenarios(company_id, form.allocation, 2, value);
-//           setSub1Options(res || []);
-//         }
-//       }
-
-//       if (name === "subScenario1") {
-//         setSub2Options([]);
-//         setSub3Options([]);
-//         updateForm("subScenario2", "");
-//         updateForm("subScenario3", "");
-//         if (value) {
-//           const res = await getScenarios(company_id, form.allocation, 3, value);
-//           setSub2Options(res || []);
-//         }
-//       }
-
-//       if (name === "subScenario2") {
-//         setSub3Options([]);
-//         updateForm("subScenario3", "");
-//         if (value) {
-//           const res = await getScenarios(company_id, form.allocation, 4, value);
-//           setSub3Options(res || []);
-//         }
-//       }
-//     } catch (err) {
-//       console.error(err);
-//     }
-//   };
-
-//   const handleView = async (e) => {
-//     e.preventDefault();
-//     if (!company_id) return;
-
-//     // Build filters: only include non-empty values
-//     const filters = Object.fromEntries(
-//       Object.entries(form).filter(
-//         ([_, v]) => v !== "" && v !== null && v !== undefined
-//       )
-//     );
-
-//     setLoading(true);
-//     try {
-//       const res = await getOutCallDetails(company_id, filters);
-//       // res should be { data: [], counts: {}, breadcrumb: [] }
-//       setTableData(res.data || []);
-//       setCounts(res.counts || {});
-//       setBreadcrumb(res.breadcrumb || []);
-//     } catch (err) {
-//       console.error(err);
-//       setTableData([]);
-//       setCounts({});
-//       setBreadcrumb([]);
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   // const handleExport = () => {
-//   //   if (!tableData.length) return alert("No data to export.");
-//   //   const worksheet = XLSX.utils.json_to_sheet(tableData);
-//   //   const workbook = XLSX.utils.book_new();
-//   //   XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-//   //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-//   //   saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "out_call_details.xlsx");
-//   // };
-
-//   //   const handleExport = () => {
-//   //   if (!tableData.length && !Object.keys(counts || {}).length && !breadcrumb?.length) {
-//   //     return alert("No data to export.");
-//   //   }
-
-//   //   const workbook = XLSX.utils.book_new();
-
-//   //   // --- Sheet 1: Raw Data ---
-//   //   if (tableData.length) {
-//   //     const sheet1 = XLSX.utils.json_to_sheet(tableData);
-//   //     XLSX.utils.book_append_sheet(workbook, sheet1, "Raw Data");
-//   //   }
-
-//   //   // --- Sheet 2: Counts ---
-//   //   if (Object.keys(counts || {}).length) {
-//   //     let countsData = [];
-
-//   //     SCENARIO_KEYS.forEach((key) => {
-//   //       if (counts[key]) {
-//   //         countsData.push([`${key.toUpperCase()} Counts`]); // heading row
-//   //         countsData.push(["Name", "Total"]); // header
-//   //         counts[key].forEach((c) => {
-//   //           countsData.push([c.name, c.total]);
-//   //         });
-//   //         countsData.push([]); // empty row for spacing
-//   //       }
-//   //     });
-
-//   //     if (counts.total) {
-//   //       countsData.push(["Grand Total", counts.total]);
-//   //     }
-
-//   //     const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
-//   //     XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
-//   //   }
-
-//   //   // --- Sheet 3: Filters ---
-//   //   if (breadcrumb?.length) {
-//   //     let filtersData = [["Level", "Value"]];
-//   //     breadcrumb.forEach((b) => {
-//   //       filtersData.push([b.level, b.value]);
-//   //     });
-
-//   //     const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
-//   //     XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
-//   //   }
-
-//   //   // --- Export file ---
-//   //   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-//   //   saveAs(
-//   //     new Blob([excelBuffer], { type: "application/octet-stream" }),
-//   //     "out_call_details.xlsx"
-//   //   );
-//   // };
-
-//   const handleExport = () => {
-//     if (
-//       !tableData.length &&
-//       !Object.keys(counts || {}).length &&
-//       !breadcrumb?.length
-//     ) {
-//       return alert("No data to export.");
-//     }
-
-//     const workbook = XLSX.utils.book_new();
-
-//     // --- Sheet 1: Raw Data ---
-//     if (tableData.length) {
-//       const sheet1 = XLSX.utils.json_to_sheet(tableData);
-//       XLSX.utils.book_append_sheet(workbook, sheet1, "Raw Data");
-//     }
-
-//     // --- Sheet 2: Counts ---
-//     if (Object.keys(counts || {}).length) {
-//       let countsData = [];
-//       let merges = [];
-
-//       let rowIndex = 0;
-
-//       SCENARIO_KEYS.forEach((key) => {
-//         if (counts[key]) {
-//           // Section header (merged across 2 columns)
-//           countsData.push([`${key.toUpperCase()} COUNTS`]);
-//           merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
-//           rowIndex++;
-
-//           // Table header
-//           countsData.push(["Name", "Total"]);
-//           rowIndex++;
-
-//           // Data rows
-//           counts[key].forEach((c) => {
-//             countsData.push([c.name, c.total]);
-//             rowIndex++;
-//           });
-
-//           // Empty row for spacing
-//           countsData.push([]);
-//           rowIndex++;
-//         }
-//       });
-
-//       if (counts.total) {
-//         countsData.push(["Grand Total", counts.total]);
-//       }
-
-//       const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
-//       sheet2["!merges"] = merges; // apply merged headers
-//       XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
-//     }
-
-//     // --- Sheet 3: Filters ---
-//     if (breadcrumb?.length) {
-//       let filtersData = [["Level", "Value"]];
-//       breadcrumb.forEach((b) => {
-//         filtersData.push([b.level, b.value]);
-//       });
-
-//       const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
-//       XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
-//     }
-
-//     // --- Export file ---
-//     const excelBuffer = XLSX.write(workbook, {
-//       bookType: "xlsx",
-//       type: "array",
-//     });
-//     saveAs(
-//       new Blob([excelBuffer], { type: "application/octet-stream" }),
-//       "out_call_details.xlsx"
-//     );
-//   };
-
-//   return (
-//     <>
-//       {loading && (
-//         <div className="loader-overlay">
-//           <div className="bar" />
-//           <div className="bar" />
-//           <div className="bar" />
-//         </div>
-//       )}
-
-//       <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
-//         <div className="card p-4">
-//           <h5 className="mb-4">Out Call Details</h5>
-//           <form onSubmit={handleView}>
-//             <div className="row mb-3">
-//               {/* campaignType (string id), campaign (numeric id), allocation (numeric id), scenario (string id) */}
-//               {[
-//                 {
-//                   name: "campaignType",
-//                   label: "Campaign Type",
-//                   options: types,
-//                 },
-//                 { name: "campaign", label: "Campaign", options: campaigns },
-//                 { name: "allocation", label: "Allocation", options: allocs },
-//                 {
-//                   name: "scenario",
-//                   label: "Scenario",
-//                   options: scenarioOptions,
-//                 },
-//               ].map((f) => (
-//                 <div className="col-md-3 mb-2" key={f.name}>
-//                   <select
-//                     className="form-select"
-//                     name={f.name}
-//                     value={form[f.name]}
-//                     onChange={handleChange}
-//                     disabled={!f.options || f.options.length === 0}
-//                   >
-//                     <option value="">Select {f.label}</option>
-//                     {f.options &&
-//                       f.options.map((o) => (
-//                         // ALWAYS use id as value. Backend expects numeric id for campaign/allocation
-//                         <option key={o.id} value={o.id}>
-//                           {o.name}
-//                         </option>
-//                       ))}
-//                   </select>
-//                 </div>
-//               ))}
-//             </div>
-
-//             <div className="row mb-3">
-//               {[
-//                 {
-//                   name: "subScenario1",
-//                   label: "Sub Scenario 1",
-//                   options: sub1Options,
-//                 },
-//                 {
-//                   name: "subScenario2",
-//                   label: "Sub Scenario 2",
-//                   options: sub2Options,
-//                 },
-//                 {
-//                   name: "subScenario3",
-//                   label: "Sub Scenario 3",
-//                   options: sub3Options,
-//                 },
-//                 { name: "msisdn", label: "MSISDN", options: null },
-//               ].map((f) => (
-//                 <div className="col-md-3 mb-2" key={f.name}>
-//                   {f.options ? (
-//                     <select
-//                       className="form-select"
-//                       name={f.name}
-//                       value={form[f.name]}
-//                       onChange={handleChange}
-//                       disabled={!f.options || f.options.length === 0}
-//                     >
-//                       <option value="">Select {f.label}</option>
-//                       {f.options.map((o) => (
-//                         <option key={o.id} value={o.id}>
-//                           {o.name}
-//                         </option>
-//                       ))}
-//                     </select>
-//                   ) : (
-//                     <input
-//                       type="text"
-//                       className="form-control"
-//                       placeholder={f.label}
-//                       name={f.name}
-//                       value={form[f.name]}
-//                       onChange={handleChange}
-//                     />
-//                   )}
-//                 </div>
-//               ))}
-//             </div>
-
-//             <div className="row mb-3">
-//               <div className="col-md-3 mb-2">
-//                 <input
-//                   type="date"
-//                   className="form-control"
-//                   name="startDate"
-//                   value={form.startDate}
-//                   onChange={handleChange}
-//                 />
-//               </div>
-//               <div className="col-md-3 mb-2">
-//                 <input
-//                   type="date"
-//                   className="form-control"
-//                   name="endDate"
-//                   value={form.endDate}
-//                   onChange={handleChange}
-//                 />
-//               </div>
-//               <div className="col-md-6 mb-2 d-flex gap-2">
-//                 <button className="btn btn-primary" type="submit">
-//                   View
-//                 </button>
-//                 <button
-//                   className="btn btn-success"
-//                   type="button"
-//                   onClick={handleExport}
-//                 >
-//                   Export
-//                 </button>
-//               </div>
-//             </div>
-//           </form>
-
-//           {/* Counts */}
-//           {Object.keys(counts || {}).length > 0 && (
-//             <div className="card mt-3 p-3">
-//               <h6 className="mb-3">Counts</h6>
-//               <table className="table table-bordered table-sm">
-//                 <thead>
-//                   <tr>
-//                     <th>Name</th>
-//                     <th>Total</th>
-//                   </tr>
-//                 </thead>
-//                 <tbody>
-//                   {SCENARIO_KEYS.map((key) =>
-//                     counts[key] ? (
-//                       <React.Fragment key={key}>
-//                         {/* Section Header */}
-//                         <tr className="table-secondary">
-//                           <td colSpan={2} className="fw-bold text-capitalize">
-//                             {key}
-//                           </td>
-//                         </tr>
-//                         {/* Data Rows */}
-//                         {counts[key].map((c, i) => (
-//                           <tr key={i}>
-//                             <td>{c.name}</td>
-//                             <td>{c.total}</td>
-//                           </tr>
-//                         ))}
-//                       </React.Fragment>
-//                     ) : null
-//                   )}
-//                   {counts.total && (
-//                     <tr className="table-dark">
-//                       <td className="fw-bold">Grand Total</td>
-//                       <td className="fw-bold">{counts.total}</td>
-//                     </tr>
-//                   )}
-//                 </tbody>
-//               </table>
-//             </div>
-//           )}
-
-//           {/* Breadcrumb */}
-//           {breadcrumb && breadcrumb.length > 0 && (
-//             <div className="mt-3">
-//               <h6>Filters Applied</h6>
-//               <ul>
-//                 {breadcrumb.map((b, i) => (
-//                   <li key={i}>
-//                     {b.level}: {b.value}
-//                   </li>
-//                 ))}
-//               </ul>
-//             </div>
-//           )}
-
-//           {/* Table */}
-//           {tableData && tableData.length > 0 ? (
-//             <div className="card mt-4 p-3">
-//               <table className="table table-bordered table-striped">
-//                 <thead>
-//                   <tr>
-//                     {Object.keys(tableData[0]).map((k) => (
-//                       <th key={k}>{k}</th>
-//                     ))}
-//                   </tr>
-//                 </thead>
-//                 <tbody>
-//                   {tableData.map((row, rIdx) => (
-//                     <tr key={rIdx}>
-//                       {Object.keys(row).map((k) => (
-//                         <td key={k}>{row[k] ?? ""}</td>
-//                       ))}
-//                     </tr>
-//                   ))}
-//                 </tbody>
-//               </table>
-//             </div>
-//           ) : !loading ? (
-//             <p className="mt-3">No data found.</p>
-//           ) : null}
-//         </div>
-//       </div>
-//     </>
-//   );
-// }
-
-
-// components/OutCallDetails.js iwth fixed start and end date validation for show data..//
+// components/OutCallDetails.js
 import React, { useState, useEffect } from "react";
 import {
   getOutCallDetails,
@@ -868,6 +13,7 @@ import "../styles/loader.css";
 
 export default function OutCallDetails() {
   const company_id = localStorage.getItem("company_id");
+  const today = new Date().toISOString().split("T")[0];
 
   const [form, setForm] = useState({
     campaignType: "",
@@ -878,8 +24,8 @@ export default function OutCallDetails() {
     subScenario2: "",
     subScenario3: "",
     msisdn: "",
-    startDate: "",
-    endDate: "",
+    startDate: today,  // ✅ default to today
+    endDate: today,
   });
 
   const [types, setTypes] = useState([]);
@@ -889,13 +35,17 @@ export default function OutCallDetails() {
   const [sub1Options, setSub1Options] = useState([]);
   const [sub2Options, setSub2Options] = useState([]);
   const [sub3Options, setSub3Options] = useState([]);
-
   const [tableData, setTableData] = useState([]);
   const [counts, setCounts] = useState({});
   const [breadcrumb, setBreadcrumb] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [dateError, setDateError] = useState("");
+  const [selectedRow, setSelectedRow] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [dateError, setDateError] = useState(""); // ✅ inline error for date
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [searchTriggered, setSearchTriggered] = useState(false);
 
   const SCENARIO_KEYS = [
     "scenario",
@@ -912,8 +62,8 @@ export default function OutCallDetails() {
     })();
   }, [company_id]);
 
-  // Generic safe setter for form
-  const updateForm = (name, value) => setForm((p) => ({ ...p, [name]: value }));
+  const updateForm = (name, value) =>
+    setForm((prev) => ({ ...prev, [name]: value }));
 
   const handleChange = async (e) => {
     const { name, value } = e.target;
@@ -922,12 +72,10 @@ export default function OutCallDetails() {
     try {
       if (name === "campaignType") {
         setCampaigns([]);
-        setAllocs([]);
         updateForm("campaign", "");
-        updateForm("allocation", "");
         if (value) {
-          const res = await getCampaigns(company_id, value);
-          setCampaigns(res || []);
+          const c = await getCampaigns(company_id, value);
+          setCampaigns(c || []);
         }
       }
 
@@ -935,56 +83,18 @@ export default function OutCallDetails() {
         setAllocs([]);
         updateForm("allocation", "");
         if (value) {
-          const res = await getAllocations(company_id, value);
-          setAllocs(res || []);
-        }
-      }
+          const allocRes = await getAllocations(company_id, value);
+          setAllocs(allocRes || []);
 
-      if (name === "allocation") {
-        setScenarioOptions([]);
-        setSub1Options([]);
-        setSub2Options([]);
-        setSub3Options([]);
-        updateForm("scenario", "");
-        updateForm("subScenario1", "");
-        updateForm("subScenario2", "");
-        updateForm("subScenario3", "");
-        if (value) {
-          const res = await getScenarios(company_id, value, 1);
-          setScenarioOptions(res || []);
-        }
-      }
+          const scenarioRes = await getScenarios(company_id, null, 1);
+          const sub1Res = await getScenarios(company_id, null, 2);
+          const sub2Res = await getScenarios(company_id, null, 3);
+          const sub3Res = await getScenarios(company_id, null, 4);
 
-      if (name === "scenario") {
-        setSub1Options([]);
-        setSub2Options([]);
-        setSub3Options([]);
-        updateForm("subScenario1", "");
-        updateForm("subScenario2", "");
-        updateForm("subScenario3", "");
-        if (value) {
-          const res = await getScenarios(company_id, form.allocation, 2, value);
-          setSub1Options(res || []);
-        }
-      }
-
-      if (name === "subScenario1") {
-        setSub2Options([]);
-        setSub3Options([]);
-        updateForm("subScenario2", "");
-        updateForm("subScenario3", "");
-        if (value) {
-          const res = await getScenarios(company_id, form.allocation, 3, value);
-          setSub2Options(res || []);
-        }
-      }
-
-      if (name === "subScenario2") {
-        setSub3Options([]);
-        updateForm("subScenario3", "");
-        if (value) {
-          const res = await getScenarios(company_id, form.allocation, 4, value);
-          setSub3Options(res || []);
+          setScenarioOptions(scenarioRes || []);
+          setSub1Options(sub1Res || []);
+          setSub2Options(sub2Res || []);
+          setSub3Options(sub3Res || []);
         }
       }
     } catch (err) {
@@ -992,109 +102,311 @@ export default function OutCallDetails() {
     }
   };
 
+  // --- Function to calculate counts ---
+  const calculateCounts = (data) => {
+    const result = { total: data.length };
+    SCENARIO_KEYS.forEach((key) => {
+      const group = {};
+      data.forEach((row) => {
+        const val = row[key] || "N/A";
+        group[val] = (group[val] || 0) + 1;
+      });
+      result[key] = Object.entries(group).map(([name, total]) => ({
+        name,
+        total,
+      }));
+    });
+    return result;
+  };
+
+  // const handleView = async (e) => {
+  //   e?.preventDefault();
+  //   if (!company_id) return;
+
+  //   if (!form.startDate || !form.endDate) {
+  //     setDateError("Please select both Start Date and End Date.");
+  //     setTableData([]);
+  //     setCounts({});
+  //     setBreadcrumb([]);
+  //     return;
+  //   }
+  //   if (new Date(form.startDate) > new Date(form.endDate)) {
+  //     setDateError("Start Date cannot be after End Date.");
+  //     setTableData([]);
+  //     setCounts({});
+  //     setBreadcrumb([]);
+  //     return;
+  //   }
+  //   setDateError("");
+
+  //   const filters = Object.fromEntries(
+  //     Object.entries(form).filter(
+  //       ([_, value]) => value !== "" && value !== null && value !== undefined
+  //     )
+  //   );
+
+  //   setLoading(true);
+  //   try {
+  //     const res = await getOutCallDetails(company_id, filters);
+  //     setTableData(res.data || []);
+  //     setCounts(calculateCounts(res.data || []));
+  //     setBreadcrumb(res.breadcrumb || []);
+  //     setCurrentPage(1);
+  //   } catch (err) {
+  //     console.error(err);
+  //     setTableData([]);
+  //     setCounts({});
+  //     setBreadcrumb([]);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleView = async (e) => {
-    e.preventDefault();
-    if (!company_id) return;
+  e?.preventDefault();
+  if (!company_id) return;
 
-    // ✅ Ensure both dates are entered
-    if (!form.startDate || !form.endDate) {
-      setDateError("Please select both Start Date and End Date before viewing data.");
-      return;
-    }
+  if (!form.startDate || !form.endDate) {
+    setDateError("Please select both Start Date and End Date.");
+    setTableData([]);
+    setCounts({});
+    setBreadcrumb([]);
+    return;
+  }
+  if (new Date(form.startDate) > new Date(form.endDate)) {
+    setDateError("Start Date cannot be after End Date.");
+    setTableData([]);
+    setCounts({});
+    setBreadcrumb([]);
+    return;
+  }
+  setDateError("");
 
-    // ✅ Ensure start <= end
-    if (new Date(form.startDate) > new Date(form.endDate)) {
-      setDateError("Start Date cannot be after End Date.");
-      return;
-    }
+  const filters = Object.fromEntries(
+    Object.entries(form).filter(
+      ([_, value]) => value !== "" && value !== null && value !== undefined
+    )
+  );
 
-    setDateError(""); // clear old error if dates are valid
+  setLoading(true);
+  try {
+    const res = await getOutCallDetails(company_id, filters);
+    setTableData(res.data || []);
+    setCounts(calculateCounts(res.data || []));
+    setBreadcrumb(res.breadcrumb || []);
+    setCurrentPage(1);
 
-    // Build filters: only include non-empty values
+    // ✅ mark that a search has been triggered
+    setSearchTriggered(true);
+  } catch (err) {
+    console.error(err);
+    setTableData([]);
+    setCounts({});
+    setBreadcrumb([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+  // --- Excel Export ---
+  // const handleExport = async () => {
+  //   if (!form.startDate || !form.endDate) return alert("Please select Start Date and End Date.");
+
+  //   setLoading(true);
+  //   try {
+  //     const filters = Object.fromEntries(
+  //       Object.entries(form).filter(([_, value]) => value !== "" && value !== null && value !== undefined)
+  //     );
+  //     const res = await getOutCallDetails(company_id, filters);
+  //     const data = res.data || [];
+  //     if (!data.length) return alert("No data available for the selected filters.");
+
+  //     const countsExport = calculateCounts(data);
+
+  //     const workbook = XLSX.utils.book_new();
+
+  //     // --- Sheet1: Raw Data ---
+  //     const sheet1 = XLSX.utils.json_to_sheet(data);
+  //     XLSX.utils.book_append_sheet(workbook, sheet1, "Raw Data");
+
+  //     // --- Sheet2: Counts ---
+  //     let countsData = [];
+  //     let merges = [];
+  //     let rowIndex = 0;
+
+  //     countsData.push([`Report: Out Call Details`]);
+  //     merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
+  //     rowIndex++;
+
+  //     countsData.push([`Start Date: ${form.startDate}`, `End Date: ${form.endDate}`]);
+  //     merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
+  //     rowIndex++;
+  //     countsData.push([]);
+  //     rowIndex++;
+
+  //     SCENARIO_KEYS.forEach((key) => {
+  //       if (countsExport[key]?.length) {
+  //         countsData.push([`${key.toUpperCase()} COUNTS`]);
+  //         merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
+  //         rowIndex++;
+  //         countsData.push(["Name", "Total"]);
+  //         rowIndex++;
+  //         countsExport[key].forEach((c) => countsData.push([c.name, c.total]));
+  //         rowIndex += countsExport[key].length;
+  //         countsData.push([]);
+  //         rowIndex++;
+  //       }
+  //     });
+
+  //     if (countsExport.total) countsData.push(["Grand Total", countsExport.total]);
+
+  //     const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
+  //     sheet2["!merges"] = merges;
+  //     XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
+
+  //     // --- Sheet3: Filters / Breadcrumb ---
+  //     if (res.breadcrumb?.length) {
+  //       let filtersData = [["Level", "Value"]];
+  //       res.breadcrumb.forEach((b) => filtersData.push([b.level, b.value]));
+  //       const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
+  //       XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
+  //     }
+
+  //     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  //     saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "out_call_details.xlsx");
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert("Error exporting Excel.");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+
+const handleExport = async () => {
+  const Username = localStorage.getItem("username"); // ✅ get username
+  const ClientId = company_id || "Unknown Client";   // ✅ get client ID
+  if (!form.startDate || !form.endDate) {
+    return alert("Please select Start Date and End Date.");
+  }
+
+  setLoading(true);
+
+  try {
+    // -----------------------------
+    // 1️⃣ Prepare filters
+    // -----------------------------
     const filters = Object.fromEntries(
       Object.entries(form).filter(
-        ([_, v]) => v !== "" && v !== null && v !== undefined
+        ([_, value]) => value !== "" && value !== null && value !== undefined
       )
     );
 
-    setLoading(true);
-    try {
-      const res = await getOutCallDetails(company_id, filters);
-      setTableData(res.data || []);
-      setCounts(res.counts || {});
-      setBreadcrumb(res.breadcrumb || []);
-    } catch (err) {
-      console.error(err);
-      setTableData([]);
-      setCounts({});
-      setBreadcrumb([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExport = () => {
-    if (
-      !tableData.length &&
-      !Object.keys(counts || {}).length &&
-      !breadcrumb?.length
-    ) {
-      return alert("No data to export.");
+    // -----------------------------
+    // 2️⃣ Fetch main outcall details
+    // -----------------------------
+    const res = await getOutCallDetails(company_id, filters);
+    const data = Array.isArray(res?.data) ? res.data : [];
+    if (!data.length) {
+      return alert("No data available for selected filters.");
     }
 
+    // -----------------------------
+    // 3️⃣ Calculate counts
+    // -----------------------------
+    const countsExport = calculateCounts(data) || {};
     const workbook = XLSX.utils.book_new();
 
-    // --- Sheet 1: Raw Data ---
-    if (tableData.length) {
-      const sheet1 = XLSX.utils.json_to_sheet(tableData);
-      XLSX.utils.book_append_sheet(workbook, sheet1, "Raw Data");
-    }
+    // -----------------------------
+    // 4️⃣ Sheet 1: Raw Data
+    // -----------------------------
+    const rawSheet = XLSX.utils.json_to_sheet([]);
+    XLSX.utils.sheet_add_aoa(
+      rawSheet,
+      [
+        ["Out Call Details Report"],
+        [`Client: ${Username}`],
+        [`Client ID: ${ClientId}`],                // ✅ client ID here
+        [`Start Date: ${form.startDate}`, `End Date: ${form.endDate}`],
+        [],
+      ],
+      { origin: 0 }
+    );
+    XLSX.utils.sheet_add_json(rawSheet, data, { origin: -1, skipHeader: false });
+    XLSX.utils.book_append_sheet(workbook, rawSheet, "Raw Data");
 
-    // --- Sheet 2: Counts ---
-    if (Object.keys(counts || {}).length) {
-      let countsData = [];
-      let merges = [];
-      let rowIndex = 0;
+    // -----------------------------
+    // 5️⃣ Sheet 2: Counts
+    // -----------------------------
+    const countsData = [];
+    const merges = [];
+    let rowIndex = 0;
 
-      SCENARIO_KEYS.forEach((key) => {
-        if (counts[key]) {
-          countsData.push([`${key.toUpperCase()} COUNTS`]);
-          merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
+    countsData.push(["Out Call Details Report"]);
+    merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
+    rowIndex++;
+
+    countsData.push([`Client: ${Username}`]);
+    rowIndex++;
+
+    countsData.push([`Client ID: ${ClientId}`]);        // ✅ client ID here
+    rowIndex++;
+
+    countsData.push([`Start Date: ${form.startDate}`, `End Date: ${form.endDate}`]);
+    rowIndex++;
+
+    countsData.push([]);
+    rowIndex++;
+
+    const scenarioKeys = Array.isArray(SCENARIO_KEYS) ? SCENARIO_KEYS : Object.keys(countsExport);
+
+    scenarioKeys.forEach((key) => {
+      if (countsExport[key]?.length) {
+        countsData.push([`${key.toUpperCase()} COUNTS`]);
+        merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
+        rowIndex++;
+
+        countsData.push(["Name", "Total"]);
+        rowIndex++;
+
+        countsExport[key].forEach((c) => {
+          countsData.push([c.name || "-", c.total || 0]);
           rowIndex++;
+        });
 
-          countsData.push(["Name", "Total"]);
-          rowIndex++;
-
-          counts[key].forEach((c) => {
-            countsData.push([c.name, c.total]);
-            rowIndex++;
-          });
-
-          countsData.push([]);
-          rowIndex++;
-        }
-      });
-
-      if (counts.total) {
-        countsData.push(["Grand Total", counts.total]);
+        countsData.push([]);
+        rowIndex++;
       }
+    });
 
-      const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
-      sheet2["!merges"] = merges;
-      XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
-    }
+    if (countsExport.total != null) countsData.push(["Grand Total", countsExport.total]);
 
-    // --- Sheet 3: Filters ---
-    if (breadcrumb?.length) {
-      let filtersData = [["Level", "Value"]];
-      breadcrumb.forEach((b) => {
-        filtersData.push([b.level, b.value]);
-      });
+    const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
+    sheet2["!merges"] = merges;
+    XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
 
-      const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
-      XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
-    }
+    // -----------------------------
+    // 6️⃣ Sheet 3: Filters
+    // -----------------------------
+    // const filtersData = [["Level", "Value"]];
+    // if (Array.isArray(res?.breadcrumb)) {
+    //   res.breadcrumb.forEach((b) =>
+    //     filtersData.push([b.level || "-", b.value || "-"])
+    //   );
+    // }
 
+    // filtersData.push(["User", Username]);
+    // filtersData.push(["Client ID", ClientId]);          // ✅ client ID here
+    // filtersData.push(["Start Date", form.startDate]);
+    // filtersData.push(["End Date", form.endDate]);
+
+    // const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
+    // XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
+
+    // -----------------------------
+    // 7️⃣ Save Excel
+    // -----------------------------
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
       type: "array",
@@ -1103,10 +415,29 @@ export default function OutCallDetails() {
       new Blob([excelBuffer], { type: "application/octet-stream" }),
       "out_call_details.xlsx"
     );
-  };
+
+  } catch (err) {
+    console.error("Export error:", err);
+    alert("Error exporting Excel. Please try again.");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+
+  const filteredRows =
+    isModalOpen && selectedRow
+      ? tableData.filter((row) => row.id !== selectedRow.id)
+      : tableData;
+
+  const indexOfLastRow = currentPage * rowsPerPage;
+  const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+  const visibleRows = filteredRows.slice(indexOfFirstRow, indexOfLastRow);
+  const totalPages = Math.ceil(filteredRows.length / rowsPerPage); // ✅ use filteredRows
 
   return (
-    <>
+    <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
       {loading && (
         <div className="loader-overlay">
           <div className="bar" />
@@ -1115,193 +446,371 @@ export default function OutCallDetails() {
         </div>
       )}
 
-      <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
-        <div className="card p-4">
-          <h5 className="mb-4">Out Call Details</h5>
-          <form onSubmit={handleView}>
-            <div className="row mb-3">
-              {[
-                { name: "campaignType", label: "Campaign Type", options: types },
-                { name: "campaign", label: "Campaign", options: campaigns },
-                { name: "allocation", label: "Allocation", options: allocs },
-                { name: "scenario", label: "Scenario", options: scenarioOptions },
-              ].map((f) => (
-                <div className="col-md-3 mb-2" key={f.name}>
+      <div className="card p-4">
+        <h5 className="mb-4">Out Call Details</h5>
+
+        <form onSubmit={handleView}>
+          {/* --- Dropdowns / Inputs --- */}
+          <div className="row mb-3">
+            {[
+              {
+                name: "campaignType",
+                label: "Campaign Type",
+                options: types,
+                disabled: false,
+              },
+              {
+                name: "campaign",
+                label: "Campaign",
+                options: campaigns,
+                disabled: !form.campaignType,
+              },
+              {
+                name: "allocation",
+                label: "Allocation",
+                options: allocs,
+                disabled: !form.campaign,
+              },
+              {
+                name: "scenario",
+                label: "Scenario",
+                options: scenarioOptions,
+                disabled: false,
+              },
+            ].map((f) => (
+              <div className="col-md-3 mb-2" key={f.name}>
+                <select
+                  className="form-select"
+                  name={f.name}
+                  value={form[f.name]}
+                  onChange={handleChange}
+                  disabled={f.disabled}
+                >
+                  <option value="">Select {f.label}</option>
+                  {f.options.length > 0 ? (
+                    f.options.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))
+                  ) : (
+                    <option disabled>No {f.label} available</option>
+                  )}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          <div className="row mb-3">
+            {[
+              {
+                name: "subScenario1",
+                label: "Sub Scenario 1",
+                options: sub1Options,
+              },
+              {
+                name: "subScenario2",
+                label: "Sub Scenario 2",
+                options: sub2Options,
+              },
+              {
+                name: "subScenario3",
+                label: "Sub Scenario 3",
+                options: sub3Options,
+              },
+              { name: "msisdn", label: "MSISDN", options: null },
+            ].map((f) => (
+              <div className="col-md-3 mb-2" key={f.name}>
+                {f.options ? (
                   <select
                     className="form-select"
                     name={f.name}
                     value={form[f.name]}
                     onChange={handleChange}
-                    disabled={!f.options || f.options.length === 0}
                   >
                     <option value="">Select {f.label}</option>
-                    {f.options &&
+                    {f.options.length > 0 ? (
                       f.options.map((o) => (
                         <option key={o.id} value={o.id}>
                           {o.name}
                         </option>
-                      ))}
+                      ))
+                    ) : (
+                      <option disabled>No {f.label} available</option>
+                    )}
                   </select>
-                </div>
-              ))}
-            </div>
-
-            <div className="row mb-3">
-              {[
-                { name: "subScenario1", label: "Sub Scenario 1", options: sub1Options },
-                { name: "subScenario2", label: "Sub Scenario 2", options: sub2Options },
-                { name: "subScenario3", label: "Sub Scenario 3", options: sub3Options },
-                { name: "msisdn", label: "MSISDN", options: null },
-              ].map((f) => (
-                <div className="col-md-3 mb-2" key={f.name}>
-                  {f.options ? (
-                    <select
-                      className="form-select"
-                      name={f.name}
-                      value={form[f.name]}
-                      onChange={handleChange}
-                      disabled={!f.options || f.options.length === 0}
-                    >
-                      <option value="">Select {f.label}</option>
-                      {f.options.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.name}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder={f.label}
-                      name={f.name}
-                      value={form[f.name]}
-                      onChange={handleChange}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="row mb-3">
-              <div className="col-md-3 mb-2">
-                <input
-                  type="date"
-                  className="form-control"
-                  name="startDate"
-                  value={form.startDate}
-                  onChange={handleChange}
-                />
+                ) : (
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder={f.label}
+                    name={f.name}
+                    value={form[f.name]}
+                    onChange={handleChange}
+                  />
+                )}
               </div>
-              <div className="col-md-3 mb-2">
-                <input
-                  type="date"
-                  className="form-control"
-                  name="endDate"
-                  value={form.endDate}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="col-md-6 mb-2 d-flex gap-2">
-                <button className="btn btn-primary" type="submit">
-                  View
-                </button>
-                <button
-                  className="btn btn-success"
-                  type="button"
-                  onClick={handleExport}
-                >
-                  Export
-                </button>
-              </div>
+            ))}
+          </div>
+
+          <div className="row mb-3">
+            <div className="col-md-3 mb-2">
+              <input
+                type="date"
+                className="form-control"
+                name="startDate"
+                value={form.startDate}
+                onChange={handleChange}
+              />
             </div>
+            <div className="col-md-3 mb-2">
+              <input
+                type="date"
+                className="form-control"
+                name="endDate"
+                value={form.endDate}
+                onChange={handleChange}
+              />
+            </div>
+            <div className="col-md-6 mb-2 d-flex gap-2">
+              <button className="btn btn-primary" type="submit">
+                View
+              </button>
+              <button
+                className="btn btn-success"
+                type="button"
+                onClick={handleExport}
+              >
+                Export
+              </button>
+            </div>
+          </div>
+          {dateError && <p className="text-danger small">{dateError}</p>}
+        </form>
 
-            {/* ✅ Inline date error */}
-            {dateError && <p className="text-danger small">{dateError}</p>}
-          </form>
-
-          {/* Counts */}
-          {Object.keys(counts || {}).length > 0 && (
-            <div className="card mt-3 p-3">
-              <h6 className="mb-3">Counts</h6>
-              <table className="table table-bordered table-sm">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {SCENARIO_KEYS.map((key) =>
-                    counts[key] ? (
-                      <React.Fragment key={key}>
-                        <tr className="table-secondary">
-                          <td colSpan={2} className="fw-bold text-capitalize">
-                            {key}
-                          </td>
+        {/* --- UI Counts --- */}
+        {tableData.length > 0 && counts && (
+          <div className="card mt-3 p-3">
+            <h6 className="mb-3">Counts</h6>
+            <table className="table table-bordered table-sm">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SCENARIO_KEYS.map((key) =>
+                  counts[key] ? (
+                    <React.Fragment key={key}>
+                      <tr className="table-secondary">
+                        <td colSpan={2} className="fw-bold text-capitalize">
+                          {key}
+                        </td>
+                      </tr>
+                      {counts[key].map((c, i) => (
+                        <tr key={i}>
+                          <td>{c.name}</td>
+                          <td>{c.total}</td>
                         </tr>
-                        {counts[key].map((c, i) => (
-                          <tr key={i}>
-                            <td>{c.name}</td>
-                            <td>{c.total}</td>
-                          </tr>
-                        ))}
-                      </React.Fragment>
-                    ) : null
-                  )}
-                  {counts.total && (
-                    <tr className="table-dark">
-                      <td className="fw-bold">Grand Total</td>
-                      <td className="fw-bold">{counts.total}</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      ))}
+                    </React.Fragment>
+                  ) : null
+                )}
+                {counts.total && (
+                  <tr className="table-dark">
+                    <td className="fw-bold">Grand Total</td>
+                    <td className="fw-bold">{counts.total}</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+{/* --- Table + Pagination / Modal --- */}
+{!loading && (
+  <>
+    {/* --- Table --- */}
+    {!isModalOpen && (
+      <>
+        {tableData.length > 0 ? (
+          <>
+            {/* --- Table Controls (rows per page, pagination) --- */}
+            <div className="d-flex justify-content-between align-items-center mt-3 mb-3 flex-wrap">
+              <div>
+                Show{" "}
+                <select
+                  value={rowsPerPage}
+                  onChange={(e) => {
+                    setRowsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="form-select d-inline-block"
+                  style={{ width: "auto" }}
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>{" "}
+                entries
+              </div>
+              <div>
+                Page {currentPage} of {totalPages}
+              </div>
             </div>
-          )}
 
-          {/* Breadcrumb */}
-          {breadcrumb && breadcrumb.length > 0 && (
-            <div className="mt-3">
-              <h6>Filters Applied</h6>
-              <ul>
-                {breadcrumb.map((b, i) => (
-                  <li key={i}>
-                    {b.level}: {b.value}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Table */}
-          {tableData && tableData.length > 0 ? (
-            <div className="card mt-4 p-3">
-              <table className="table table-bordered table-striped">
-                <thead>
+            {/* --- Table Data --- */}
+            <div
+              className="table-responsive"
+              style={{ maxHeight: "500px", overflow: "auto" }}
+            >
+              <table className="table table-bordered table-striped table-hover table-sm">
+                <thead className="table-light">
                   <tr>
-                    {Object.keys(tableData[0]).map((k) => (
-                      <th key={k}>{k}</th>
-                    ))}
+                    <th>View</th>
+                    <th>Recording</th>
+                    <th>Out Call ID</th>
+                    <th>Campaign Type</th>
+                    <th>Campaign Name</th>
+                    <th>Allocation Name</th>
+                    <th>Scenarios</th>
+                    <th>Sub Scenarios 1</th>
+                    <th>Call Date</th>
+                    <th>Contact Number</th>
+                    <th>Call Created</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tableData.map((row, rIdx) => (
-                    <tr key={rIdx}>
-                      {Object.keys(row).map((k) => (
-                        <td key={k}>{row[k] ?? ""}</td>
-                      ))}
-                    </tr>
-                  ))}
+                  {tableData
+                    .slice(indexOfFirstRow, indexOfLastRow)
+                    .map((row, idx) => (
+                      <tr key={idx}>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => {
+                              setSelectedRow(row);
+                              setIsModalOpen(true);
+                            }}
+                          >
+                            View
+                          </button>
+                        </td>
+                        <td>
+                          <button className="btn btn-sm btn-outline-secondary">
+                            ⏬
+                          </button>
+                        </td>
+                        <td>{row.id}</td>
+                        <td>{row.campaignType}</td>
+                        <td>{row.campaignName}</td>
+                        <td>{row.allocationName}</td>
+                        <td>{row.scenario}</td>
+                        <td>{row.subScenario1}</td>
+                        <td>{new Date(row.CallDate).toLocaleString()}</td>
+                        <td>{row.contactNumber}</td>
+                        <td>{row.callcreated}</td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>
-          ) : !loading ? (
-            <p className="mt-3">No data found.</p>
-          ) : null}
+
+            {/* --- Pagination --- */}
+            <div className="d-flex justify-content-between align-items-center mt-2 flex-wrap">
+              <button
+                className="btn btn-sm btn-outline-secondary mb-2"
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                ◀ Prev
+              </button>
+              <span className="mb-2">
+                {indexOfFirstRow + 1} -{" "}
+                {Math.min(indexOfLastRow, tableData.length)} of {tableData.length}
+              </span>
+              <button
+                className="btn btn-sm btn-outline-secondary mb-2"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(p + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+              >
+                Next ▶
+              </button>
+            </div>
+          </>
+        ) : (
+          // ✅ Show only when search/filter yields no results
+          searchTriggered && (
+            <div className="text-center py-10 text-gray-500 font-semibold">
+              No data available for the selected date.
+            </div>
+          )
+        )}
+      </>
+    )}
+
+    {/* --- Modal --- */}
+    {isModalOpen && selectedRow && (
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl mx-auto p-6 md:p-8 animate-fadeIn"
+        style={{ width: "700px", maxHeight: "500px", overflow: "auto" }}
+      >
+        {/* Background overlay */}
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={() => {
+            setSelectedRow(null);
+            setIsModalOpen(false);
+          }}
+        ></div>
+
+        {/* Modal container */}
+        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-auto p-6 md:p-8 animate-fadeIn">
+          {/* Header + Close */}
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl md:text-xl font-bold text-indigo-700 flex items-center gap-2">
+              Out Call Details
+            </h2>
+          </div>
+
+          {/* Row data */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {Object.entries(selectedRow).map(([key, val]) => (
+              <div
+                key={key}
+                className="p-4 border rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 shadow-sm hover:shadow-md transition flex flex-col"
+              >
+                <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+                  {key}
+                </span>
+                <span className="text-lg font-medium mt-1 text-gray-800 break-words">
+                  {val || "-"}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Footer */}
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={() => {
+                setSelectedRow(null);
+                setIsModalOpen(false);
+              }}
+              className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
-    </>
+    )}
+  </>
+)}
+
+      </div>
+    </div>
   );
 }
-

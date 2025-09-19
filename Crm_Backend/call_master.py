@@ -169,11 +169,11 @@ def get_priority_calls(
 
 
 
+
 def safe_query(db: Session, sql: str, params: dict = None) -> list[dict]:
     params = params or {}
     result = db.execute(text(sql), params)
     return [dict(r._mapping) for r in result.fetchall()]
-
 
 
 # ----------------- /campaign-types -----------------
@@ -193,35 +193,41 @@ def get_campaign_types(CLIENT_ID: int = Query(...), db: Session = Depends(get_db
 @router.get("/campaigns", response_model=List[dict])
 def get_campaigns(
     CLIENT_ID: int = Query(...),
-    campaignType: str = Query(...),
+    campaignType: Optional[str] = Query(None),  # <-- Optional now
     db: Session = Depends(get_db4)
 ):
     sql = """
         SELECT id, CampaignName AS name
         FROM ob_campaign
         WHERE ClientId = :cid
-          AND CampaignParentName = :ctype
           AND CampaignStatus = 'A'
-        ORDER BY CampaignName
     """
-    return safe_query(db, sql, {"cid": CLIENT_ID, "ctype": campaignType})
+    params = {"cid": CLIENT_ID}
+    if campaignType:
+        sql += " AND CampaignParentName = :ctype"
+        params["ctype"] = campaignType
+    sql += " ORDER BY CampaignName"
+    return safe_query(db, sql, params)
 
 
 # ----------------- /allocations -----------------
 @router.get("/allocations", response_model=List[dict])
 def get_allocations(
     CLIENT_ID: int = Query(...),
-    campaign: int = Query(...),
+    campaign: Optional[int] = Query(None),  # <-- Optional
     db: Session = Depends(get_db4)
 ):
     sql = """
         SELECT id, AllocationName AS name
         FROM ob_allocation_name
         WHERE ClientId = :cid
-          AND CampaignId = :camp
-        ORDER BY AllocationName
     """
-    return safe_query(db, sql, {"cid": CLIENT_ID, "camp": campaign})
+    params = {"cid": CLIENT_ID}
+    if campaign:
+        sql += " AND CampaignId = :camp"
+        params["camp"] = campaign
+    sql += " ORDER BY AllocationName"
+    return safe_query(db, sql, params)
 
 
 # ----------------- /scenarios -----------------
@@ -238,24 +244,24 @@ def get_scenarios(
     if not col_name:
         return []
 
-    base_sql = f"""
+    sql = f"""
         SELECT DISTINCT {col_name} AS id, {col_name} AS name
         FROM call_master_out
         WHERE ClientId = :cid
     """
     params = {"cid": CLIENT_ID}
 
+    # Optional filters
     if allocation:
-        base_sql += " AND AllocationId = :alloc"
+        sql += " AND AllocationId = :alloc"
         params["alloc"] = allocation
-
     if parent_scenario and scenario_level > 1:
         prev_col = level_map[scenario_level - 1]
-        base_sql += f" AND {prev_col} = :parent"
+        sql += f" AND {prev_col} = :parent"
         params["parent"] = parent_scenario
 
-    base_sql += f" ORDER BY {col_name}"
-    return safe_query(db, base_sql, params)
+    sql += f" ORDER BY {col_name}"
+    return safe_query(db, sql, params)
 
 
 # ---------------- /outcalls Endpoint ----------------
@@ -270,92 +276,193 @@ def get_outcalls(
     subScenario2: Optional[str] = None,
     subScenario3: Optional[str] = None,
     msisdn: Optional[str] = None,
-    startDate: Optional[str] = None,
-    endDate: Optional[str] = None,
+    startDate: Optional[str] = None,   # format: YYYY-MM-DD
+    endDate: Optional[str] = None,     # format: YYYY-MM-DD
     db: Session = Depends(get_db4)
 ):
-    # ----------------- base query for rows -----------------
+    params = {"cid": CLIENT_ID}
+
+    # Only include filters that are actually provided
+    filters = {}
+    if campaignType: filters["campaignType"] = campaignType
+    if campaign: filters["campaign"] = campaign
+    if allocation: filters["allocation"] = allocation
+    if scenario: filters["scenario"] = scenario
+    if subScenario1: filters["subScenario1"] = subScenario1
+    if subScenario2: filters["subScenario2"] = subScenario2
+    if subScenario3: filters["subScenario3"] = subScenario3
+    if msisdn: filters["msisdn"] = f"%{msisdn}%"
+
+    # Main SQL query
     sql_parts = [
         "SELECT o.id, o.Category1 AS scenario, o.Category2 AS subScenario1,",
         "       o.Category3 AS subScenario2, o.Category4 AS subScenario3,",
         "       o.MSISDN AS contactNumber, c.CampaignParentName AS campaignType,",
-        "       c.CampaignName AS campaignName, a.AllocationName AS allocationName, o.CallDate",
+        "       c.CampaignName AS campaignName, a.AllocationName AS allocationName, o.CallDate, o.callcreated",
         "FROM call_master_out o",
         "JOIN ob_allocation_name a ON o.AllocationId = a.id",
         "JOIN ob_campaign c ON a.CampaignId = c.id",
         "WHERE o.ClientId = :cid"
     ]
-    params = {"cid": CLIENT_ID}
 
-    filters = {
-        "campaignType": ("c.CampaignParentName = :campaignType", campaignType),
-        "campaign": ("c.id = :campaign", campaign),
-        "allocation": ("a.id = :allocation", allocation),
-        "scenario": ("o.Category1 = :scenario", scenario),
-        "subScenario1": ("o.Category2 = :subScenario1", subScenario1),
-        "subScenario2": ("o.Category3 = :subScenario2", subScenario2),
-        "subScenario3": ("o.Category4 = :subScenario3", subScenario3),
-        "msisdn": ("o.MSISDN LIKE :msisdn", f"%{msisdn}%" if msisdn else None),
-        "startDate": ("DATE(o.CallDate) >= :startDate", startDate),
-        "endDate": ("DATE(o.CallDate) <= :endDate", endDate),
-    }
+    # Add dynamic filters
+    for key, value in filters.items():
+        if key == "campaignType":
+            sql_parts.append("AND c.CampaignParentName = :campaignType")
+            params["campaignType"] = value
+        elif key == "campaign":
+            sql_parts.append("AND c.id = :campaign")
+            params["campaign"] = value
+        elif key == "allocation":
+            sql_parts.append("AND a.id = :allocation")
+            params["allocation"] = value
+        elif key == "scenario":
+            sql_parts.append("AND o.Category1 = :scenario")
+            params["scenario"] = value
+        elif key == "subScenario1":
+            sql_parts.append("AND o.Category2 = :subScenario1")
+            params["subScenario1"] = value
+        elif key == "subScenario2":
+            sql_parts.append("AND o.Category3 = :subScenario2")
+            params["subScenario2"] = value
+        elif key == "subScenario3":
+            sql_parts.append("AND o.Category4 = :subScenario3")
+            params["subScenario3"] = value
+        elif key == "msisdn":
+            sql_parts.append("AND o.MSISDN LIKE :msisdn")
+            params["msisdn"] = value
 
-    for key, (condition, value) in filters.items():
-        if value is not None:
-            sql_parts.append(f"AND {condition}")
-            params[key] = value
+    # --- FIXED DATE FILTERS (use DATE() instead of datetime) ---
+    if startDate:
+        sql_parts.append("AND DATE(o.CallDate) >= :start_dt")
+        params["start_dt"] = startDate
 
-    sql_parts.append("ORDER BY o.CallDate DESC LIMIT 100")
-    sql = "\n".join(sql_parts)
-    rows = safe_query(db, sql, params)
+    if endDate:
+        sql_parts.append("AND DATE(o.CallDate) <= :end_dt")
+        params["end_dt"] = endDate
 
-    # ----------------- Pre-calculate counts for all scenario levels -----------------
-    scenario_cols = ["Category1", "Category2", "Category3", "Category4"]
-    scenario_keys = ["scenario", "subScenario1", "subScenario2", "subScenario3"]
+    sql_parts.append("ORDER BY o.CallDate DESC")
+    rows = safe_query(db, "\n".join(sql_parts), params)
 
-    counts = {}
-    for col, key in zip(scenario_cols, scenario_keys):
-        count_sql = f"""
-            SELECT COALESCE(NULLIF({col}, ''), 'Unknown') AS name, COUNT(*) AS total
+    # --- Counts helper ---
+    def build_counts(apply_filters=True):
+        scenario_cols = ["Category1", "Category2", "Category3", "Category4"]
+        scenario_keys = ["scenario", "subScenario1", "subScenario2", "subScenario3"]
+
+        counts = {}
+        for col, key in zip(scenario_cols, scenario_keys):
+            count_sql = f"""
+                SELECT COALESCE(NULLIF(o.{col}, ''), 'Unknown') AS name, COUNT(*) AS total
+                FROM call_master_out o
+                JOIN ob_allocation_name a ON o.AllocationId = a.id
+                JOIN ob_campaign c ON a.CampaignId = c.id
+                WHERE o.ClientId = :cid
+            """
+            count_params = {"cid": CLIENT_ID}
+
+            if apply_filters:
+                for k, v in filters.items():
+                    if k == "campaignType":
+                        count_sql += " AND c.CampaignParentName = :campaignType"
+                        count_params["campaignType"] = v
+                    elif k == "campaign":
+                        count_sql += " AND c.id = :campaign"
+                        count_params["campaign"] = v
+                    elif k == "allocation":
+                        count_sql += " AND a.id = :allocation"
+                        count_params["allocation"] = v
+                    elif k == "scenario":
+                        count_sql += " AND o.Category1 = :scenario"
+                        count_params["scenario"] = v
+                    elif k == "subScenario1":
+                        count_sql += " AND o.Category2 = :subScenario1"
+                        count_params["subScenario1"] = v
+                    elif k == "subScenario2":
+                        count_sql += " AND o.Category3 = :subScenario2"
+                        count_params["subScenario2"] = v
+                    elif k == "subScenario3":
+                        count_sql += " AND o.Category4 = :subScenario3"
+                        count_params["subScenario3"] = v
+                    elif k == "msisdn":
+                        count_sql += " AND o.MSISDN LIKE :msisdn"
+                        count_params["msisdn"] = v
+
+            # Date filters for counts
+            if startDate:
+                count_sql += " AND DATE(o.CallDate) >= :start_dt"
+                count_params["start_dt"] = startDate
+            if endDate:
+                count_sql += " AND DATE(o.CallDate) <= :end_dt"
+                count_params["end_dt"] = endDate
+
+            count_sql += f" GROUP BY o.{col} ORDER BY o.{col}"
+            counts[key] = safe_query(db, count_sql, count_params)
+
+        # Total count
+        total_sql = """
+            SELECT COUNT(*) AS total
             FROM call_master_out o
             JOIN ob_allocation_name a ON o.AllocationId = a.id
             JOIN ob_campaign c ON a.CampaignId = c.id
             WHERE o.ClientId = :cid
         """
-        count_params = {"cid": CLIENT_ID}
-        for fkey, (condition, value) in filters.items():
-            if value is not None:
-                count_sql += f" AND {condition}"
-                count_params[fkey] = value
-        count_sql += f" GROUP BY {col} ORDER BY {col}"
-        counts[key] = safe_query(db, count_sql, count_params)
+        total_params = {"cid": CLIENT_ID}
 
-    # ----------------- total count -----------------
-    total_sql = f"""
-        SELECT COUNT(*) AS total
-        FROM call_master_out o
-        JOIN ob_allocation_name a ON o.AllocationId = a.id
-        JOIN ob_campaign c ON a.CampaignId = c.id
-        WHERE o.ClientId = :cid
-    """
-    for fkey, (condition, value) in filters.items():
-        if value is not None:
-            total_sql += f" AND {condition}"
-    total_count = safe_query(db, total_sql, params)
-    counts["total"] = total_count[0]["total"] if total_count else 0
+        if apply_filters:
+            for k, v in filters.items():
+                if k == "campaignType":
+                    total_sql += " AND c.CampaignParentName = :campaignType"
+                    total_params["campaignType"] = v
+                elif k == "campaign":
+                    total_sql += " AND c.id = :campaign"
+                    total_params["campaign"] = v
+                elif k == "allocation":
+                    total_sql += " AND a.id = :allocation"
+                    total_params["allocation"] = v
+                elif k == "scenario":
+                    total_sql += " AND o.Category1 = :scenario"
+                    total_params["scenario"] = v
+                elif k == "subScenario1":
+                    total_sql += " AND o.Category2 = :subScenario1"
+                    total_params["subScenario1"] = v
+                elif k == "subScenario2":
+                    total_sql += " AND o.Category3 = :subScenario2"
+                    total_params["subScenario2"] = v
+                elif k == "subScenario3":
+                    total_sql += " AND o.Category4 = :subScenario3"
+                    total_params["subScenario3"] = v
+                elif k == "msisdn":
+                    total_sql += " AND o.MSISDN LIKE :msisdn"
+                    total_params["msisdn"] = v
 
-    # ----------------- breadcrumb -----------------
+            if startDate:
+                total_sql += " AND DATE(o.CallDate) >= :start_dt"
+                total_params["start_dt"] = startDate
+            if endDate:
+                total_sql += " AND DATE(o.CallDate) <= :end_dt"
+                total_params["end_dt"] = endDate
+
+        total_count = safe_query(db, total_sql, total_params)
+        counts["total"] = total_count[0]["total"] if total_count else 0
+        return counts
+
+    countsFiltered = build_counts(apply_filters=True)
+    countsAll = build_counts(apply_filters=False)
+
+    # Breadcrumb
     breadcrumb = []
-    for key in scenario_keys:
+    for key in ["scenario", "subScenario1", "subScenario2", "subScenario3"]:
         val = locals().get(key)
         if val:
             breadcrumb.append({"level": key, "value": val})
 
     return {
         "data": rows,
-        "counts": counts,
-        "breadcrumb": breadcrumb
+        "countsFiltered": countsFiltered,
+        "countsAll": countsAll,
+        "breadcrumb": breadcrumb,
     }
+
 
 
 

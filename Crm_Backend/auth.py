@@ -118,7 +118,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db4)):
             "message": "Login successful",
             "access_token": token,
             "company_id": reg["company_id"],   # ✅ required for clients/admins
-            "auth_person": reg["auth_person"],
+            "auth_person": reg["company_name"],
             "user_type": "Client"  # or "Admin" if you want to separate
         }
 
