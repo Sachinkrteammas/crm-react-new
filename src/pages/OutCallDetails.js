@@ -24,7 +24,7 @@ export default function OutCallDetails() {
     subScenario2: "",
     subScenario3: "",
     msisdn: "",
-    startDate: today,  // ✅ default to today
+    startDate: today,  
     endDate: today,
   });
 
