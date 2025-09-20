@@ -360,7 +360,7 @@ const Dashboard = () => {
       {(userType === "Super-Admin" || userType === "Admin") &&
       !selectedClient ? (
         <div className="card h-100">
-          <div className="card-body">Please select a client</div>
+          {/* <div className="card-body">Please select a client</div> */}
         </div>
       ) : (
         <>
