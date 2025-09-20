@@ -19,7 +19,7 @@ import {
 import api from "../api";
 
 const Dashboard = () => {
-    const companyId = localStorage.getItem("company_id");
+  const companyId = localStorage.getItem("company_id");
   const userType = localStorage.getItem("user_type");
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState("");
@@ -54,14 +54,12 @@ const Dashboard = () => {
     const today = new Date();
     const format = (date) => date.toISOString().split("T")[0];
 
-      // Auto-select client for non-admin users once clients are loaded
-  // useEffect(() => {
-  //   if (userType !== "Super-Admin" && clients.length > 0) {
-  //     setSelectedClient(companyId);
-  //   }
-  // }, [userType, clients, companyId]);
-
-
+    // Auto-select client for non-admin users once clients are loaded
+    // useEffect(() => {
+    //   if (userType !== "Super-Admin" && clients.length > 0) {
+    //     setSelectedClient(companyId);
+    //   }
+    // }, [userType, clients, companyId]);
 
     switch (dateRange) {
       case "today":
@@ -96,7 +94,6 @@ const Dashboard = () => {
     setDateRange(e.target.value);
   };
 
-  
   const fetchCallAnalysis = async () => {
     if (!selectedClient) return;
 
@@ -268,12 +265,24 @@ const Dashboard = () => {
     fetchClients();
   }, []);
 
- useEffect(() => {
-    if (userType !== "Super-Admin" && clients.length > 0) {
-      setSelectedClient(companyId);
-    }
-  }, [userType, clients, companyId]);
+  //  useEffect(() => {
+  //     if ((userType === "Admin" || userType !== "Super-Admin") && clients.length > 0) {
+  //       setSelectedClient(companyId);
+  //     }
+  //   }, [userType, clients, companyId]);
 
+  useEffect(() => {
+    if (userType === "Client") {
+      // For client users → directly set companyId
+      setSelectedClient(companyId);
+    } else if (
+      (userType === "Super-Admin" || userType === "Admin") &&
+      clients.length === 1
+    ) {
+      // Auto-select if only one client is available
+      setSelectedClient(clients[0].id);
+    }
+  }, [userType, companyId, clients]);
 
   useEffect(() => {
     const fetchPlan = async () => {
@@ -320,35 +329,36 @@ const Dashboard = () => {
     <>
       <div className="row mb-4">
         <div className="col-md-4">
-      {userType === "Super-Admin" ? (
-        <>
-          <label className="form-label fw-semibold">Select Client</label>
-          <select
-            className="form-select"
-            value={selectedClient}
-            onChange={(e) => setSelectedClient(e.target.value)}
-          >
-            <option value="">-- Select Client --</option>
-            {clients.map((client) => (
-              <option key={client.company_id} value={String(client.company_id)}>
-                {client.company_name}
-              </option>
-            ))}
-          </select>
-        </>
-      ) : (
-        <p>
-          {/* Dashboard loaded for your company:{" "} */}
-          {/* {clients.find((c) => c.company_id === Number(companyId))?.company_name ||
-            "Unknown"} */}
-        </p>
-      )}
-
+          {userType === "Super-Admin" || userType === "Admin" ? (
+            <>
+              <label className="form-label fw-semibold">Select Client</label>
+              <select
+                className="form-select"
+                value={selectedClient}
+                onChange={(e) => setSelectedClient(e.target.value)}
+              >
+                <option value="">-- Select Client --</option>
+                {clients.map((client) => (
+                  <option
+                    key={client.company_id}
+                    value={String(client.company_id)}
+                  >
+                    {client.company_name}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <p>
+    
+            </p>
+          )}
         </div>
       </div>
 
       {/* Show placeholders depending on state */}
-      {!selectedClient ? (
+      {(userType === "Super-Admin" || userType === "Admin") &&
+      !selectedClient ? (
         <div className="card h-100">
           <div className="card-body">Please select a client</div>
         </div>
@@ -924,4 +934,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
