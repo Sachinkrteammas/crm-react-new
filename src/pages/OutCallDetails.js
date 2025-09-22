@@ -7,6 +7,7 @@ import {
   getAllocations,
   getScenarios,
 } from "../services/authService";
+import { Eye } from "lucide-react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
@@ -686,15 +687,16 @@ const handleExport = async () => {
                     .map((row, idx) => (
                       <tr key={idx}>
                         <td>
-                          <button
-                            className="btn btn-sm btn-primary"
-                            onClick={() => {
-                              setSelectedRow(row);
-                              setIsModalOpen(true);
-                            }}
-                          >
-                            View
-                          </button>
+               <button
+    className="btn btn-sm btn-primary d-flex align-items-center justify-content-center"
+    onClick={() => {
+      setSelectedRow(row);
+      setIsModalOpen(true);
+    }}
+    title="View"
+  >
+    <Eye size={16} /> {/* 👈 Eye icon instead of text */}
+  </button>
                         </td>
                         <td>
                           <button className="btn btn-sm btn-outline-secondary">
@@ -769,7 +771,7 @@ const handleExport = async () => {
         {/* Modal container */}
         <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-auto p-6 md:p-8 animate-fadeIn">
           {/* Header + Close */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between ">
             <h2 className="text-xl md:text-xl font-bold text-indigo-700 flex items-center gap-2">
               Out Call Details
             </h2>
