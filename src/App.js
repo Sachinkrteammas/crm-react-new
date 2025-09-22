@@ -75,6 +75,8 @@ import TaggingReports from "./pages/TaggingReports";
 import CallReports from "./pages/CallReports";
 import RealTimeDashboard from "./pages/RealTimeDashboard";
 import CompanyRegistration from "./pages/company-registration";
+import AbandCallSetting from "./pages/AbandCallSetting";
+import TrainingMaster from "./pages/TrainingMasters";
 
 
 function App() {
@@ -150,7 +152,9 @@ function App() {
         "/shopify_reports": "Shopify Reports | DialDesk",
         "/tagging_reports": "Tagging Reports | DialDesk",
         "/call_reports": "Call Reports | DialDesk",
-       "/company_registration": "Company Registration | DialDesk"
+       "/company_registration": "Company Registration | DialDesk",
+       "/aband_call_setting": "Aband Call Setting | DialDesk",
+        "/training_masters": "Training Masters | DialDesk",
     };
 
     const location = useLocation();
@@ -239,6 +243,8 @@ function App() {
               <Route path="/shopify_reports" element={<ShopifyReports />} />
               <Route path="/tagging_reports" element={<TaggingReports />} />
               <Route path="/call_reports" element={<CallReports />} />
+              <Route path="/aband_call_setting" element={<AbandCallSetting />} />
+              <Route path="/training_masters" element={<TrainingMaster />} />
           </Route>
       </Route>
     </Routes>

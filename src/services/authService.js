@@ -236,4 +236,82 @@ export const getOutCallDetails = async (company_id, filters = {}) => {
   }
 };
 
+// Add aband call setting
+export const addAbandCallSetting = async (payload) => {
+  try {
+    const response = await api.post("/in_call/aband_call/add", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error adding aband call setting:", error);
+    throw error.response?.data?.detail || "Failed to add aband call setting";
+  }
+};
 
+// List aband call settings
+export const getAbandCallSettings = async (searchClient = "") => {
+  try {
+    const params = searchClient ? { search_client: searchClient } : {};
+    const response = await api.get("/in_call/aband_call/list", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching aband call settings:", error);
+    throw error.response?.data?.detail || "Failed to fetch aband call settings";
+  }
+};
+
+// Delete aband call setting
+export const deleteAbandCallSetting = async (id) => {
+  try {
+    const response = await api.delete(`/in_call/aband_call/delete/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting aband call setting:", error);
+    throw error.response?.data?.detail || "Failed to delete aband call setting";
+  }
+};
+
+
+// ---------------- Upload Training Docs ----------------
+export const uploadTrainingDocs = async (ClientId, files, descriptions) => {
+  try {
+    const formData = new FormData();
+    formData.append("ClientId", ClientId);
+
+    files.forEach((file) => formData.append("files", file));
+    descriptions.forEach((desc) => formData.append("descriptions", desc));
+
+    const response = await api.post("/training/upload", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    console.error("Error uploading training docs:", error);
+    throw error.response?.data?.detail || "Failed to upload training docs";
+  }
+};
+
+// ---------------- List Training Docs ----------------
+export const getTrainingDocs = async (ClientId = "") => {
+  try {
+    const params = ClientId ? { ClientId } : {};
+    const response = await api.get("/training/list", { params });
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching training docs:", error);
+    throw error.response?.data?.detail || "Failed to fetch training docs";
+  }
+};
+
+// ---------------- Delete Training Doc ----------------
+export const deleteTrainingDoc = async (id) => {
+  try {
+    const response = await api.delete(`/training/delete/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting training doc:", error);
+    throw error.response?.data?.detail || "Failed to delete training doc";
+  }
+};
