@@ -77,6 +77,7 @@ import RealTimeDashboard from "./pages/RealTimeDashboard";
 import CompanyRegistration from "./pages/company-registration";
 import AbandCallSetting from "./pages/AbandCallSetting";
 import TrainingMaster from "./pages/TrainingMasters";
+import ManageFields from "./pages/ManageFields";
 
 
 function App() {
@@ -224,7 +225,7 @@ function App() {
               <Route path="/manage_mis_reports" element={<ManageMISReports />} />
               <Route path="/manage_training_docs" element={<ManageTrainingDocs />} />
               <Route path="/manage_ivr" element={<ManageIVR />} />
-              <Route path="/manage_incal_scenarios" element={<ManageInCallScenarios />} />
+              <Route path="/Ecrs" element={<ManageInCallScenarios />} />
               <Route path="/manage_tat" element={<ManageTAT />} />
               <Route path="/manage_alert_escalations" element={<ManageAlertsEscalations />} />
               <Route path="/manage_call_actions" element={<ManageInCallActions />} />
@@ -245,6 +246,7 @@ function App() {
               <Route path="/call_reports" element={<CallReports />} />
               <Route path="/aband_call_setting" element={<AbandCallSetting />} />
               <Route path="/training_masters" element={<TrainingMaster />} />
+              <Route path="/ClientFields" element={<ManageFields />} />
           </Route>
       </Route>
     </Routes>

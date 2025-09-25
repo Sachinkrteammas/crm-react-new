@@ -11,6 +11,8 @@ from plan import router as plan_router
 from company import router as company_router
 from dynamic_menu import router as dynamic_menu_router
 from in_call_management import router as in_call_management_router
+from ecr import router as ecr_router
+from field_master import router as field_master_router
 
 
 
@@ -36,3 +38,5 @@ app.include_router(plan_router, prefix="/plan", tags=["Plan Management"])
 app.include_router(company_router, prefix="/company", tags=["Company Management"])
 app.include_router(dynamic_menu_router, prefix="/dynamic_menu", tags=["Dynamic Menu"])
 app.include_router(in_call_management_router, prefix="/in_call", tags=["In Call Management"])
+app.include_router(ecr_router)
+app.include_router(field_master_router)
