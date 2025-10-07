@@ -272,7 +272,7 @@ const ManageInCallScenarios = () => {
       <div className="col-md-6">
           <h4 className="mb-4 fw-bold">Call Scenario Tree</h4>
 
-          <div className="accordion shadow-sm" id="treeAccordion">
+          <div className="accordion shadow-sm p-3 rounded" id="treeAccordion" style={{ backgroundColor: "#ffffff" }}>
             {tree.map((scenario) => renderScenarioNode(scenario))}
           </div>
       </div>

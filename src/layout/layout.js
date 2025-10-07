@@ -100,7 +100,7 @@ const Layout = () => {
               className="menu-link"
               onClick={handleMenuLinkClick}
             >
-              <i className="menu-icon icon-base ti tabler-file"></i>
+
               <div>{item.page_name}</div>
             </Link>
           )}

@@ -2,18 +2,21 @@
 from http.client import HTTPException
 from io import BytesIO
 
-from fastapi import APIRouter, Query, Depends, Body
+from fastapi import APIRouter, Query, Depends, Body, Form, HTTPException
 from sqlalchemy import text
 from typing import List, Dict, Optional, Any
-
+from pydantic import BaseModel, EmailStr, create_model
 from starlette.responses import StreamingResponse
-
+from datetime import date, time
 from schemas import *
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
-
+from auth import create_access_token, verify_token
+import os
+from dotenv import load_dotenv
 from database import get_engine4, get_engine2, get_db2, get_db4
+
+load_dotenv()
 
 router = APIRouter(tags=["Call Master"])
 
@@ -1819,3 +1822,221 @@ async def save_call_master(client_id: int, payload: dict = Body(...), db: Sessio
 #     except Exception as e:
 #         db.rollback()
 #         raise FastAPIHTTPException(status_code=500, detail=f"Error on insert: {str(e)}")
+
+
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+GRANT_TYPE = os.getenv("GRANT_TYPE")
+
+
+
+@router.post("/oauth2/token", response_model=TokenResponse)
+def get_access_token(
+        client_id: str = Form(...),
+        client_secret: str = Form(...),
+        grant_type: str = Form(...),
+):
+    if (
+            client_id != CLIENT_ID or
+            client_secret != CLIENT_SECRET or
+            grant_type != GRANT_TYPE
+    ):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = create_access_token({"sub": client_id})
+    return TokenResponse(access_token=token)
+
+
+
+
+class IvrCreate(BaseModel):
+    contactNumber: str
+    callingDate: date
+    callingTime: time
+    lastName: str
+    City: str
+    Street: str
+    State: str
+    PostalCode: str
+    Email: EmailStr
+    Description: Optional[str] = None
+    expectedCapacity: Optional[str] = None
+    Company: Optional[str] = None
+    dispositionItem: Optional[str] = None
+    recordingLink: Optional[str] = None
+
+
+# @router.post("/ivrlead/callCenter/Create")
+# def create_user(payload: IvrCreate, db: Session = Depends(get_db4), client_id: str = Depends(verify_token)):
+#     insert_query = text("""
+#     INSERT INTO call_master (
+#         Field1, Field2, Field3, Field4, Field5, Field6, Field7,
+#         Field8, Field9, Field10, Field11, Field12, Field13, Field14, Field26
+#     ) VALUES (
+#         :Field1, :Field2, :Field3, :Field4, :Field5, :Field6, :Field7,
+#         :Field8, :Field9, :Field10, :Field11, :Field12, :Field13, :Field14, :Field26
+#     )
+# """)
+#     db.execute(insert_query, {
+#         "Field1": payload.contactNumber,
+#         "Field2": payload.callingDate,
+#         "Field3": payload.callingTime,
+#         "Field4": payload.lastName,
+#         "Field5": payload.City,
+#         "Field6": payload.Street,
+#         "Field7": payload.State,
+#         "Field8": payload.PostalCode,
+#         "Field9": payload.Email,
+#         "Field10": payload.Description,
+#         "Field11": payload.expectedCapacity,
+#         "Field12": payload.Company,
+#         "Field13": payload.dispositionItem,
+#         "Field14": payload.recordingLink,
+#         "Field26": True,
+#     })
+#     db.commit()
+#
+#     result = db.execute(text("SELECT LAST_INSERT_ID()"))
+#     record_id = result.scalar()
+#
+#     response = [
+#         f"Lead ID: {payload.lastName}",
+#         f"Record ID: {record_id}",
+#         "Record Successfully Updated."
+#     ]
+#     return response
+
+
+# @router.post("/ivrlead/callCenter/Create")
+# def create_user(
+#     payload: dict,   # accept raw JSON since fields vary
+#     db: Session = Depends(get_db4),
+#     client_id: str = Depends(verify_token)
+# ):
+#     # 1. Fetch dynamic field mapping for this client
+#     query = text("""
+#         SELECT id, FieldName
+#         FROM field_master
+#         WHERE ClientId = :client_id
+#     """)
+#     rows = db.execute(query, {"client_id": client_id}).fetchall()
+#
+#     if not rows:
+#         raise HTTPException(status_code=400, detail="No field mapping found for this client")
+#
+#     # 2. Build insert dict dynamically
+#     insert_data = {}
+#     for row in rows:
+#         id = row.id   # like "Field1"
+#         FieldName = row.FieldName  # like "Mobile Number"
+#
+#         # match with payload key (ensure payload uses same naming convention)
+#         if FieldName in payload:
+#             insert_data[id] = payload[FieldName]
+#         else:
+#             insert_data[id] = None  # optional
+#
+#     # Add any fixed fields (like Field26)
+#     insert_data["Field26"] = True
+#
+#     # 3. Build SQL dynamically
+#     columns = ", ".join(insert_data.keys())
+#     values = ", ".join([f":{k}" for k in insert_data.keys()])
+#     insert_query = text(f"""
+#         INSERT INTO call_master ({columns})
+#         VALUES ({values})
+#     """)
+#
+#     db.execute(insert_query, insert_data)
+#     db.commit()
+#
+#     # 4. Return record_id
+#     result = db.execute(text("SELECT LAST_INSERT_ID()"))
+#     record_id = result.scalar()
+#
+#     return {
+#         "RecordID": record_id,
+#         "InsertedFields": list(insert_data.keys())
+#     }
+
+
+
+def generate_dynamic_model(client_id: str, db: Session):
+    """
+    Fetch field_master for client_id and generate Pydantic model
+    """
+    query = text("SELECT FieldName FROM field_master WHERE ClientId = :client_id")
+    rows = db.execute(query, {"client_id": client_id}).fetchall()
+
+    if not rows:
+        raise Exception(f"No fields found for ClientId={client_id}")
+
+    # Build dict for create_model
+    fields = {
+        row.FieldName.replace(" ", "_"): (Optional[str], None)  # optional string fields
+        for row in rows
+    }
+
+    # Dynamically create model class
+    return create_model(f"IvrCreate_{client_id}", **fields)
+
+
+# Generate model once at startup for a specific client
+# (for multi-client setup, you could generate multiple models)
+def get_dynamic_model():
+    with next(get_db4()) as db:
+        return generate_dynamic_model("293", db)   # replace with actual client_id
+
+
+# Cache the model so it's not recreated every request
+IvrCreate = get_dynamic_model()
+
+
+def normalize(name: str) -> str:
+    return name.strip().replace(" ", "_").replace("/", "_").replace(".", "").lower()
+
+
+@router.post("/ivrlead/callCenter/Create")
+def create_user(
+    payload: IvrCreate,  # dynamic model used here
+    db: Session = Depends(get_db4),
+    client_id: str = Depends(lambda: "293")  # example token decode
+):
+    query = text("SELECT fieldNumber, FieldName FROM field_master WHERE ClientId = :client_id")
+    rows = db.execute(query, {"client_id": client_id}).fetchall()
+
+    if not rows:
+        raise HTTPException(status_code=400, detail="No field mapping found for this client")
+
+    insert_data = {}
+    payload_dict = {normalize(k): v for k, v in payload.dict().items()}
+
+    for row in rows:
+        field_no = f"Field{row.fieldNumber}"   # adjust if id is numeric index
+        field_name = normalize(row.FieldName)
+        insert_data[field_no] = payload_dict.get(field_name)
+
+    insert_data["Field40"] = True
+
+    columns = ", ".join(insert_data.keys())
+    values = ", ".join([f":{k}" for k in insert_data.keys()])
+    insert_query = text(f"INSERT INTO call_master ({columns}) VALUES ({values})")
+
+    db.execute(insert_query, insert_data)
+    db.commit()
+
+    result = db.execute(text("SELECT LAST_INSERT_ID()"))
+    record_id = result.scalar()
+
+    return {
+        "RecordID": record_id,
+        "InsertedFields": list(insert_data.keys())
+    }

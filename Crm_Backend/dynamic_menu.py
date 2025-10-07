@@ -56,7 +56,8 @@ def get_dynamic_menu(company_id: int, db: Session = Depends(get_db4)):
             raise HTTPException(status_code=404, detail="No pages found")
 
         # Super Admin gets FLAT list (no parent-child nesting)
-        return [dict(row) for row in rows]
+        # return [dict(row) for row in rows]
+        return build_menu_tree(rows)
 
     # ✅ Case 2: Client (companyId > 0)
     rights_query = text("""

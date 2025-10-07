@@ -15,6 +15,27 @@ def fetch_categories(query: str, params: dict):
         result = conn.execute(text(query), params).mappings()
         return [{"id": row["id"], "ecrName": row["ecrName"]} for row in result]
 
+
+
+def fetch_fields(query: str, params: dict):
+    engine = get_engine4()
+    with engine.connect() as conn:
+        result = conn.execute(text(query), params).mappings()
+        return [{"fieldNumber": row["fieldNumber"], "FieldName": row["FieldName"]} for row in result]
+
+
+
+@router.get("/fields")
+def get_fields(client_id: int = Query(..., description="Client ID")):
+    query = """
+        SELECT fieldNumber, FieldName
+        FROM field_master
+        WHERE ClientId = :client_id
+        ORDER BY fieldNumber
+    """
+    return fetch_fields(query, {"client_id": client_id})
+
+
 @router.get("/categories/level1")
 def get_level1(client_id: int = Query(..., description="Client ID")):
     query = """

@@ -5,10 +5,11 @@ from sqlalchemy.orm import Session
 from database import get_db, get_db3, get_db4
 from schemas import LoginRequest, LoginResponse, CallMasterRecord
 from passlib.context import CryptContext
-from jose import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from auth_utils import get_current_user
 from sqlalchemy import text
+from fastapi.security import OAuth2PasswordBearer
 
 
 router = APIRouter()
@@ -112,3 +113,25 @@ def get_calls_by_client(client_id: int = Query(...), db: Session = Depends(get_d
 @router.get("/profile")
 def get_profile(current_user: str = Depends(get_current_user)):
     return {"message": f"Authenticated as {current_user}"}
+
+
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/call/oauth2/token")
+
+def verify_token(token: str = Depends(oauth2_scheme)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        client_id: str = payload.get("sub")
+        if client_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return client_id
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )

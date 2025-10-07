@@ -13,6 +13,9 @@ from dynamic_menu import router as dynamic_menu_router
 from in_call_management import router as in_call_management_router
 from ecr import router as ecr_router
 from field_master import router as field_master_router
+from close_field import router as close_field_router
+from vicidial_list import router as vicidial_list_router
+from templates import router as templates_router
 
 
 
@@ -40,3 +43,6 @@ app.include_router(dynamic_menu_router, prefix="/dynamic_menu", tags=["Dynamic M
 app.include_router(in_call_management_router, prefix="/in_call", tags=["In Call Management"])
 app.include_router(ecr_router)
 app.include_router(field_master_router)
+app.include_router(close_field_router)
+app.include_router(vicidial_list_router, prefix="/dialer", tags=["Vicidial List"])
+app.include_router(templates_router, tags=["Templates"])
