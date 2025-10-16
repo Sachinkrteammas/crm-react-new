@@ -79,6 +79,7 @@ import AbandCallSetting from "./pages/AbandCallSetting";
 import TrainingMaster from "./pages/TrainingMasters";
 import ManageFields from "./pages/ManageFields";
 import ManageCloseField from "./pages/ManageCloseField";
+import TemplateCreation from "./pages/TemplateCreation";
 
 
 function App() {
@@ -228,7 +229,7 @@ function App() {
               <Route path="/manage_ivr" element={<ManageIVR />} />
               <Route path="/Ecrs" element={<ManageInCallScenarios />} />
               <Route path="/manage_tat" element={<ManageTAT />} />
-              <Route path="/Escalations/view_fields" element={<ManageAlertsEscalations />} />
+              <Route path="/alert_mechanism" element={<ManageAlertsEscalations />} />
               <Route path="/manage_call_actions" element={<ManageInCallActions />} />
               <Route path="/out_manage_alert_escalations" element={<OutManageAlertsEscalations />} />
               <Route path="/out_manage_customize_mis" element={<OutManageCustomizedMIS />} />
@@ -249,6 +250,7 @@ function App() {
               <Route path="/training_masters" element={<TrainingMaster />} />
               <Route path="/ClientFields" element={<ManageFields />} />
               <Route path="/CloseFields" element={<ManageCloseField />} />
+              <Route path="/template_creation" element={<TemplateCreation />} />
           </Route>
       </Route>
     </Routes>
