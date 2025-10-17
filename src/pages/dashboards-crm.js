@@ -158,8 +158,8 @@ const Dashboard = () => {
       const payload = {
         company_id: Number(selectedClient),
         view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
-        from_date: fromDate,
-        to_date: toDate,
+        from_date: fromDate || null,
+        to_date: toDate || null,
       };
 
       const { days, total_tagged, total_abandon_cb } = await getDashboardReport(

@@ -16,7 +16,7 @@ from field_master import router as field_master_router
 from close_field import router as close_field_router
 from vicidial_list import router as vicidial_list_router
 from templates import router as templates_router
-
+from fortum_dashboard import router as fortum_dashboard_router
 
 
 app = FastAPI(title="CRM Backend")
@@ -46,3 +46,4 @@ app.include_router(field_master_router)
 app.include_router(close_field_router)
 app.include_router(vicidial_list_router, prefix="/dialer", tags=["Vicidial List"])
 app.include_router(templates_router, tags=["Templates"])
+app.include_router(fortum_dashboard_router, tags=["Fortum Dashboard"])

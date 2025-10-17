@@ -83,7 +83,7 @@ def get_dashboard_report(
         tag_sql = text("""
             SELECT COUNT(Id) AS total_tagged
             FROM call_master
-            WHERE client_id = :cid
+            WHERE ClientId = :cid
               AND DATE(calldate) BETWEEN :from_date AND :to_date
               AND CallType <> 'Upload'
         """)

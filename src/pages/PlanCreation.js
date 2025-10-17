@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import api from "../api";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // Keep your full PlanCreation form state
 const initialFormState = {
@@ -36,7 +38,16 @@ const initialFormState = {
   ratePerPulseMultiOutbound: "",
   multiLiveChat: "",
   whatsappSmsCharge: "",
+  CreditPointPercent: "",
+  TalktimePercent: "",
 };
+
+
+const VIEW_FIELD_LABELS = {
+  CreditPointPercent: "Credit Point %",
+  TalktimePercent: "Talktime %",
+};
+
 
 export default function PlanManagement() {
   const [plans, setPlans] = useState([]);
@@ -91,6 +102,26 @@ export default function PlanManagement() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    let newErrors = { ...errors };
+
+    // ✅ Only validate these two percentage fields
+    if (name === "CreditPointPercent" || name === "TalktimePercent") {
+    const numericValue = parseFloat(value);
+
+    if (value === "" || (!isNaN(numericValue) && numericValue >= 0)) {
+      // Set or clear error based on value
+      if (numericValue > 100) {
+        newErrors[name] = "Value cannot exceed 100";
+      } else {
+        delete newErrors[name];
+      }
+      setForm({ ...form, [name]: value });
+      setErrors(newErrors);
+    }
+    // Ignore invalid input (do not update state)
+    return;
+  }
+
     setForm({ ...form, [name]: value });
     setErrors({ ...errors, [name]: "" });
   };
@@ -151,19 +182,20 @@ export default function PlanManagement() {
     if (editingPlanId) {
       // ✅ Update existing plan using correct id
       await api.put(`/plan/plan/${editingPlanId}`, payload);
-      setModalMessage("✅ Plan updated successfully!");
+      toast.success("Plan updated successfully!");
     } else {
       // ✅ Create new plan
       await api.post("/plan/create_plan", payload);
-      setModalMessage("✅ Plan created successfully!");
+      toast.success("Plan created successfully!");
     }
 
     fetchPlans();
     setForm(initialFormState);
     setEditingPlanId(null);
+    setShowModal(false); // Close modal after success
   } catch (err) {
     console.error("Error saving plan:", err.response || err);
-    setModalMessage("❌ Failed to save plan. Try again.");
+    toast.error("Failed to save plan. Try again.");
   } finally {
     setLoading(false);
   }
@@ -196,7 +228,9 @@ export default function PlanManagement() {
       chargePerExtraUser: plan.ChargePerExtraUser,
       noOfUsers: plan.NoOfFreeUser,
       balanceCarry: plan.balanceCarry || "yes",
-      firstMinute: plan.first_minute,
+      firstMinute: plan.first_minute === 1 || plan.first_minute === "1" || plan.first_minute === "Enable"
+            ? 1
+            : 0,
       multiInboundCharge: plan.MultiIBCharges,
       pulseMultiLang: plan.pulse_ib_multi,
       ratePerPulseMultiLang: plan.rate_per_pulse_ib_multi,
@@ -205,6 +239,8 @@ export default function PlanManagement() {
       ratePerPulseMultiOutbound: plan.rate_per_pulse_ob_multi,
       multiLiveChat: plan.MultiLiveChat,
       whatsappSmsCharge: plan.whatsapp_message_charge,
+      CreditPointPercent: plan.CreditPointPercent,
+      TalktimePercent: plan.TalktimePercent,
     });
 
     setEditingPlanId(plan.Id); // ✅ Use the correct backend primary key
@@ -217,6 +253,7 @@ export default function PlanManagement() {
   if (!window.confirm("Are you sure you want to delete this plan?")) return;
   try {
     await api.delete(`/plan/plan/${planId}`); // ✅ use api instance
+    toast.success("Plan deleted successfully!");
     fetchPlans();
   } catch (err) {
     console.error("Error deleting plan:", err);
@@ -250,6 +287,7 @@ export default function PlanManagement() {
         value={form[name]}
         onChange={handleChange}
       />
+      {errors[name] && <div className="invalid-feedback">{errors[name]}</div>}
     </div>
   );
 
@@ -274,6 +312,7 @@ export default function PlanManagement() {
 
   return (
     <div className="mt-4">
+      <ToastContainer position="top-center" autoClose={2500} hideProgressBar style={{ marginTop: '90px' }} />
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h3>Plan Management</h3>
         <button
@@ -301,7 +340,7 @@ export default function PlanManagement() {
           }}
         />
         <select
-          className="form-select w-auto"
+          className="form-select w-auto me-6"
           value={rowsPerPage}
           onChange={(e) => {
             setRowsPerPage(Number(e.target.value));
@@ -400,7 +439,7 @@ export default function PlanManagement() {
       {/* ✅ View Plan Modal */}
    {/* ✅ View Plan Modal */}
 {showViewModal && viewPlan && (
-  <div className="modal show fade d-block" tabIndex="-1">
+  <div className="modal show fade d-block" tabIndex="-1" style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)" }}>
     <div className="modal-dialog modal-xl"> {/* <-- wider modal */}
       <div className="modal-content">
         <div className="modal-header">
@@ -414,8 +453,8 @@ export default function PlanManagement() {
         <div className="modal-body">
           <div className="row">
             {Object.keys(viewPlan).map((key) => (
-              <div className="col-md-6 mb-2" key={key}>
-                <strong>{key}:</strong> {viewPlan[key]}
+              <div className="col-md-4 mb-3" key={key}>
+                <strong>{VIEW_FIELD_LABELS[key] || key}:</strong> {viewPlan[key]}
               </div>
             ))}
           </div>
@@ -463,47 +502,41 @@ export default function PlanManagement() {
               </div>
 
               <div className="modal-body">
-                {/* If submission message exists → show it, else show form */}
-                {modalMessage ? (
-                  <div className="text-center">
-                    <p>{modalMessage}</p>
-                  </div>
-                ) : (
                   <form className="row g-3" onSubmit={handleSubmit}>
                     {renderInput("Plan Name", "planName", "Plan Name")}
                     {renderInput(
-                      "Setup Fee",
+                      "Setup Fee - Rs.",
                       "setupFee",
                       "Setup Cost",
                       "number"
                     )}
                     {renderInput(
-                      "Subscription Amount",
+                      "Subscription Amount - Rs.",
                       "subscriptionAmount",
                       "Subscription Amount",
                       "number"
                     )}
                     {renderInput("Plan Mode", "PlanType", "Period Type")}
                     {renderInput(
-                      "Credit Value as per Plan Mode",
+                      "Credit Value as per Plan Mode - Rs.",
                       "creditValuePerMode",
                       "Credit Value per Plan Mode",
                       "number"
                     )}
                     {renderInput(
-                      "Credit Value",
+                      "Credit Value - Rs.",
                       "creditValue",
                       "Credit Value",
                       "number"
                     )}
                     {renderInput(
-                      "Rate Per Pulse (Day Shift)",
+                      "Rate Per Pulse (Day Shift) - Rs.",
                       "ratePerPulseDay",
                       "Rate Per Pulse",
                       "number"
                     )}
                     {renderInput(
-                      "Inbound Call Charge (Day Shift)",
+                      "Inbound Call Charge (Day Shift) - Rs.",
                       "inboundChargeDay",
                       "Inbound Call Charge",
                       "number"
@@ -516,7 +549,7 @@ export default function PlanManagement() {
                       { value: "60", label: "60 Sec" },
                     ])}
                     {renderInput(
-                      "Outbound Call Charge",
+                      "Outbound Call Charge - Rs.",
                       "outboundCallCharge",
                       "Outbound Call Charge",
                       "number"
@@ -529,7 +562,7 @@ export default function PlanManagement() {
                       { value: "60", label: "60 Sec" },
                     ])}
                     {renderInput(
-                      "Inbound Call Charge (Night Shift)",
+                      "Inbound Call Charge (Night Shift) - Rs.",
                       "inboundChargeNight",
                       "Inbound Call Charge",
                       "number"
@@ -542,19 +575,19 @@ export default function PlanManagement() {
                       { value: "60", label: "60 Sec" },
                     ])}
                     {renderInput(
-                      "Email Charge",
+                      "Email Charge - Rs.",
                       "emailCharge",
                       "Per Email Charge",
                       "number"
                     )}
                     {renderInput(
-                      "Rate Per Pulse (Night Shift)",
+                      "Rate Per Pulse (Night Shift) - Rs.",
                       "ratePerPulseNight",
                       "Rate Per Pulse",
                       "number"
                     )}
                     {renderInput(
-                      "Rate Per Pulse",
+                      "Rate Per Pulse - Rs.",
                       "ratePerPulse",
                       "Rate Per Pulse",
                       "number"
@@ -566,25 +599,25 @@ export default function PlanManagement() {
                       "number"
                     )}
                     {renderInput(
-                      "Miss Call Charge",
+                      "Miss Call Charge - Rs./Min",
                       "missCallCharge",
                       "Miss Call Rs./Min",
                       "number"
                     )}
                     {renderInput(
-                      "IVR Call Charge",
+                      "IVR Call Charge - Rs.",
                       "ivrCallCharge",
                       "IVR Call Rs./CALL",
                       "number"
                     )}
                     {renderInput(
-                      "VFO Call Charge",
+                      "VFO Call Charge - Rs.",
                       "vfoCharge",
                       "VFO Rs./Min",
                       "number"
                     )}
                     {renderInput(
-                      "Charge Per Extra User",
+                      "Charge Per Extra User - Rs./User",
                       "chargePerExtraUser",
                       "Charge Per Extra User Rs./User",
                       "number"
@@ -644,7 +677,7 @@ export default function PlanManagement() {
                     </div>
 
                     {renderInput(
-                      "Multi Language (Inbound Charge)",
+                      "Multi Language (Inbound Charge) - Rs.",
                       "multiInboundCharge",
                       "Multi Language Inbound Charge",
                       "number"
@@ -657,13 +690,13 @@ export default function PlanManagement() {
                       { value: "60", label: "60 Sec" },
                     ])}
                     {renderInput(
-                      "Rate Per Pulse (Multi Language)",
+                      "Rate Per Pulse (Multi Language) - Rs.",
                       "ratePerPulseMultiLang",
                       "Rate Per Pulse",
                       "number"
                     )}
                     {renderInput(
-                      "Multi Language (Outbound Charge)",
+                      "Multi Language (Outbound Charge) - Rs.",
                       "multiOutboundCharge",
                       "Multi Language Outbound Charge",
                       "number"
@@ -680,7 +713,7 @@ export default function PlanManagement() {
                       ]
                     )}
                     {renderInput(
-                      "Rate Per Pulse (Multi Language OB)",
+                      "Rate Per Pulse (Multi Language OB) - Rs.",
                       "ratePerPulseMultiOutbound",
                       "Rate Per Pulse",
                       "number"
@@ -692,9 +725,21 @@ export default function PlanManagement() {
                       "number"
                     )}
                     {renderInput(
-                      "Whatsapp SMS Charge",
+                      "Whatsapp SMS Charge - Rs.",
                       "whatsappSmsCharge",
                       "Whatsapp SMS Charge",
+                      "number"
+                    )}
+                    {renderInput(
+                      "CreditPoint %",
+                      "CreditPointPercent",
+                      "CreditPoint %",
+                      "number"
+                    )}
+                    {renderInput(
+                      "Talktime %",
+                      "TalktimePercent",
+                      "Talktime %",
                       "number"
                     )}
 
@@ -708,7 +753,6 @@ export default function PlanManagement() {
                       </button>
                     </div>
                   </form>
-                )}
               </div>
 
               <div className="modal-footer">

@@ -42,6 +42,8 @@ class PlanCreateRequest(BaseModel):
     firstMinute: Optional[int] = 0
     ibCallCharge: Optional[float] = 0.0
     obCallCharge: Optional[float] = 0.0
+    CreditPointPercent: Optional[float] = 0.0
+    TalktimePercent: Optional[float] = 0.0
 
 
 # ✅ CREATE PLAN
@@ -64,7 +66,7 @@ def create_plan(plan: PlanCreateRequest):
             MultiIBCharges, MultiOBCharges, MultiLiveChat, whatsapp_message_charge,
             pulse_ib_multi, rate_per_pulse_ib_multi,
             pulse_ob_multi, rate_per_pulse_ob_multi,
-            first_minute, IB_Call_Charge, OB_Call_Charge, createdate
+            first_minute, IB_Call_Charge, OB_Call_Charge, createdate, CreditPointPercent, TalktimePercent
         ) VALUES (
             %s,%s,%s,%s,%s,%s,%s,%s,
             %s,%s,%s,
@@ -75,7 +77,7 @@ def create_plan(plan: PlanCreateRequest):
             %s,%s,%s,%s,
             %s,%s,
             %s,%s,
-            %s,%s,%s, NOW()
+            %s,%s,%s, NOW(), %s, %s
         )
         """
         values = (
@@ -89,7 +91,7 @@ def create_plan(plan: PlanCreateRequest):
             plan.multiIBCharges, plan.multiOBCharges, plan.multiLiveChat, plan.whatsappMessageCharge,
             plan.pulseIBMulti, plan.ratePerPulseIBMulti,
             plan.pulseOBMulti, plan.ratePerPulseOBMulti,
-            plan.firstMinute, plan.ibCallCharge, plan.obCallCharge
+            plan.firstMinute, plan.ibCallCharge, plan.obCallCharge, plan.CreditPointPercent, plan.TalktimePercent,
         )
         cursor.execute(sql, values)
         conn.commit()
@@ -166,7 +168,7 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
             MultiIBCharges=%s, MultiOBCharges=%s, MultiLiveChat=%s, whatsapp_message_charge=%s,
             pulse_ib_multi=%s, rate_per_pulse_ib_multi=%s,
             pulse_ob_multi=%s, rate_per_pulse_ob_multi=%s,
-            first_minute=%s, IB_Call_Charge=%s, OB_Call_Charge=%s
+            first_minute=%s, IB_Call_Charge=%s, OB_Call_Charge=%s, CreditPointPercent=%s, TalktimePercent=%s
         WHERE id=%s
         """
         values = (
@@ -181,7 +183,7 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
             plan.pulseIBMulti, plan.ratePerPulseIBMulti,
             plan.pulseOBMulti, plan.ratePerPulseOBMulti,
             plan.firstMinute, plan.ibCallCharge, plan.obCallCharge,
-            plan_id
+            plan.CreditPointPercent, plan.TalktimePercent, plan_id
         )
         cursor.execute(sql, values)
         conn.commit()

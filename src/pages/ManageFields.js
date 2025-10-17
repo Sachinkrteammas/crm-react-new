@@ -274,7 +274,7 @@ const ManageFields = () => {
                     <th className="text-center">Validation</th>
                     <th className="text-center">Required</th>
                     <th className="text-center">Priority</th>
-                    <th className="text-center">Field #</th>
+                    <th className="text-center">Field</th>
                     <th className="text-center">Actions</th>
                   </tr>
                 </thead>

@@ -1171,7 +1171,7 @@ export default function ManageAlertsEscalations() {
                               className="form-control shadow-sm rounded-2"
                               value={escalationTAT}
                               onChange={(e) => setEscalationTAT(e.target.value)}
-                              placeholder="TAT"
+                              placeholder="TAT in Hr"
                           />
                         </div>
                         <div className="col-md-3">
