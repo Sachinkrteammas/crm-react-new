@@ -80,6 +80,7 @@ import TrainingMaster from "./pages/TrainingMasters";
 import ManageFields from "./pages/ManageFields";
 import ManageCloseField from "./pages/ManageCloseField";
 import TemplateCreation from "./pages/TemplateCreation";
+import ViewCloseLooping from "./pages/ViewCloseLooping";
 
 
 function App() {
@@ -158,6 +159,7 @@ function App() {
        "/company_registration": "Company Registration | DialDesk",
        "/aband_call_setting": "Aband Call Setting | DialDesk",
         "/training_masters": "Training Masters | DialDesk",
+        "/view_close_looping" : "View Close Looping | DialDesk",
     };
 
     const location = useLocation();
@@ -251,6 +253,7 @@ function App() {
               <Route path="/ClientFields" element={<ManageFields />} />
               <Route path="/CloseFields" element={<ManageCloseField />} />
               <Route path="/template_creation" element={<TemplateCreation />} />
+              <Route path="/view_close_looping" element={<ViewCloseLooping />} />
           </Route>
       </Route>
     </Routes>

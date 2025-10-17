@@ -1,31 +1,53 @@
 import React, { useEffect, useState } from "react";
 import { PauseCircle, PhoneCall, Headphones, User } from "lucide-react";
 import "../styles//RealTimeDashboard.css";  // import CSS file
+import api from "../api";
 
 const RealTimeDashboard = () => {
   const [agents, setAgents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [timer, setTimer] = useState(10);
 
+  // useEffect(() => {
+  //   const fetchAgents = async () => {
+  //     try {
+  //       const response = await fetch("http://localhost:8000/real_time_agents/realtime-agents");
+  //       const data = await response.json();
+  //       setAgents(data.agents);
+  //       setTimer(10);
+  //     } catch (error) {
+  //       console.error("Error fetching agents:", error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+
+  //   fetchAgents();
+
+  //   const interval = setInterval(fetchAgents, 10000);
+  //   return () => clearInterval(interval);
+  // }, []);
+
+
   useEffect(() => {
-    const fetchAgents = async () => {
-      try {
-        const response = await fetch("http://localhost:8000/real_time_agents/realtime-agents");
-        const data = await response.json();
-        setAgents(data.agents);
-        setTimer(10);
-      } catch (error) {
-        console.error("Error fetching agents:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchAgents = async () => {
+    try {
+      const response = await api.get("/real_time_agents/realtime-agents"); // ✅ use api
+      setAgents(response.data.agents);
+      setTimer(10);
+    } catch (error) {
+      console.error("Error fetching agents:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchAgents();
+  fetchAgents();
 
-    const interval = setInterval(fetchAgents, 10000);
-    return () => clearInterval(interval);
-  }, []);
+  const interval = setInterval(fetchAgents, 10000);
+  return () => clearInterval(interval);
+}, []);
+
 
   // countdown effect
   useEffect(() => {
@@ -139,10 +161,6 @@ const RealTimeDashboard = () => {
         .split(/\s+/) // split on any whitespace
         .filter(Boolean).length;
   };
-
-
-
-
 
   return (
     <div className="col-12">
