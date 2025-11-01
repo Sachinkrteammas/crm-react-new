@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect  } from 'react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from "date-fns";
@@ -6,35 +6,91 @@ import api from "../api";
 import "../styles/loader.css";
 
 const CurrentBillStatement = () => {
+  const userType = localStorage.getItem("user_type");
+  const companyId = localStorage.getItem("company_id");
+  const [clientName, setClientName] = useState("");
+
   const clientOptions = [
     { value: 'client1', label: 'Client 1' },
     { value: 'client2', label: 'Client 2' },
     { value: 'client3', label: 'Client 3' },
   ];
 
-  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedClient, setSelectedClient] = useState("");
+  const [clients, setClients] = useState([]); // 🔹 to hold clients list for Super/Admin
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const formattedStart = format(startDate, "yyyy-MM-dd");
-  const formattedEnd = format(endDate, "yyyy-MM-dd");
+  const formattedStart = startDate ? format(startDate, "yyyy-MM-dd") : "";
+  const formattedEnd = endDate ? format(endDate, "yyyy-MM-dd") : "";
+
+
+
+// ✅ Fetch clients (Super-Admin/Admin only)
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await api.get("/agents/clients-rights");
+
+        // Sort alphabetically (case-insensitive)
+        const sortedClients = res.data.sort((a, b) =>
+          a.company_name.localeCompare(b.company_name, "en", {
+            sensitivity: "base",
+          })
+        );
+
+        setClients(sortedClients);
+      } catch (err) {
+        console.error("Error fetching clients:", err);
+      }
+    };
+
+    if (userType === "Super-Admin" || userType === "Admin") {
+      fetchClients();
+    }
+  }, [userType]);
+
+
+
+  // ✅ Auto-select logic (same as in Dashboard)
+  useEffect(() => {
+    if (userType === "Client") {
+      setSelectedClient(companyId);
+      const storedUserData = JSON.parse(localStorage.getItem("userData"));
+      setClientName(storedUserData?.auth_person || "Your Company");
+    } else if (
+      (userType === "Super-Admin" || userType === "Admin") &&
+      clients.length === 1
+    ) {
+      setSelectedClient(String(clients[0].company_id));
+    }
+  }, [userType, companyId, clients]);
+
+
 
 
 
 const handleSubmit = async () => {
-  const clientId = localStorage.getItem("company_id");
-  const fromDate = formattedStart;
-  const toDate = formattedEnd;
+  const finalClientId =
+      userType === "Super-Admin" || userType === "Admin"
+        ? selectedClient
+        : companyId;
+
+    if (!finalClientId) {
+      alert("Please select a client first.");
+      return;
+    }
+
 
   setLoading(true);
 
   try {
     const response = await api.get("/call/download_excel_raw", {
       params: {
-        client_id: clientId,
-        from_date: fromDate,
-        to_date: toDate
+        client_id: finalClientId,
+          from_date: formattedStart,
+          to_date: formattedEnd,
       },
       headers: {
         Accept: "application/vnd.ms-excel"
@@ -46,7 +102,7 @@ const handleSubmit = async () => {
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = downloadUrl;
-    link.download = `report_${clientId}_${fromDate}_to_${toDate}.xls`;
+    link.download = `report_${finalClientId}_${formattedStart}_to_${formattedEnd}.xls`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -97,20 +153,35 @@ const handleSubmit = async () => {
     <div className="card p-4 mb-4">
       <h5 className="mb-8">CURRENT BILL STATEMENT</h5>
       <div className="d-flex flex-wrap align-items-center gap-2">
-        <div style={{ minWidth: '200px' }}>
-          <select
-            className="form-select"
-            value={selectedClient}
-            onChange={(e) => setSelectedClient(e.target.value)}
-          >
-            <option value="">Select Client</option>
-            {clientOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <div style={{ maxWidth: "250px" }}>
+              {userType === "Client" ? (
+                <input
+                  type="text"
+                  className="form-control"
+                  value={clientName || `Client ID: ${companyId}`}
+                  readOnly
+                />
+              ) : (
+                (userType === "Super-Admin" || userType === "Admin") && (
+                  <select
+                    className="form-select"
+                    value={selectedClient}
+                    onChange={(e) => setSelectedClient(e.target.value)}
+                    disabled={clients.length === 0}
+                  >
+                    <option value="">-- Select Client --</option>
+                    {clients.map((client) => (
+                      <option
+                        key={client.company_id}
+                        value={String(client.company_id)}
+                      >
+                        {client.company_name}
+                      </option>
+                    ))}
+                  </select>
+                )
+              )}
+            </div>
 
         <DatePicker
           selected={startDate}

@@ -44,22 +44,70 @@ const Layout = () => {
     return count;
   };
 
-  useEffect(() => {
-    const fetchMenu = async () => {
-      try {
-        const res = await api.get(
-          `/dynamic_menu/pages/dynamic-menu/${companyId}`
-        );
-        setMenuData(Array.isArray(res.data) ? res.data : []);
-      } catch (err) {
-        console.error("Failed to fetch menu:", err);
-      }
-    };
 
-    if (companyId !== null && companyId !== undefined) {
-      fetchMenu();
+useEffect(() => {
+  const fetchMenu = async () => {
+    try {
+      // ✅ Wait until userData exists (max wait = 2s)
+      let userData = null;
+      for (let i = 0; i < 10; i++) {
+        userData = JSON.parse(localStorage.getItem("userData"));
+        if (userData) break;
+        await new Promise(res => setTimeout(res, 200)); // wait 200ms
+      }
+
+      console.log("🟡 Loaded userData:", userData);
+
+      if (!userData) {
+        console.warn("⚠️ No user data found, skipping menu fetch.");
+        return;
+      }
+
+      const { auth_person, user_type, company_id: companyId } = userData;
+      console.log("🔹 user_type:", user_type, "companyId:", companyId, "auth_person:", auth_person);
+
+      let url = "";
+      if (user_type === "Super-Admin" || user_type === "Admin") {
+        url = `/dynamic_menu/pages/dynamic-menu/0`;
+      } else if (user_type === "Client" && companyId && auth_person) {
+        url = `/dynamic_menu/pages/dynamic-menu/${companyId}?name=${encodeURIComponent(auth_person)}`;
+      } else {
+        console.warn("⚠️ Skipping menu fetch - insufficient data");
+        return;
+      }
+
+      console.log("📡 Fetching URL:", url);
+      const res = await api.get(url);
+      console.log("✅ Menu response:", res.data);
+      setMenuData(Array.isArray(res.data) ? res.data : []);
+    } catch (err) {
+      console.error("❌ Failed to fetch menu:", err);
     }
-  }, [companyId]);
+  };
+
+  fetchMenu();
+}, []);
+
+
+
+
+  
+  // useEffect(() => {
+  //   const fetchMenu = async () => {
+  //     try {
+  //       const res = await api.get(
+  //         `/dynamic_menu/pages/dynamic-menu/${companyId}`
+  //       );
+  //       setMenuData(Array.isArray(res.data) ? res.data : []);
+  //     } catch (err) {
+  //       console.error("Failed to fetch menu:", err);
+  //     }
+  //   };
+
+  //   if (companyId !== null && companyId !== undefined) {
+  //     fetchMenu();
+  //   }
+  // }, [companyId]);
 
   const renderMenu = (items) => {
     if (!Array.isArray(items)) return null; // <-- Add this check

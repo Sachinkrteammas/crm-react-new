@@ -36,10 +36,15 @@ const AuthLoginCover = () => {
       localStorage.setItem("company_id", response.company_id);
       localStorage.setItem("user_type", response.user_type);
 
+      localStorage.setItem("userData", JSON.stringify(response));
+
       setTimeout(() => {
+        const saved = localStorage.getItem("userData");
+        console.log("✅ Confirmed saved userData:", saved);
         setSuccessMessage("");
         navigate("/dashboard");
-      }, 1500);
+      }, 1000); // wait 1 second instead of 500ms
+      
     } catch (err) {
       console.error("Login error:", err);
       setFormError(err || "Invalid email or password");

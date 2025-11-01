@@ -81,6 +81,9 @@ import ManageFields from "./pages/ManageFields";
 import ManageCloseField from "./pages/ManageCloseField";
 import TemplateCreation from "./pages/TemplateCreation";
 import FortumDashboard from "./pages/fortum_dashboard";
+import AbandonedCallDetails from "./pages/Abandond_call_details_analysis";
+import DialerMapping from "./pages/DialerMapping";
+import CloseLooping from "./pages/ViewCloseLooping";
 
 
 function App() {
@@ -160,6 +163,8 @@ function App() {
        "/aband_call_setting": "Aband Call Setting | DialDesk",
         "/training_masters": "Training Masters | DialDesk",
         "/fortum_dashboard": "Fortum Dashboard | DialDesk",
+        "/AbandonCallReports/external": "Abandon Call Reports | DialDesk",
+        "/dialer_mapping": "Dialer Mapping | DialDesk",
     };
 
     const location = useLocation();
@@ -254,6 +259,9 @@ function App() {
               <Route path="/CloseFields" element={<ManageCloseField />} />
               <Route path="/template_creation" element={<TemplateCreation />} />
               <Route path="/fortum_dashboard" element={<FortumDashboard />} />
+              <Route path="/AbandonCallReports/external" element={<AbandonedCallDetails />} />
+              <Route path="/dialer_mapping" element={<DialerMapping />} />
+              <Route path="/view_close_looping" element={<CloseLooping />} />
           </Route>
       </Route>
     </Routes>

@@ -9,7 +9,7 @@ from jose import jwt
 from datetime import datetime, timedelta
 from auth_utils import get_current_user
 from sqlalchemy import text
-
+from urllib.parse import quote_plus
 
 router = APIRouter()
 
@@ -276,7 +276,6 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
                 "Category4": scenario.get("Category4"),
                 "Category5": scenario.get("Category5"),
                 "Source": scenario.get("Source"),
-                "Recording": scenario.get("Recording")
             })
         else:
             enriched_row.update({
@@ -286,8 +285,20 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
                 "Category4": None,
                 "Category5": None,
                 "Source": None,
-                "Recording": None
             })
+
+        # ✅ Generate recording link using leadid and agent
+        leadid = enriched_row.get("leadid")
+        agent = enriched_row.get("agent")
+
+        if leadid and agent:
+            recording_link = (
+                f"https://dialdesk.co.in/download-recording/download.php"
+                f"?mode=DD&filename={leadid}&agent={agent}"
+            )
+            enriched_row["Recording"] = recording_link
+        else:
+            enriched_row["Recording"] = None
 
         enriched_result.append(enriched_row)
 

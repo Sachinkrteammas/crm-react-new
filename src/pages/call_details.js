@@ -144,34 +144,46 @@ function CallDetails() {
   };
 
   // View click: request data from server using selected dates
-  const handleViewClick = async () => {
-    if (!startDate || !endDate) {
-      alert("Please select both start and end dates.");
-      return;
-    }
-    setLoading(true);
+const handleViewClick = async () => {
+  if (!startDate || !endDate) {
+    alert("Please select both start and end dates.");
+    return;
+  }
 
-    const formattedStart = format(startDate, "yyyy-MM-dd");
-    const formattedEnd = format(endDate, "yyyy-MM-dd");
+  setLoading(true);
 
-    try {
-      const response = await api.get(`/call/call-master/${companyId}`, {
-        params: {
-          client_id: companyId,
-          from_date: formattedStart,
-          to_date: formattedEnd,
-        },
-      });
-      setData(response.data);
-      setCurrentPage(1);
-      console.log("API Response:", response.data);
-    } catch (error) {
-      console.error("API call failed:", error);
-      alert("Failed to load data. See console for details.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const formattedStart = format(startDate, "yyyy-MM-dd");
+  const formattedEnd = format(endDate, "yyyy-MM-dd");
+
+  try {
+    const response = await api.get(`/call/call-master/${companyId}`, {
+      params: {
+        client_id: companyId,
+        from_date: formattedStart,
+        to_date: formattedEnd,
+      },
+    });
+
+    // Clean keys (trim extra spaces)
+    const cleanedData = response.data.map((row) => {
+      const cleaned = {};
+      for (let key in row) {
+        cleaned[key.trim()] = row[key];
+      }
+      return cleaned;
+    });
+
+    setData(cleanedData);
+    setCurrentPage(1);
+
+    console.log("Cleaned API Response:", cleanedData);
+  } catch (error) {
+    console.error("API call failed:", error);
+    alert("Failed to load data. See console for details.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleExportToExcel = () => {
     if (data.length === 0) {
@@ -426,71 +438,55 @@ function CallDetails() {
                       <table className="table table-striped table-hover table-bordered align-middle">
                         <thead className="table-dark sticky-top">
                           <tr>
-                            {tableColumns.map((col) => (
+                            <th>View</th>
+                            <th>Recording</th>
+                            {Object.keys(data[0]).map((col) => (
                               <th key={col}>{col}</th>
                             ))}
                           </tr>
                         </thead>
+
                         <tbody>
                           {currentData.length > 0 ? (
                             currentData.map((row, i) => (
                               <tr key={i}>
-                                {tableColumns.map((col) => {
-                                  // Special columns
-                                  if (col === "View") {
-                                    return (
-                                      <td key={col} className="text-center">
-                                        <button
-                                          className="btn btn-sm btn-outline-primary"
-                                          title="View"
-                                          onClick={() =>
-                                            // navigate to full-page CloseLooping and pass row
-                                            navigate("/view_close_looping", {
-                                              state: { row },
-                                            })
-                                          }
-                                        >
-                                          <Eye size={16} />
-                                        </button>
-                                      </td>
-                                    );
-                                  }
-                                  if (col === "Recording") {
-                                    return (
-                                      <td key={col} className="text-center">
-                                        <button
-                                          className="btn btn-sm btn-outline-success"
-                                          title="Recording"
-                                        >
-                                          <Mic size={16} />
-                                        </button>
-                                      </td>
-                                    );
-                                  }
-                                  if (col === "Scenario") {
-                                    return (
-                                      <td key={col}>{row.Category1 || "-"}</td>
-                                    );
-                                  }
-                                  if (col === "Sub-scenario1") {
-                                    return (
-                                      <td key={col}>{row.Category2 || "-"}</td>
-                                    );
-                                  }
-                                  if (col === "Sub-scenario2") {
-                                    return (
-                                      <td key={col}>{row.Category3 || "-"}</td>
-                                    );
-                                  }
-                                  // All other columns from row (use fallback '-')
-                                  return <td key={col}>{row[col] ?? "-"}</td>;
-                                })}
+                                {/* View Button */}
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-outline-primary"
+                                    title="View"
+                                    onClick={() =>
+                                      navigate("/view_close_looping", { state: { row } })
+                                    }
+                                  >
+                                    <Eye size={16} />
+                                  </button>
+                                </td>
+
+                                {/* Recording Button */}
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-outline-success"
+                                    title="Recording"
+                                  >
+                                    <Mic size={16} />
+                                  </button>
+                                </td>
+
+                                {/* Dynamic Columns */}
+                                {Object.keys(data[0]).map((col) => (
+                                  <td key={col}>
+                                    {row[col] !== null && row[col] !== undefined
+                                      ? row[col].toString()
+                                      : "-"}
+                                  </td>
+                                ))}
                               </tr>
                             ))
                           ) : (
                             <tr>
                               <td
-                                colSpan={tableColumns.length}
+                                colSpan={Object.keys(data[0]).length + 2}
                                 className="text-center text-muted py-4"
                               >
                                 No data found.
@@ -504,16 +500,13 @@ function CallDetails() {
                     {/* Pagination */}
                     <div className="d-flex justify-content-between align-items-center mt-3">
                       <p className="text-muted mb-0">
-                        Showing {currentData.length} of {filteredData.length}{" "}
-                        entries
+                        Showing {currentData.length} of {filteredData.length} entries
                       </p>
                       <div>
                         <button
                           className="btn btn-outline-secondary btn-sm me-2"
                           disabled={currentPage === 1}
-                          onClick={() =>
-                            setCurrentPage((p) => Math.max(p - 1, 1))
-                          }
+                          onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                         >
                           Prev
                         </button>
@@ -523,9 +516,7 @@ function CallDetails() {
                         <button
                           className="btn btn-outline-secondary btn-sm ms-2"
                           disabled={currentPage === totalPages}
-                          onClick={() =>
-                            setCurrentPage((p) => Math.min(p + 1, totalPages))
-                          }
+                          onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                         >
                           Next
                         </button>
@@ -533,6 +524,8 @@ function CallDetails() {
                     </div>
                   </div>
                 )}
+
+
               </div>
             </div>
           </div>

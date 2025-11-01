@@ -177,7 +177,42 @@ export default function PlanManagement() {
   setLoading(true);
 
   try {
-    const payload = { ...form };
+    // const payload = { ...form };
+    const payload = {
+    planName: form.planName,
+    PlanType: form.PlanType,
+    setupCost: form.setupFee,  // ✅ FIXED key name
+    rentalAmount: form.subscriptionAmount,
+    periodType: form.periodType,
+    creditValuePerMode: form.creditValuePerMode,
+    creditValue: form.creditValue,
+    ratePerPulseDay: form.ratePerPulseDay,
+    inboundChargeDay: form.inboundChargeDay,
+    pulseDay: form.pulseDay,
+    outboundCallCharge: form.outboundCallCharge,
+    inboundChargeNight: form.inboundChargeNight,
+    pulseNight: form.pulseNight,
+    emailCharge: form.emailCharge,
+    ratePerPulseNight: form.ratePerPulseNight,
+    smsCharge: form.smsCharge,
+    missCallCharge: form.missCallCharge,
+    ivrCharge: form.ivrCallCharge,
+    vfoCharge: form.vfoCharge,
+    chargePerExtraUser: form.chargePerExtraUser,
+    noOfUsers: form.noOfUsers,
+    balance: form.balanceCarry === "yes" ? 1 : 0,
+    firstMinute: form.firstMinute,
+    multiIBCharges: form.multiInboundCharge,
+    pulseIBMulti: form.pulseMultiLang,
+    ratePerPulseIBMulti: form.ratePerPulseMultiLang,
+    multiOBCharges: form.multiOutboundCharge,
+    pulseOBMulti: form.pulseMultiOutbound,
+    ratePerPulseOBMulti: form.ratePerPulseMultiOutbound,
+    multiLiveChat: form.multiLiveChat,
+    whatsappMessageCharge: form.whatsappSmsCharge,
+    CreditPointPercent: form.CreditPointPercent,
+    TalktimePercent: form.TalktimePercent,
+  };
 
     if (editingPlanId) {
       // ✅ Update existing plan using correct id

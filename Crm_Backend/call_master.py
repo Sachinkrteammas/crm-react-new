@@ -1,7 +1,7 @@
 # Crm_Backend/call_master.py
 from http.client import HTTPException
 from io import BytesIO
-import re
+
 from fastapi import APIRouter, Query, Depends, Body, Form, HTTPException
 from sqlalchemy import text
 from typing import List, Dict, Optional, Any
@@ -15,7 +15,6 @@ from auth import create_access_token, verify_token
 import os
 from dotenv import load_dotenv
 from database import get_engine4, get_engine2, get_db2, get_db4
-from datetime import datetime
 
 load_dotenv()
 
@@ -28,103 +27,9 @@ def fetch_options(db: Session, sql_text: str, params: dict):
     return [dict(r._mapping) for r in rows]
 
 
-# ---------------- Helpers ----------------
-def normalize_key(key: str) -> str:
-    """
-    Normalize field names for SQL parameter binding.
-    Replaces spaces, slashes, dots, and dashes with underscores.
-    """
-    return key.replace(" ", "_").replace("/", "_").replace(".", "_").replace("-", "_")
-
-
-
-# @router.get("/call-master/{client_id}", response_model=List[Dict[str, Any]])
-# def get_call_master_data(
-#     client_id: int,
-#     call_id: Optional[int] = Query(None),
-#     from_date: Optional[str] = Query(None),
-#     to_date: Optional[str] = Query(None),
-#     Category1: Optional[str] = Query(None),
-#     Category2: Optional[str] = Query(None),
-#     Category3: Optional[str] = Query(None),
-#     Category4: Optional[str] = Query(None),
-#     Category5: Optional[str] = Query(None),
-# ):
-#     engine = get_engine4()
-#     with engine.connect() as conn:
-#         field_meta_query = """
-#             SELECT fieldNumber, FieldName 
-#             FROM field_master 
-#             WHERE ClientId = :client_id 
-#               AND (FieldStatus IS NULL OR FieldStatus != 'D')
-#               AND fieldNumber > 0
-#             ORDER BY fieldNumber
-#         """
-#         field_meta = conn.execute(text(field_meta_query), {"client_id": client_id}).mappings().all()
-#         if not field_meta:
-#             return []
-
-#         field_map = {f["fieldNumber"]: f["FieldName"] for f in field_meta}
-#         columns = [f"Field{fnum}" for fnum in field_map]
-#         columns += ["id", "CallDate", "Category1", "Category2", "Category3", "Category4", "Category5"]
-
-#         where_clauses = ["ClientId = :client_id"]
-#         params = {"client_id": client_id}
-
-#         if call_id:
-#             where_clauses.append("id = :call_id")
-#             params["call_id"] = call_id
-#         if from_date:
-#             where_clauses.append("CallDate >= :from_date")
-#             params["from_date"] = from_date
-#         if to_date:
-#             where_clauses.append("CallDate <= :to_date")
-#             params["to_date"] = to_date
-
-#         category_conditions = []
-#         for i, val in enumerate([Category1, Category2, Category3, Category4, Category5], start=1):
-#             if val:
-#                 category_conditions.append(f"Category{i} = :Category{i}")
-#                 params[f"Category{i}"] = val
-#         if category_conditions:
-#             where_clauses.append(f"({' OR '.join(category_conditions)})")
-
-#         where_clause = " AND ".join(where_clauses)
-#         select_cols = ", ".join(columns)
-
-#         query = f"SELECT {select_cols} FROM call_master WHERE {where_clause} ORDER BY CallDate DESC"
-#         print(query, params)
-#         result = conn.execute(text(query), params).mappings().all()
-
-#         response = []
-#         for row in result:
-#             record = {}
-#             for fnum, label in field_map.items():
-#                 record[label] = row.get(f"Field{fnum}")
-#             record.update({
-#                 "id": row.get("id"),
-#                 "CallDate": row.get("CallDate"),
-#                 "Category1": row.get("Category1"),
-#                 "Category2": row.get("Category2"),
-#                 "Category3": row.get("Category3"),
-#                 "Category4": row.get("Category4"),
-#                 "Category5": row.get("Category5"),
-#             })
-#             response.append(record)
-#         return response
-
-
-# 
-
-
-
-# ---------------------------------------------------------------------
-# 🟢 GET API
-# ---------------------------------------------------------------------
-@router.get("/call-master/{client_id}", response_model=List[Dict[str, Any]])
+@router.get("/call-master/{client_id}", response_model=List[Dict])
 def get_call_master_data(
     client_id: int,
-    call_id: Optional[int] = Query(None),
     from_date: Optional[str] = Query(None),
     to_date: Optional[str] = Query(None),
     Category1: Optional[str] = Query(None),
@@ -135,31 +40,29 @@ def get_call_master_data(
 ):
     engine = get_engine4()
     with engine.connect() as conn:
-        # Fetch field mappings
+        # Step 1: Fetch field mappings
         field_meta_query = """
             SELECT fieldNumber, FieldName 
             FROM field_master 
             WHERE ClientId = :client_id 
               AND (FieldStatus IS NULL OR FieldStatus != 'D')
-              AND fieldNumber > 0
             ORDER BY fieldNumber
         """
         field_meta = conn.execute(text(field_meta_query), {"client_id": client_id}).mappings().all()
+
+        # Early return if no fields configured
+        if not field_meta:
+            return []
+
+        # Build column list
         field_map = {f["fieldNumber"]: f["FieldName"] for f in field_meta}
+        columns = [f"field{fnum}" for fnum in field_map]
+        columns += ["CallDate", "Category1", "Category2", "Category3", "Category4", "Category5"]
 
-        # Columns to fetch
-        columns = [f"Field{fnum}" for fnum in field_map] + [
-            "id", "CallDate", "callcreated", "MSISDN", "TAT", "duedate",
-            "Category1", "Category2", "Category3", "Category4", "Category5"
-        ]
-
-        # Build WHERE
+        # Step 2: WHERE clause setup
         where_clauses = ["ClientId = :client_id"]
         params = {"client_id": client_id}
 
-        if call_id:
-            where_clauses.append("id = :call_id")
-            params["call_id"] = call_id
         if from_date:
             where_clauses.append("CallDate >= :from_date")
             params["from_date"] = from_date
@@ -167,30 +70,31 @@ def get_call_master_data(
             where_clauses.append("CallDate <= :to_date")
             params["to_date"] = to_date
 
+        # Optional category filters (OR inside group)
+        category_conditions = []
         for i, val in enumerate([Category1, Category2, Category3, Category4, Category5], start=1):
             if val:
-                where_clauses.append(f"Category{i} = :Category{i}")
+                category_conditions.append(f"Category{i} = :Category{i}")
                 params[f"Category{i}"] = val
 
-        query = f"""
-            SELECT {', '.join(columns)} 
-            FROM call_master 
-            WHERE {' AND '.join(where_clauses)} 
-            ORDER BY CallDate DESC
-        """
+        if category_conditions:
+            where_clauses.append(f"({' OR '.join(category_conditions)})")
+
+        where_clause = " AND ".join(where_clauses)
+        select_cols = ", ".join(columns)
+
+        # Step 3: Execute final query
+        query = f"SELECT {select_cols} FROM call_master WHERE {where_clause}"
         result = conn.execute(text(query), params).mappings().all()
 
-        # Map to friendly keys
+        # Step 4: Format response
         response = []
         for row in result:
-            record = {field_map[fnum]: row.get(f"Field{fnum}") for fnum in field_map}
+            record = {}
+            for fnum, label in field_map.items():
+                record[label] = row.get(f"field{fnum}")
             record.update({
-                "id": row.get("id"),
-                "CALL DATE": row.get("CallDate"),
-                "CALL CREATED": row.get("callcreated"),
-                "CALL FROM": row.get("MSISDN"),
-                "TAT": row.get("TAT"),
-                "DUE DATE": row.get("duedate"),
+                "CallDate": row.get("CallDate"),
                 "Category1": row.get("Category1"),
                 "Category2": row.get("Category2"),
                 "Category3": row.get("Category3"),
@@ -198,83 +102,8 @@ def get_call_master_data(
                 "Category5": row.get("Category5"),
             })
             response.append(record)
+
         return response
-
-
-
-# ---------------------------------------------------------------------
-# 🟡 UPDATE API
-# ---------------------------------------------------------------------
-@router.put("/call-master/{client_id}/{call_id}", response_model=Dict[str, Any])
-def update_call_master_data(
-    client_id: int,
-    call_id: int,
-    payload: Dict[str, Any] = Body(...),
-):
-    engine = get_engine4()
-    with engine.connect() as conn:
-        # Fetch field mappings
-        field_meta_query = """
-            SELECT fieldNumber, FieldName 
-            FROM field_master 
-            WHERE ClientId = :client_id 
-              AND (FieldStatus IS NULL OR FieldStatus != 'D')
-              AND fieldNumber > 0
-        """
-        field_meta = conn.execute(text(field_meta_query), {"client_id": client_id}).mappings().all()
-        field_map = {f["FieldName"]: f"Field{f['fieldNumber']}" for f in field_meta}
-
-        # Standard friendly field mapping
-        standard_field_aliases = {
-            "CALL DATE": "CallDate",
-            "CALL CREATED": "callcreated",
-            "CALL FROM": "MSISDN",
-            "TAT": "TAT",
-            "DUE DATE": "duedate",
-            "Category1": "Category1",
-            "Category2": "Category2",
-            "Category3": "Category3",
-            "Category4": "Category4",
-            "Category5": "Category5",
-        }
-
-        update_clauses = []
-        params = {"client_id": client_id, "call_id": call_id}
-
-        for key, value in payload.items():
-            param_name = normalize_key(key)  # ✅ normalize for SQLAlchemy
-
-            # Determine DB column
-            if key in field_map:
-                col_name = field_map[key]
-            elif key in standard_field_aliases:
-                col_name = standard_field_aliases[key]
-            elif key in standard_field_aliases.values():
-                col_name = key
-            else:
-                # Skip unknown fields
-                continue
-
-            update_clauses.append(f"`{col_name}` = :{param_name}")
-            params[param_name] = value
-
-        if not update_clauses:
-            raise HTTPException(status_code=400, detail="No valid fields to update")
-
-        update_query = f"""
-            UPDATE call_master
-            SET {', '.join(update_clauses)}
-            WHERE ClientId = :client_id AND id = :call_id
-        """
-
-        result = conn.execute(text(update_query), params)
-        conn.commit()
-
-        if result.rowcount == 0:
-            raise HTTPException(status_code=404, detail="No records updated")
-
-        return {"message": "Call master updated successfully", "updated_fields": list(payload.keys())}
-
 
 
 @router.get("/csat-report/{client_id}", response_model=List[Dict])
@@ -308,7 +137,7 @@ def get_csat_report(
         print("SQLAlchemy Error:", str(e))  # Good for local debugging
         raise HTTPException(status_code=500, detail="Database query failed.")
 
-
+from datetime import datetime
 @router.get("/priority_calls", response_model=List[Dict[str, Any]])
 def get_priority_calls(
     client_id: int = Query(...),
@@ -638,6 +467,8 @@ def get_outcalls(
     }
 
 
+
+
 @router.get("/download_excel_raw")
 def download_excel_raw(
         client_id: int,
@@ -706,13 +537,13 @@ def download_excel_raw(
     # --- OUTBOUND (Vicidial Log) Section ---
     outbound_data = db2.execute(text(f"""
             SELECT 
-                (va.talk_sec - va.dead_sec) AS length_in_sec,
+                ABS(CAST(va.talk_sec AS SIGNED) - CAST(va.dead_sec AS SIGNED)) AS length_in_sec,
                 v.phone_number,
                 v.call_date,
                 v.user
             FROM vicidial_log v
             JOIN vicidial_agent_log va ON v.uniqueid = va.uniqueid
-            WHERE (va.talk_sec - va.dead_sec) != 0
+             WHERE ABS(CAST(va.talk_sec AS SIGNED) - CAST(va.dead_sec AS SIGNED)) != 0
               AND v.user != 'VDAD'
               AND DATE(v.call_date) BETWEEN :from_date AND :to_date
         """), {"client_id": client_id, "from_date": from_date, "to_date": to_date}).fetchall()
@@ -878,7 +709,7 @@ def download_excel_raw(
 
     for row in call_data:
         dt = row.call_date
-        talk_time = int(row.length_in_sec)
+        talk_time = int(row.length_in_sec or 0)
         pulse = (talk_time // 60) + (1 if talk_time % 60 else 0)
         rate = pulse * 0.5  # Replace with actual rate
 
@@ -907,7 +738,7 @@ def download_excel_raw(
 
     for row in multilang_call_data:
         dt = row.call_date
-        talk_time = int(row.length_in_sec)
+        talk_time = int(row.length_in_sec or 0)
         pulse = (talk_time // 60) + (1 if talk_time % 60 else 0)
         rate = pulse * 0.5  # Adjust if multi-lang rate is different
 
@@ -943,7 +774,7 @@ def download_excel_raw(
 
     for row in outbound_data:
         dt = row.call_date
-        talk_time = int(row.length_in_sec)
+        talk_time = int(row.length_in_sec or 0)
         pulse = (talk_time // 60) + (1 if talk_time % 60 else 0)
         rate = pulse * 0.5  # You can replace with actual per-minute rate
 

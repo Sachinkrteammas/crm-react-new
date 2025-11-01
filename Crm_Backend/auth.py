@@ -63,6 +63,22 @@ def login(request: LoginRequest, db: Session = Depends(get_db4)):
         
 
     # Step 2: Client/Admin case
+    # 🔹 1. Try from logincreation_master first
+    query_login = text("SELECT * FROM logincreation_master WHERE username = :username")
+    login_user = db.execute(query_login, {"username": request.email}).mappings().fetchone()
+
+    if login_user and (request.password == login_user["password"]):
+        token = create_access_token({"sub": login_user["username"]})
+        return {
+            "message": "Login successful (Client - logincreation_master)",
+            "access_token": token,
+            "company_id": login_user["create_id"],
+            "auth_person": login_user["name"],
+            "user_type": "Client",
+            "name": login_user["name"] 
+        }
+    
+    # 🔹 2. If not found, try registration_master
     query_reg = text("SELECT * FROM registration_master WHERE email = :email")
     reg = db.execute(query_reg, {"email": request.email}).mappings().fetchone()
 

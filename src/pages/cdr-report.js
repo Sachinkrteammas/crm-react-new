@@ -196,7 +196,12 @@ const handleEndDateChange = (date) => {
                   <td>{row.Category5}</td>
                   <td>{row.Source}</td>
                   <td>
-                    <a href={row.Recording} className="text-primary">
+                    <a 
+                      href={row.Recording} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary"
+                    >
                       Download Recording
                     </a>
                   </td>

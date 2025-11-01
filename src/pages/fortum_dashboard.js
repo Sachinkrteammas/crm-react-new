@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
-import * as XLSX from 'xlsx';
-import { saveAs } from 'file-saver';
 import api from "../api";
+import axios from "axios";
 
 const FortumDashboard = () => {
   const companyId = localStorage.getItem("company_id");
@@ -15,6 +14,9 @@ const FortumDashboard = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [hasFetched, setHasFetched] = useState(false);
+  const [clientName, setClientName] = useState("");
+
+
 
 
   // ✅ Fetch clients (Super-Admin/Admin only)
@@ -57,7 +59,7 @@ const FortumDashboard = () => {
     try {
       setLoading(true);
       setHasFetched(true); // ✅ mark that fetch was triggered manually
-      const res = await api.get("/fortum_dashboard", {
+      const res = await api.get("/client-invoice-details", {
         params: { client_id: selectedClient, start_date: startDate, end_date: endDate },
       });
       const invoices = Array.isArray(res.data.invoices)
@@ -73,18 +75,15 @@ const FortumDashboard = () => {
   };
 
 
-  // ✅ Auto-fetch when both dates are selected
-  // useEffect(() => {
-  //   if (startDate && endDate) fetchTelecomData();
-  // }, [startDate, endDate]);
-
-
 
   // ✅ Auto-select logic (same as in Dashboard)
   useEffect(() => {
     if (userType === "Client") {
       // Client users → directly set companyId
       setSelectedClient(companyId);
+      // Try to find and show their company name
+      const storedUserData = JSON.parse(localStorage.getItem("userData"));
+      setClientName(storedUserData?.auth_person || "Your Company");
     } else if (
       (userType === "Super-Admin" || userType === "Admin") &&
       clients.length === 1
@@ -93,6 +92,8 @@ const FortumDashboard = () => {
       setSelectedClient(clients[0].company_id);
     }
   }, [userType, companyId, clients]);
+
+
 
   // ✅ Fetch Telecom Billing / Invoice data
 useEffect(() => {
@@ -129,51 +130,86 @@ useEffect(() => {
 }, [selectedClient, startDate, endDate, hasFetched]);
 
 
-    const exportToExcel = () => {
-      if (!telecomData || telecomData.length === 0) return;
 
-      // 1. Create a worksheet
-      const worksheet = XLSX.utils.json_to_sheet(telecomData);
 
-      // 2. Create a workbook and append the worksheet
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Invoices');
+const handleDownloadExcel = async () => {
+  try {
 
-      // 3. Generate buffer
-      const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const url = `/client-invoice-details/download?client_id=${selectedClient}&start_date=${startDate}&end_date=${endDate}`;
 
-      // 4. Create Blob and save
-      const data = new Blob([excelBuffer], { type: 'application/octet-stream' });
-      saveAs(data, 'invoice_data.xlsx');
-    };
+    const response = await api.get(url, {
+      responseType: "blob", // 👈 IMPORTANT — tells Axios this is binary data
+    });
+
+    // ✅ Extract filename from headers
+    const contentDisposition = response.headers["content-disposition"];
+    let filename = "client_invoice_details.xlsx";
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match) filename = match[1];
+    }
+
+    // ✅ Create blob and trigger download
+    const blob = new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const blobUrl = window.URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    // ✅ Clean up
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error("❌ Excel download failed:", error);
+    alert("⚠️ Failed to download Excel file. Check console for details.");
+  }
+};
+
 
 
   return (
     <div className="mt-4">
-      <h3>Telecom Billing & Usage Table</h3>
+      <h3>Billing & Usage Table</h3>
 
-      {/* ✅ Client Selection */}
-      {(userType === "Super-Admin" || userType === "Admin") && (
-        <div className="d-flex justify-content-between align-items-end flex-wrap mb-4">
-      {/* Left side — Client Selector */}
-      <div style={{ maxWidth: "250px" }}>
-            <label className="form-label fw-semibold">Select Client</label>
-            <select
-              className="form-select"
-              value={selectedClient}
-              onChange={(e) => setSelectedClient(e.target.value)}
-            >
-              <option value="">-- Select Client --</option>
-              {clients.map((client) => (
-                <option
-                  key={client.company_id}
-                  value={String(client.company_id)}
-                >
-                  {client.company_name}
-                </option>
-              ))}
-            </select>
+      <div className="d-flex justify-content-between align-items-end flex-wrap mb-4">
+        {/* ✅ Left side — Client section */}
+        {userType === "Client" ? (
+          <div style={{ maxWidth: "250px" }}>
+            <label className="form-label fw-semibold">Client</label>
+            <input
+              type="text"
+              className="form-control"
+              value={clientName}
+              disabled
+            />
           </div>
+        ) : (
+          (userType === "Super-Admin" || userType === "Admin") && (
+            <div style={{ maxWidth: "250px" }}>
+              <label className="form-label fw-semibold">Select Client</label>
+              <select
+                className="form-select"
+                value={selectedClient}
+                onChange={(e) => setSelectedClient(e.target.value)}
+              >
+                <option value="">-- Select Client --</option>
+                {clients.map((client) => (
+                  <option
+                    key={client.company_id}
+                    value={String(client.company_id)}
+                  >
+                    {client.company_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
+        )}
         
       
 
@@ -189,6 +225,8 @@ useEffect(() => {
             className="form-control"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
+            min="2025-04-01"
+            max={new Date().toISOString().split("T")[0]} // not exceeds today's date
           />
         </div>
 
@@ -199,37 +237,37 @@ useEffect(() => {
             className="form-control"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
+            min="2025-04-01"
+            max={new Date().toISOString().split("T")[0]} // not exceeds today's date
           />
         </div>
 
-        <div className="d-flex gap-2 mt-3">
-          {/* Fetch Data Button */}
-          <button
-            className="btn btn-primary"
-            disabled={!startDate || !endDate}
-            onClick={fetchTelecomData}
-          >
-            🔍 Fetch Data
-          </button>
+        <button
+          className="btn btn-primary mt-3"
+          disabled={!startDate || !endDate}
+          onClick={fetchTelecomData}
+        >
+          🔍 Fetch Data
+        </button>
 
-          {/* Export to Excel Button */}
-          <button
-            className="btn btn-success"
-            disabled={telecomData.length === 0}
-            onClick={exportToExcel}
-          >
-            ⬇️ Export to Excel
-          </button>
-        </div>
-
+        <button
+          className="btn btn-success mt-3"
+          variant="success"
+          disabled={!selectedClient || !startDate || !endDate || !telecomData || telecomData.length === 0}
+          onClick={handleDownloadExcel}
+        >
+          ⬇️ Export to Excel
+        </button>
 
       </div>
       </div>
-)}
-      {/* ✅ Loader or Data Table */}
-{loading ? (
-  <p className="text-center text-muted">Loading data...</p>
-) : telecomData.length > 0 ? (
+{/* )} */}
+
+
+  {/* ✅ Loader or Data Table */}
+  {loading ? (
+    <p className="text-center text-muted">Loading data...</p>
+  ) : telecomData.length > 0 ? (
   <div
     className="table-responsive"
     style={{ maxHeight: "700px", overflowY: "auto" }}
@@ -237,18 +275,18 @@ useEffect(() => {
     <table className="table table-hover table-striped table-bordered align-middle shadow-sm">
       <thead className="table-dark sticky-top">
         <tr>
-          <th className="text-center">S. No.</th>
+          <th className="text-center">S.No.</th>
           <th className="text-center">Date</th>
-          <th className="text-center">Category</th>
+          <th className="text-center">category</th>
           <th className="text-center">Amount Received</th>
           <th className="text-center">Balance</th>
           <th className="text-center">Quarter</th>
-          <th className="text-center">Inbound Calls (No)</th>
-          <th className="text-center">Inbound Pulses</th>
-          <th className="text-center">Inbound Value</th>
-          <th className="text-center">Outbound Calls (No)</th>
-          <th className="text-center">Outbound Pulses</th>
-          <th className="text-center">Outbound Value</th>
+          <th className="text-center">IB Calls</th>
+          <th className="text-center">IB Pulses</th>
+          <th className="text-center">IB Value</th>
+          <th className="text-center">OB Calls</th>
+          <th className="text-center">OB Pulses</th>
+          <th className="text-center">OB Value</th>
           <th className="text-center">Email Pulse</th>
           <th className="text-center">Email Value</th>
           <th className="text-center">Total Value</th>
@@ -268,9 +306,9 @@ useEffect(() => {
            // ✅ Format invoice date as "DD MMM YYYY"
           const formattedInvoiceDate = row.invoiceDate
             ? new Date(row.invoiceDate).toLocaleDateString("en-GB", {
-                // day: "2-digit",
-                month: "short",
-                year: "numeric",
+                day: "numeric",
+                month: "numeric",
+                year: "2-digit",
               })
             : "-";
 
@@ -278,7 +316,7 @@ useEffect(() => {
             <tr key={index}>
               <td className="text-center">{index + 1}</td>
               <td className="text-center">{formattedInvoiceDate}</td>
-              <td className="text-center">{row.Category || "NA"}</td>
+              <td className="text-center">{row.category || "NA"}</td>
 
               {/* Amount Received (total) */}
               <td className="text-center text-success">
@@ -301,10 +339,10 @@ useEffect(() => {
               <td className="text-center">{row.total_ib_pulse || "-"}</td>
               <td className="text-center">{row.total_ib_value || "-"}</td>
 
-              {/* Outbound (total_ibn_pulse/value) */}
+              {/* Outbound (total_ob_pulse/value) */}
               <td className="text-center">{"0"}</td>
-              <td className="text-center">{row.total_ibn_pulse || "-"}</td>
-              <td className="text-center">{row.total_ibn_value || "-"}</td>
+              <td className="text-center">{row.total_ob_pulse || "-"}</td>
+              <td className="text-center">{row.total_ob_value || "-"}</td>
 
               {/* SMS (total_email_pulse/value) */}
               <td className="text-center">{row.total_email_pulse || "-"}</td>
@@ -331,18 +369,17 @@ useEffect(() => {
                   <td className="text-center text-success">
                     ₹{totals.total_sum?.toLocaleString() || "0"}
                   </td>
-                  {/* <td className="text-center text-primary">
-                    ₹{totals.available_sum?.toLocaleString() || "0"}
-                  </td> */}
-                  <td colSpan="3"></td>
+                  <td className="text-center">
+                    ₹{totals.remaining_balance_sum?.toLocaleString() || "0"}
+                  </td>
+                  <td colSpan="2"></td>
                   <td className="text-center">{totals.total_ib_pulse_sum || "-"}</td>
                   <td className="text-center">{totals.total_ib_value_sum || "-"}</td>
                   <td colSpan="1"></td>
-                  <td className="text-center">{totals.total_ibn_pulse_sum || "-"}</td>
-                  <td className="text-center">{totals.total_ibn_value_sum || "-"}</td>
+                  <td className="text-center">{totals.total_ob_pulse_sum || "-"}</td>
+                  <td className="text-center">{totals.total_ob_value_sum || "-"}</td>
                   <td className="text-center">{totals.total_email_pulse_sum || "-"}</td>
                   <td className="text-center">{totals.total_email_value_sum || "-"}</td>
-                  {/* <td colSpan="9"></td> */}
                   <td className="text-center text-success">
                     ₹{totals.value_sum?.toLocaleString() || "0"}
                   </td>
