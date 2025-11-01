@@ -379,7 +379,7 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
 
 
 
-@router.post("/ob_cdr_report", response_model=List[OBCDReportRow])
+@router.post("/ob_cdr_report")
 def get_ob_cdr_report(
     request: OBCDRReportRequest,
     db: Session = Depends(get_db4),   # main DB
@@ -450,16 +450,14 @@ def get_ob_cdr_report(
             category_map[row["LiveLeadId"]] = row
 
     # Step 4: Merge recording + categories into Vicidial data
-    host = "yourdomain.com"  # 🔁 Replace with your domain
     final_data = []
     for row in vicidial_rows:
         row_dict = dict(row)
 
         # Recording URL
         row_dict["Recording"] = (
-            f"https://{host}/download-recording/download.php?"
-            f"mode=DD&filename={row['LeadId']}&agent={row['Agent']}"
-            f"&dater={row['CallDate']}&phno={row['PhoneNumber']}"
+            f"https://dialdesk.co.in/download-recording/download.php"
+            f"?mode=DD&filename={row['LeadId']}&agent={row['Agent']}"
         )
 
         # Attach Sub Scenarios (if exists)
@@ -553,9 +551,15 @@ def get_ob_shared_cdr_report(
         WHERE company_id = :company_id
     """)
     client_row = db.execute(client_query, {"company_id": request.company_id}).mappings().first()
-    campaign_id = client_row["GroupId"] or client_row["campaignid"]
 
-    # Step 2: Get vicidial call details
+    # Step 1️⃣: Use GroupId if available, otherwise campaignid
+    campaign_ids_str = client_row["GroupId"] or client_row["campaignid"]
+
+    # Step 2️⃣: Convert coming data "'Fortum','Fortum_O'" → ['Fortum', 'Fortum_O']
+    # Removes quotes and splits by comma safely
+    campaign_ids = [c.strip().strip("'") for c in campaign_ids_str.split(",") if c.strip()]
+
+    # Step 3️⃣: CDR Query (now uses IN :campaign_ids)
     cdr_query = text("""
         SELECT 
             DATE(t2.call_date) AS call_date,
@@ -577,14 +581,18 @@ def get_ob_shared_cdr_report(
         FROM vicidial_log t2
         LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
         LEFT JOIN vicidial_users t4 ON t2.user = t4.user
-        WHERE t2.campaign_id = :campaign_id
+        WHERE t2.campaign_id IN :campaign_ids
           AND DATE(t2.call_date) BETWEEN :from_dt AND :to_dt
     """)
-    cdr_rows = db2.execute(cdr_query, {
-        "campaign_id": campaign_id,
-        "from_dt": from_dt,
-        "to_dt": to_dt
-    }).mappings().all()
+
+    cdr_rows = db2.execute(
+        cdr_query,
+        {
+            "campaign_ids": tuple(campaign_ids),
+            "from_dt": from_dt,
+            "to_dt": to_dt
+        }
+    ).mappings().all()
 
     # Step 3: Abandoned call master lookup (for ClientName)
     aband_query = text("""
@@ -643,9 +651,9 @@ def get_ob_shared_cdr_report(
             "SubScenario2": cm["Category2"] if cm else None,
             "SubScenario3": cm["Category3"] if cm else None,
             "SubScenario4": cm["Category4"] if cm else None,
-            "Recording": f"https://yourserver.com/download-recording/download.php"
+            "Recording": f"https://dialdesk.co.in/download-recording/download.php"
                          f"?mode=DD&filename={lead_id}&agent={row['agent_id']}"
-                         f"&dater={row['call_date']}&phno={row['phone_number']}"
+
         }
         response_data.append(record)
 

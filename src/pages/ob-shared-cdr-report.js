@@ -20,14 +20,21 @@ const OBSharedCDRReport = () => {
         try {
           const payload = {
             company_id: companyId,
-            from_date: startDate.toISOString().split("T")[0],
-            to_date: endDate.toISOString().split("T")[0],
+            from_date: startDate ? startDate.toLocaleDateString("en-CA") : null, // yyyy-mm-dd
+            to_date: endDate ? endDate.toLocaleDateString("en-CA") : null,
+
           };
 
-          const data = await getOBSharedCDRReport(payload);
+          const response = await getOBSharedCDRReport(payload);
 
-          setCdrData(data);
-          setShowTable(true);
+          // ✅ Extract only the "data" array
+          if (response?.status === "success" && Array.isArray(response.data)) {
+            setCdrData(response.data);
+            setShowTable(true);
+          } else {
+            setCdrData([]);
+            setShowTable(false);
+          }
         } catch (error) {
           console.error(error);
         } finally {
@@ -161,13 +168,21 @@ const OBSharedCDRReport = () => {
                   <td>{row.SubScenario3 || "-"}</td>
                   <td>{row.SubScenario4 || "-"}</td>
                   <td>
-                    {row.RecordingUrl ? (
-                      <a href={row.RecordingUrl} download>
-                        <i className="bi bi-download"></i>
-                      </a>
-                    ) : (
-                      "-"
-                    )}
+                    <a 
+                      href={row.Recording} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-center"
+                      title="Download"
+                      style={{ 
+                        textDecoration: "none", 
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center", 
+                          }}
+                    >
+                      📥
+                    </a>
                   </td>
                 </tr>
               ))

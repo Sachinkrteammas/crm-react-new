@@ -200,9 +200,16 @@ const handleEndDateChange = (date) => {
                       href={row.Recording} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-primary"
+                      className="text-center"
+                      title="Download"
+                      style={{ 
+                        textDecoration: "none", 
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center", 
+                          }}
                     >
-                      Download Recording
+                      📥
                     </a>
                   </td>
                 </tr>

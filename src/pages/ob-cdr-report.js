@@ -22,8 +22,8 @@ const OBCDRReport = () => {
       try {
         const payload = {
           company_id: companyId,
-          from_date: startDate.toISOString().split("T")[0],
-          to_date: endDate.toISOString().split("T")[0],
+          from_date: startDate ? startDate.toLocaleDateString("en-CA") : null, // yyyy-mm-dd
+          to_date: endDate ? endDate.toLocaleDateString("en-CA") : null,
         };
 
         const data = await getOBCDRReport(payload);
@@ -154,13 +154,21 @@ const OBCDRReport = () => {
                   <td>{row.CallDuration || "-"}</td>
                   <td>{row.WrapTime || "-"}</td>
                   <td>
-                    {row.Recording ? (
-                      <a href={row.Recording} className="text-primary">
-                        <i className="ti ti-download"></i>
-                      </a>
-                    ) : (
-                      "-"
-                    )}
+                    <a 
+                      href={row.Recording} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-center"
+                      title="Download"
+                      style={{ 
+                        textDecoration: "none", 
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center", 
+                          }}
+                    >
+                      📥
+                    </a>
                   </td>
                   <td>{row.scenario || "-"}</td>
                   <td>{row.subScenario1 || "-"}</td>
