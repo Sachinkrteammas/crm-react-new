@@ -1,13 +1,20 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { fetchCDRReport } from '../services/authService';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
+import api from "../api";
 
 
 const CDRReport = () => {
+
+  const userType = localStorage.getItem("user_type");
+  
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState("");
+
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const companyId = localStorage.getItem("company_id");
@@ -15,6 +22,7 @@ const CDRReport = () => {
   const [loading, setLoading] = useState(false);
 
   const [sampleData, setSampleData] = useState([]);
+  const [clientName, setClientName] = useState("");
 
 
 
@@ -40,8 +48,11 @@ const handleEndDateChange = (date) => {
             const payload = {
                 from_date: startDate,
                 to_date: endDate,
-                company_id: companyId,
-            };
+                company_id:
+                  userType === "Client"
+                    ? companyId
+                    : selectedClient // from dropdown
+                  };
 
             const response = await fetchCDRReport(payload);
 
@@ -106,6 +117,50 @@ const handleEndDateChange = (date) => {
       saveAs(file, "cdr_report.xlsx");
   };
 
+  // ✅ Fetch clients (Super-Admin/Admin only)
+    useEffect(() => {
+      const fetchClients = async () => {
+        try {
+          const res = await api.get("/agents/clients-rights");
+  
+          // Sort alphabetically (case-insensitive)
+          const sortedClients = res.data.sort((a, b) =>
+            a.company_name.localeCompare(b.company_name, "en", {
+              sensitivity: "base",
+            })
+          );
+  
+          setClients(sortedClients);
+        } catch (err) {
+          console.error("Error fetching clients:", err);
+        }
+      };
+  
+      if (userType === "Super-Admin" || userType === "Admin") {
+        fetchClients();
+      }
+    }, [userType]);
+
+
+
+
+    // ✅ Auto-select logic (same as in Dashboard)
+      useEffect(() => {
+        if (userType === "Client") {
+          // Client users → directly set companyId
+          setSelectedClient(companyId);
+          // Try to find and show their company name
+          const storedUserData = JSON.parse(localStorage.getItem("userData"));
+          setClientName(storedUserData?.auth_person || "Your Company");
+        } else if (
+          (userType === "Super-Admin" || userType === "Admin") &&
+          clients.length === 1
+        ) {
+          // Auto-select if only one client is available
+          setSelectedClient(clients[0].company_id);
+        }
+      }, [userType, companyId, clients]);
+
   return (
   <>
       {loading && (
@@ -124,6 +179,41 @@ const handleEndDateChange = (date) => {
       <div className="card p-4 mb-4">
         <h5 className="mb-3">CDR REPORT</h5>
         <div className="d-flex flex-wrap align-items-center gap-2">
+
+
+        {userType === "Client" ? (
+          <div style={{ maxWidth: "250px" }}>
+            {/* <label className="form-label fw-semibold">Client</label> */}
+            <input
+              type="text"
+              className="form-control"
+              value={clientName}
+              disabled
+            />
+          </div>
+        ) : (
+          (userType === "Super-Admin" || userType === "Admin") && (
+            <div style={{ maxWidth: "250px" }}>
+              {/* <label className="form-label fw-semibold">Select Client</label> */}
+              <select
+                className="form-select"
+                value={selectedClient}
+                onChange={(e) => setSelectedClient(e.target.value)}
+              >
+                <option value="">-- Select Client --</option>
+                {clients.map((client) => (
+                  <option
+                    key={client.company_id}
+                    value={client.company_id}
+                  >
+                    {client.company_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
+        )}
+
           <DatePicker
           selected={startDate ? new Date(startDate) : null}
           onChange={handleStartDateChange}

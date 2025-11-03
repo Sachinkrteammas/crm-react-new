@@ -5,10 +5,14 @@ import { getOBCDRReport } from '../services/authService';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
+import api from "../api";
 
 
 const OBCDRReport = () => {
 
+  const userType = localStorage.getItem("user_type");
+    
+  const [clients, setClients] = useState([]);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const companyId = localStorage.getItem("company_id");
@@ -16,12 +20,16 @@ const OBCDRReport = () => {
   const [obCdrData, setObCdrData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showTable, setShowTable] = useState(false);
+  const [clientName, setClientName] = useState("");
 
   const handleView = async () => {
       setLoading(true);
       try {
         const payload = {
-          company_id: companyId,
+          company_id:
+                  userType === "Client"
+                    ? companyId
+                    : selectedClient,
           from_date: startDate ? startDate.toLocaleDateString("en-CA") : null, // yyyy-mm-dd
           to_date: endDate ? endDate.toLocaleDateString("en-CA") : null,
         };
@@ -64,12 +72,58 @@ const OBCDRReport = () => {
       saveAs(file, "ob_cdr_report.xlsx");
   };
 
-  useEffect(() => {
-  // If companyId is present, ensure it is set if user refreshes the page
-  if (companyId) {
-    setSelectedClient(companyId);
-  }
-}, [companyId]);
+
+
+  // ✅ Fetch clients (Super-Admin/Admin only)
+    useEffect(() => {
+      const fetchClients = async () => {
+        try {
+          const res = await api.get("/agents/clients-rights");
+  
+          // Sort alphabetically (case-insensitive)
+          const sortedClients = res.data.sort((a, b) =>
+            a.company_name.localeCompare(b.company_name, "en", {
+              sensitivity: "base",
+            })
+          );
+  
+          setClients(sortedClients);
+        } catch (err) {
+          console.error("Error fetching clients:", err);
+        }
+      };
+  
+      if (userType === "Super-Admin" || userType === "Admin") {
+        fetchClients();
+      }
+    }, [userType]);
+
+
+
+
+    // ✅ Auto-select logic (same as in Dashboard)
+    useEffect(() => {
+        if (userType === "Client") {
+          // Client users → directly set companyId
+          setSelectedClient(companyId);
+          // Try to find and show their company name
+          const storedUserData = JSON.parse(localStorage.getItem("userData"));
+          setClientName(storedUserData?.auth_person || "Your Company");
+        } else if (
+          (userType === "Super-Admin" || userType === "Admin") &&
+          clients.length === 1
+        ) {
+          // Auto-select if only one client is available
+          setSelectedClient(clients[0].company_id);
+        }
+    }, [userType, companyId, clients]);
+
+//   useEffect(() => {
+//   // If companyId is present, ensure it is set if user refreshes the page
+//   if (companyId) {
+//     setSelectedClient(companyId);
+//   }
+// }, [companyId]);
 
   return (
   <>
@@ -98,6 +152,42 @@ const OBCDRReport = () => {
               <option value={companyId}>{companyId ? `Selected Client (${companyId})` : "Select Client"}</option>
             </select>
           </div> */}
+
+
+           {userType === "Client" ? (
+          <div style={{ maxWidth: "250px" }}>
+            {/* <label className="form-label fw-semibold">Client</label> */}
+            <input
+              type="text"
+              className="form-control"
+              value={clientName}
+              disabled
+            />
+          </div>
+        ) : (
+          (userType === "Super-Admin" || userType === "Admin") && (
+            <div style={{ maxWidth: "250px" }}>
+              {/* <label className="form-label fw-semibold">Select Client</label> */}
+              <select
+                className="form-select"
+                value={selectedClient}
+                onChange={(e) => setSelectedClient(e.target.value)}
+              >
+                <option value="">-- Select Client --</option>
+                {clients.map((client) => (
+                  <option
+                    key={client.company_id}
+                    value={client.company_id}
+                  >
+                    {client.company_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
+        )} 
+
+
           <DatePicker
             selected={startDate}
             onChange={setStartDate}
@@ -170,11 +260,11 @@ const OBCDRReport = () => {
                       📥
                     </a>
                   </td>
-                  <td>{row.scenario || "-"}</td>
-                  <td>{row.subScenario1 || "-"}</td>
-                  <td>{row.subScenario2 || "-"}</td>
-                  <td>{row.subScenario3 || "-"}</td>
-                  <td>{row.subScenario4 || "-"}</td>
+                  <td>{row.Scenario || "-"}</td>
+                  <td>{row.SubScenario1 || "-"}</td>
+                  <td>{row.SubScenario2 || "-"}</td>
+                  <td>{row.SubScenario3 || "-"}</td>
+                  <td>{row.SubScenario4 || "-"}</td>
                 </tr>
                 ))
               ) : (
