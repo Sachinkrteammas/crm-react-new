@@ -25,7 +25,20 @@ function CallDetails() {
   const [selectedScenario1, setSelectedScenario1] = useState(""); // Level 2
   const [selectedScenario2, setSelectedScenario2] = useState(""); // Level 3
   const [selectedScenario3, setSelectedScenario3] = useState(""); // Level 4
+
+  // 🔹 User info
+  const userType = localStorage.getItem("user_type");
   const companyId = localStorage.getItem("company_id");
+
+  // 🔹 Client selection (for Super-Admin/Admin)
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(companyId);
+  const [clientName, setClientName] = useState("");
+
+  const activeCompanyId =
+    userType === "Super-Admin" || userType === "Admin"
+      ? selectedClient
+      : companyId;
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -38,20 +51,55 @@ function CallDetails() {
   // scenarioMap if you use it elsewhere
   const [scenarioMap, setScenarioMap] = useState({});
 
+  // ✅ Fetch clients (only for Super-Admin/Admin)
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await api.get("/agents/clients-rights");
+        const sorted = res.data.sort((a, b) =>
+          a.company_name.localeCompare(b.company_name, "en", {
+            sensitivity: "base",
+          })
+        );
+        setClients(sorted);
+      } catch (err) {
+        console.error("Error fetching clients:", err);
+      }
+    };
+    if (userType === "Super-Admin" || userType === "Admin") {
+      fetchClients();
+    }
+  }, [userType]);
+
+
+  // ✅ Auto-select client for logged-in users
+  useEffect(() => {
+    if (userType === "Client") {
+      setSelectedClient(companyId);
+      const storedUserData = JSON.parse(localStorage.getItem("userData"));
+      setClientName(storedUserData?.auth_person || "Your Company");
+    } else if (
+      (userType === "Super-Admin" || userType === "Admin") &&
+      clients.length === 1
+    ) {
+      setSelectedClient(clients[0].company_id);
+    }
+  }, [userType, companyId, clients]);
+
   const navigate = useNavigate();
 
   useEffect(() => {
     // fetch scenario map
-    if (!companyId) return;
+    if (!activeCompanyId) return;
     api
-      .get(`/core_api/categories/all?client_id=${companyId}`)
+      .get(`/core_api/categories/all?client_id=${activeCompanyId}`)
       .then((res) => {
         const map = {};
         res.data.forEach((item) => (map[item.id] = item.ecrName));
         setScenarioMap(map);
       })
       .catch((err) => console.error("Error fetching scenarios:", err));
-  }, [companyId]);
+  }, [activeCompanyId]);
 
   // load level1 scenarios
   useEffect(() => {
@@ -92,7 +140,7 @@ function CallDetails() {
 
     if (selectedId) {
       api
-        .get(`/core_api/categories/level2/${selectedId}?client_id=${companyId}`)
+        .get(`/core_api/categories/level2/${selectedId}?client_id=${activeCompanyId}`)
         .then((res) => setScenario1List(res.data))
         .catch((err) => console.error("Error loading level2:", err));
     }
@@ -109,7 +157,7 @@ function CallDetails() {
 
     if (selectedId) {
       api
-        .get(`/core_api/categories/level3/${selectedId}?client_id=${companyId}`)
+        .get(`/core_api/categories/level3/${selectedId}?client_id=${activeCompanyId}`)
         .then((res) => setScenario2List(res.data))
         .catch((err) => console.error("Error loading level3:", err));
     }
@@ -124,7 +172,7 @@ function CallDetails() {
 
     if (selectedId) {
       api
-        .get(`/core_api/categories/level4/${selectedId}?client_id=${companyId}`)
+        .get(`/core_api/categories/level4/${selectedId}?client_id=${activeCompanyId}`)
         .then((res) => setScenario3List(res.data))
         .catch((err) => console.error("Error loading level4:", err));
     }
@@ -137,7 +185,7 @@ function CallDetails() {
 
     if (selectedId) {
       api
-        .get(`/core_api/categories/level5/${selectedId}?client_id=${companyId}`)
+        .get(`/core_api/categories/level5/${selectedId}?client_id=${activeCompanyId}`)
         .then((res) => setScenario4List(res.data))
         .catch((err) => console.error("Error loading level5:", err));
     }
@@ -156,9 +204,9 @@ const handleViewClick = async () => {
   const formattedEnd = format(endDate, "yyyy-MM-dd");
 
   try {
-    const response = await api.get(`/call/call-master/${companyId}`, {
+    const response = await api.get(`/call/call-master/${activeCompanyId}`, {
       params: {
-        client_id: companyId,
+        client_id: activeCompanyId,
         from_date: formattedStart,
         to_date: formattedEnd,
       },
@@ -245,7 +293,35 @@ const handleViewClick = async () => {
       <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
         <div className="col-12">
           <div className="card">
-            <h5 className="card-header">In Call Details</h5>
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h5 className="mb-0">In Call Details</h5>
+
+              {/* ✅ Client selector for Super-Admin/Admin */}
+              {(userType === "Super-Admin" || userType === "Admin") && (
+                <div className="d-flex align-items-center">
+                  <label className="form-label fw-semibold me-2 mb-0">
+                    Select Client:
+                  </label>
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ width: "200px" }}
+                    value={selectedClient}
+                    onChange={(e) => setSelectedClient(e.target.value)}
+                  >
+                    <option value="">-- Select Client --</option>
+                    {clients.map((client) => (
+                      <option
+                        key={client.company_id}
+                        value={client.company_id}
+                      >
+                        {client.company_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            {/* <h5 className="card-header">In Call Details</h5> */}
             <div className="card-body">
               <div className="row g-3">
                 <div style={customColStyle} className="col-md-6 col-sm-12">
@@ -264,7 +340,7 @@ const handleViewClick = async () => {
                 </div>
 
                 <div style={customColStyle} className="col-md-6 col-sm-12">
-                  <label className="form-label" htmlFor="end-date">
+                  <label className="form-label me-1" htmlFor="end-date">
                     End Date
                   </label>
                   <DatePicker
@@ -455,9 +531,10 @@ const handleViewClick = async () => {
                                   <button
                                     className="btn btn-sm btn-outline-primary"
                                     title="View"
-                                    onClick={() =>
-                                      navigate("/view_close_looping", { state: { row } })
-                                    }
+                                    onClick={() => {
+                                      const companyId = activeCompanyId || localStorage.getItem("company_id");
+                                      navigate("/view_close_looping", { state: { row, client_id: companyId } });
+                                    }}
                                   >
                                     <Eye size={16} />
                                   </button>

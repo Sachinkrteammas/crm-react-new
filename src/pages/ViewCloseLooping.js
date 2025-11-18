@@ -84,11 +84,23 @@ const includeCurrentValue = (value, list) => {
 const fetchData = async () => {
   if (!rowFromState) return;
 
-  const clientId =
-    localStorage.getItem("company_id") ||
-    rowFromState?.ClientId ||
-    rowFromState?.client_id;
+let companyId = localStorage.getItem("company_id");
+if (companyId === "null" || companyId === "undefined") companyId = null;
+
+const rawClientId = location.state?.client_id;
+const clientId =
+  (rawClientId && rawClientId !== "null" && rawClientId !== "undefined"
+    ? rawClientId
+    : null) ||
+  companyId ||
+  rowFromState?.ClientId ||
+  rowFromState?.client_id;
+
   const callId = rowFromState?.in_call_id || rowFromState?.id;
+
+  console.log("clientId in fetchData:", clientId);
+  console.log("rowFromState:", rowFromState);
+
   if (!clientId) return;
 
   setLoading(true);
@@ -265,8 +277,10 @@ const handleSubmit = async () => {
 // Load data on mount / row change
 // ----------------------------
 useEffect(() => {
-  fetchData();
-}, [rowFromState]);
+  if (location.state) {
+    fetchData();
+  }
+}, [location.state]);
 
 
   // ----------------------------
@@ -372,6 +386,17 @@ useEffect(() => {
   };
 
   return (
+    <>
+      {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+      <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="bg-white shadow rounded-xl p-6 relative">
         {toast.message && (
@@ -544,5 +569,7 @@ useEffect(() => {
         </div>
       </div>
     </div>
+    </div>
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { getIVRReport } from "../services/authService";
@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
-
+import api from "../api";
 
 const IVRReport = () => {
   const [startDate, setStartDate] = useState(null);
@@ -15,13 +15,54 @@ const IVRReport = () => {
   const [loading, setLoading] = useState(false);
   const [showTable, setShowTable] = useState(false);
 
+  // 🔹 User info
+  const userType = localStorage.getItem("user_type");
   const companyId = localStorage.getItem("company_id");
+
+  // 🔹 Client dropdown list & selection for Admin/SuperAdmin
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(companyId);
+
+  const activeCompanyId =
+  userType === "Super-Admin" || userType === "Admin"
+    ? selectedClient
+    : companyId;
+
+
+  // 🔹 Fetch clients (only for SUPER ADMIN / ADMIN)
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        const res = await api.get("/agents/clients-rights");
+        const sorted = res.data.sort((a, b) =>
+          a.company_name.localeCompare(b.company_name, "en", {
+            sensitivity: "base",
+          })
+        );
+        setClients(sorted);
+      } catch (err) {
+        console.error("Error fetching clients:", err);
+      }
+    };
+
+    if (userType === "Super-Admin" || userType === "Admin") {
+      fetchClients();
+    }
+  }, [userType]);
+
+  // 🔹 Set default client for normal client login
+  useEffect(() => {
+    if (userType !== "Super-Admin" && userType !== "Admin") {
+      setSelectedClient(companyId);
+    }
+  }, [userType, companyId]);
+  
 
   const handleView = async () => {
     setLoading(true);
     try {
       const payload = {
-        company_id: companyId,
+        company_id: activeCompanyId,
         from_date: startDate ? format(startDate, "yyyy-MM-dd") : null,
         to_date: endDate ? format(endDate, "yyyy-MM-dd") : null,
       };
@@ -77,29 +118,60 @@ const IVRReport = () => {
     <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
     <div className="row gy-4 gx-3">
       {/* IVR REPORT CARD */}
-      <div className="card p-4 mb-4">
-        <h5 className="mb-3">IVR REPORT</h5>
-        <div className="d-flex flex-wrap align-items-center gap-2">
+     <div className="card p-4 mb-4">
+      <h5 className="mb-3">IVR REPORT</h5>
+
+      <div className="d-flex flex-wrap align-items-center gap-3">
+
+        {/* 🔹 Select Client — shows only for Admin / Super Admin */}
+        {(userType === "Super-Admin" || userType === "Admin") && (
+          <div style={{ maxWidth: "220px" }}>
+            <select
+              className="form-select"
+              value={selectedClient}
+              onChange={(e) => setSelectedClient(e.target.value)}
+            >
+              <option value="">Select Client</option>
+              {clients.map((client) => (
+                <option key={client.company_id} value={client.company_id}>
+                  {client.company_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Start Date */}
+        <div style={{ maxWidth: "220px" }}>
           <DatePicker
             selected={startDate}
             onChange={(date) => setStartDate(date)}
             placeholderText="Start Date"
             className="form-control"
           />
+        </div>
+
+        {/* End Date */}
+        <div style={{ maxWidth: "220px" }}>
           <DatePicker
             selected={endDate}
             onChange={(date) => setEndDate(date)}
             placeholderText="End Date"
             className="form-control"
           />
-          <button className="btn btn-primary" onClick={handleView}>
-            VIEW
-          </button>
-          <button className="btn btn-primary" onClick={handleExport}>
-            EXPORT
-          </button>
         </div>
+
+        {/* Buttons */}
+        <button className="btn btn-primary" onClick={handleExport}>
+          EXPORT
+        </button>
+
+        <button className="btn btn-primary" onClick={handleView}>
+          VIEW
+        </button>
       </div>
+    </div>
+
 
       {/* VIEW IVR LOG REPORT */}
       {!loading && showTable && (

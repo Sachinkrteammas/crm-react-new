@@ -1,5 +1,11 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import date
+from database import get_db4  # adjust to your actual import path
+from call_scenario import send_call_summary  # adjust path
+from sqlalchemy.orm import Session
+import os
 from auth import router as auth_router
 from reports import router as reports_router
 from core_api import router as core_api
@@ -17,6 +23,11 @@ from close_field import router as close_field_router
 from vicidial_list import router as vicidial_list_router
 from templates import router as templates_router
 from fortum_dashboard import router as fortum_dashboard_router
+from outbound_dashboard import router as outbound_dashboard_router
+from call_scenario import router as call_scenario_router
+from Login_log import router as Login_log_router
+from auto_tagging import router as auto_tagging_router
+from create_manual_call import router as create_manual_call_router
 
 
 app = FastAPI(title="CRM Backend")
@@ -48,3 +59,43 @@ app.include_router(close_field_router)
 app.include_router(vicidial_list_router, prefix="/dialer", tags=["Vicidial List"])
 app.include_router(templates_router, tags=["Templates"])
 app.include_router(fortum_dashboard_router, tags=["Fortum Dashboard"])
+app.include_router(outbound_dashboard_router, tags=["OutBound Dashboard"])
+app.include_router(call_scenario_router, tags=["Call Scenario"])
+app.include_router(Login_log_router, tags=["Login Log"])
+app.include_router(auto_tagging_router, tags=["Auto Tagging"])
+app.include_router(create_manual_call_router, tags=["Create Manual Call"])
+
+
+
+
+
+# ✅ Create a function that runs the API logic automatically
+def scheduled_call_summary():
+    try:
+        # Create a DB session manually since we're outside FastAPI dependency injection
+        db_gen = get_db4()
+        db: Session = next(db_gen)
+
+        client_id = int(os.getenv("DEFAULT_CLIENT_ID", 1))  # fallback to 1
+        report_date = date.today()
+
+        print(f"Running scheduled report for client {client_id} on {report_date}")
+        send_call_summary(client_id=client_id, report_date=report_date, db=db)
+    except Exception as e:
+        print("Error in scheduled job:", e)
+    finally:
+        db_gen.close()
+
+
+# ✅ Create scheduler
+scheduler = BackgroundScheduler()
+scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=00)  # every day 9:00 PM
+scheduler.start()
+
+@app.on_event("startup")
+def on_startup():
+    print("🚀 Scheduler started — Call Summary job will run daily at 9:00 PM")
+
+@app.on_event("shutdown")
+def on_shutdown():
+    scheduler.shutdown()

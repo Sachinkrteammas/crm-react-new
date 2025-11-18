@@ -12,7 +12,7 @@ def get_all_clients_rights(db: Session = Depends(get_db4)):
     """
     Fetch all companies (company_id, company_name) as dictionary list
     """
-    query = text("SELECT company_id, company_name FROM registration_master")
+    query = text("SELECT company_id, company_name FROM registration_master WHERE status = 'A'")
     result = db.execute(query).fetchall()
 
     return [{"company_id": row[0], "company_name": row[1]} for row in result]

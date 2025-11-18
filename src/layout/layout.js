@@ -191,7 +191,8 @@ useEffect(() => {
   const isActiveMenu = (paths) => {
     return paths.some(
       (path) =>
-        location.pathname === path || location.pathname.startsWith(path + "/")
+        location.pathname === path
+        // location.pathname === path || location.pathname.startsWith(path + "/")
     );
   };
 
@@ -250,7 +251,7 @@ useEffect(() => {
             }
           }}
         >
-          <div className="app-brand demo">
+          {/* <div className="app-brand demo">
             <Link to="/dashboard" className="app-brand-link">
               <span className="app-brand-logo demo">
                 <svg width="32" height="22" viewBox="0 0 32 22" fill="none">
@@ -300,7 +301,47 @@ useEffect(() => {
               <i className="icon-base ti menu-toggle-icon d-none d-xl-block"></i>
               <i className="icon-base ti tabler-x d-block d-xl-none"></i>
             </a>
+          </div> */}
+
+
+          <div className="app-brand demo">
+            <Link to="/dashboard" className="app-brand-link">
+              {/* <img
+                src="/assets/img/branding/logo.DialDesk.png"   // <-- replace with your actual filename in public folder
+                alt="Company Logo"
+                style={{ height: "40px", width: "auto" }} // adjust as needed
+              /> */}
+
+                <img
+                src={
+                  isSidebarOpen
+                    ? "/assets/img/branding/logo.DialDesk.png"   // full logo (expanded)
+                    : "/assets/img/favicon/favicon.ico"       // small icon (collapsed)
+                }
+                alt="Company Logo"
+                style={{
+                  height: isSidebarOpen ? "40px" : "36px",
+                  width: "auto",
+                  // transition: "all 0.3s ease",
+                }}
+              />                        
+
+            </Link>
+
+            <a
+              href="#"
+              className="layout-menu-toggle menu-link text-large ms-auto"
+              onClick={(e) => {
+                e.preventDefault();
+                setIsSidebarOpen((prev) => !prev);
+                if (isSidebarHovered) setIsSidebarHovered(false);
+              }}
+            >
+              <i className="icon-base ti menu-toggle-icon d-none d-xl-block"></i>
+              <i className="icon-base ti tabler-x d-block d-xl-none"></i>
+            </a>
           </div>
+
 
           <div className="menu-inner-shadow"></div>
 

@@ -84,6 +84,28 @@ import FortumDashboard from "./pages/fortum_dashboard";
 import AbandonedCallDetails from "./pages/Abandond_call_details_analysis";
 import DialerMapping from "./pages/DialerMapping";
 import CloseLooping from "./pages/ViewCloseLooping";
+import OutboundDashboard from "./pages/outbound_dashboard";
+import IngroupManager from "./pages/Manage_in_groups";
+import ManageWorkFlow from "./pages/Manage_work_flow";
+import UploadExistingCustomers from "./pages/Upload_existing_customer";
+import AuditSheet from "./pages/Audit_sheet";
+import AutoTagging from "./pages/Auto_tagging";
+import IvrPromptUpload from "./pages/Manage_ivr_prompt";
+import MasterFieldMapping from "./pages/Master_field_mapping";
+import ManageProcessUpdate from "./pages/Manage_process_update";
+import ProcessUpdateReport from "./pages/Process_update_report";
+import ProcessUpdates from "./pages/Process_updates";
+import LoginLog from "./pages/Login_log";
+import TatMis from "./pages/Tat_mis";
+import TaggingMis from "./pages/Tagging_mis";
+import CallScenario from "./pages/Call_scenario_mis";
+import EscalationLevel from "./pages/Escalation_level_mis";
+import InCallAction from "./pages/In_call_action_mis";
+import CallMIS from "./pages/Call_mis";
+import AnswerCall from "./pages/Answer_call_mis";
+import AbandonCall from "./pages/Abandon_call_mis";
+import AgentWiseMis from "./pages/Agent_wise_mis";
+import ExportMisFiles from "./pages/Export_mis_files";
 
 
 function App() {
@@ -134,7 +156,7 @@ function App() {
         "/client_bill_summary": "Client Bill Summary | DialDesk",
         "/manage_customize_mis": "Manage Customized MIS | DialDesk",
         "/add_call_flow": "Call Flow | DialDesk",
-        "/prompt_creation": "Prompt Creation | DialDesk",
+        "/Ecrs/prompt": "Prompt Creation | DialDesk",
         "/manage_user_login": "Manage User Login | DialDesk",
         "/manage_in_call_action": "Manage InCall Action Alerts | DialDesk",
         "/manage_mis_reports": "Manage MIS Reports | DialDesk",
@@ -160,7 +182,7 @@ function App() {
         "/tagging_reports": "Tagging Reports | DialDesk",
         "/call_reports": "Call Reports | DialDesk",
        "/company_registration": "Company Registration | DialDesk",
-       "/aband_call_setting": "Aband Call Setting | DialDesk",
+       "/AbandCallback": "Aband Call Setting | DialDesk",
         "/training_masters": "Training Masters | DialDesk",
         "/fortum_dashboard": "Fortum Dashboard | DialDesk",
         "/AbandonCallReports/external": "Abandon Call Reports | DialDesk",
@@ -196,7 +218,7 @@ function App() {
               <Route path="/SrDetails" element={<CallDetails />} />
               <Route path="/ObsrDetails" element={<OutCallDetails />} />
               <Route path="/priority_calls" element={<PriorityCalls />} />
-              <Route path="/csat_view" element={<CsatView />} />
+              <Route path="/AbandCallback/csat_view" element={<CsatView />} />
               <Route path="/BillingReports/get_stmt" element={<CurrentBillStatement />} />
               <Route path="/tagging" element={<TaggingPage />} />
               <Route path="/admin_login" element={<ManageAdminLogins />} />
@@ -226,18 +248,18 @@ function App() {
               <Route path="/bill_summary_mail" element={<BillSummaryMail />} />
               <Route path="/sla_report" element={<SLAReport />} />
               <Route path="/client_bill_summary" element={<ClientBillSummary />} />
-              <Route path="/manage_customize_mis" element={<ManageCustomizedMIS />} />
+              <Route path="/CustomizedReportCreations" element={<ManageCustomizedMIS />} />
               <Route path="/add_call_flow" element={<AddCallFlow />} />
-              <Route path="/prompt_creation" element={<PromptCreation />} />
-              <Route path="/manage_user_login" element={<ManageUserLogin />} />
-              <Route path="/manage_in_call_action" element={<ManageInCallActionAlerts />} />
-              <Route path="/manage_mis_reports" element={<ManageMISReports />} />
+              <Route path="/Ecrs/prompt" element={<PromptCreation />} />
+              <Route path="/LoginCreations" element={<ManageUserLogin />} />
+              <Route path="/IncallactionAlerts/view_fields" element={<ManageInCallActionAlerts />} />
+              <Route path="/MisAndReportMatrixs" element={<ManageMISReports />} />
               <Route path="/manage_training_docs" element={<ManageTrainingDocs />} />
               <Route path="/manage_ivr" element={<ManageIVR />} />
               <Route path="/Ecrs" element={<ManageInCallScenarios />} />
-              <Route path="/manage_tat" element={<ManageTAT />} />
+              <Route path="/Ecrs/create_tat" element={<ManageTAT />} />
               <Route path="/alert_mechanism" element={<ManageAlertsEscalations />} />
-              <Route path="/manage_call_actions" element={<ManageInCallActions />} />
+              <Route path="/CloseLoopings" element={<ManageInCallActions />} />
               <Route path="/out_manage_alert_escalations" element={<OutManageAlertsEscalations />} />
               <Route path="/out_manage_customize_mis" element={<OutManageCustomizedMIS />} />
               <Route path="/manage_reallocation" element={<ManageReAllocations />} />
@@ -246,15 +268,15 @@ function App() {
               <Route path="/manage_campaign" element={<ManageCampaign />} />
               <Route path="/manage_allocations" element={<ManageAllocations />} />
               <Route path="/out_manage_call_scenarios" element={<OutManageCallScenarios />} />
-              <Route path="/create_manual_call" element={<CreateManualCall />} />
-              <Route path="/update_ticket_status" element={<UpdateTicketStatus />} />
+              <Route path="/Agents" element={<CreateManualCall />} />
+              <Route path="/closeloops" element={<UpdateTicketStatus />} />
               <Route path="/out_create_manual_call" element={<OutCreateManualCall />} />
               <Route path="/sla_reports" element={<SLAReports />} />
               <Route path="/shopify_reports" element={<ShopifyReports />} />
               <Route path="/tagging_reports" element={<TaggingReports />} />
               <Route path="/call_reports" element={<CallReports />} />
-              <Route path="/aband_call_setting" element={<AbandCallSetting />} />
-              <Route path="/training_masters" element={<TrainingMaster />} />
+              <Route path="/AbandCallback" element={<AbandCallSetting />} />
+              <Route path="/TrainingMasters" element={<TrainingMaster />} />
               <Route path="/ClientFields" element={<ManageFields />} />
               <Route path="/CloseFields" element={<ManageCloseField />} />
               <Route path="/template_creation" element={<TemplateCreation />} />
@@ -262,6 +284,28 @@ function App() {
               <Route path="/AbandonCallReports/external" element={<AbandonedCallDetails />} />
               <Route path="/dialer_mapping" element={<DialerMapping />} />
               <Route path="/view_close_looping" element={<CloseLooping />} />
+              <Route path="/outbound_dashboard" element={<OutboundDashboard />} />
+              <Route path="/Outbounds/addingroup" element={<IngroupManager />} />
+              <Route path="/WorkFlows" element={<ManageWorkFlow />} />
+              <Route path="/UploadExistingBases" element={<UploadExistingCustomers />} />
+              <Route path="/SrDetails/bot_report" element={<AuditSheet />} />
+              <Route path="/SrDetails/index_auto" element={<AutoTagging />} />
+              <Route path="/Ivrs/upload_prompt_file" element={<IvrPromptUpload />} />
+              <Route path="/MasterField" element={<MasterFieldMapping />} />
+              <Route path="/ProcessUpdates/view" element={<ManageProcessUpdate />} />
+              <Route path="/ProcessUpdates/report" element={<ProcessUpdateReport />} />
+              <Route path="/ProcessUpdates" element={<ProcessUpdates />} />
+              <Route path="/LoginLog/" element={<LoginLog />} />
+              <Route path="/MisReports/export_tat_mis" element={<TatMis />} />
+              <Route path="/MisReports/export_tagging_mis" element={<TaggingMis />} />
+              <Route path="/MisReports/category_reports" element={<CallScenario />} />
+              <Route path="/MisReports/export_esclation_level_mis" element={<EscalationLevel />} />
+              <Route path="/IncallactionReports" element={<InCallAction />} />
+              <Route path="/MisReports/export_call_mis" element={<CallMIS />} />
+              <Route path="/MisReports/export_answer_call" element={<AnswerCall />} />
+              <Route path="/MisReports/export_abend_call" element={<AbandonCall />} />
+              <Route path="/MisReports/export_agent_wise_mis" element={<AgentWiseMis />} />
+              <Route path="/UploadMisFiles/download" element={<ExportMisFiles />} />
           </Route>
       </Route>
     </Routes>
