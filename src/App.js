@@ -106,6 +106,13 @@ import AnswerCall from "./pages/Answer_call_mis";
 import AbandonCall from "./pages/Abandon_call_mis";
 import AgentWiseMis from "./pages/Agent_wise_mis";
 import ExportMisFiles from "./pages/Export_mis_files";
+import OutCallManageMISReports from "./pages/OutCallManageMISReports";
+import OutMasterFieldMapping from "./pages/OutMasterFieldMapping";
+import OutCallSummaryReports from "./pages/OutCallSummaryReports";
+import OutCallReportAutomation from "./pages/OutCallReportAutomation";
+import ScenarioReportAutomation from "./pages/ScenarioReportAutomation";
+import ManageOutCallCloseField from "./pages/ManageOutCallCloseField";
+import ManageOutCallRequiredFilled from "./pages/ManageOutCallRequiredFilled";
 
 
 function App() {
@@ -168,12 +175,12 @@ function App() {
         "/manage_call_actions": "Manage InCall Actions | DialDesk",
         "/out_manage_alert_escalations": "Manage OutCall Alerts Escalations | DialDesk",
         "/out_manage_customize_mis": "Manage OutCall Customized MIS | DialDesk",
-        "/manage_reallocation": "Manage Re Allocations | DialDesk",
+        "/ObReallocations": "Manage Re Allocations | DialDesk",
         "/ob_add_call_flow": "OB Call Flow | DialDesk",
-        "/out_manage_call_actions": "Manage OutCall Actions | DialDesk",
-        "/manage_campaign": "Manage Campaign | DialDesk",
-        "/manage_allocations": "Manage Allocations | DialDesk",
-        "/out_manage_call_scenarios": "Manage OutCall Scenarios | DialDesk",
+        "/ObcloseLoopings": "Manage OutCall Actions | DialDesk",
+        "/Outbounds/add_campaign": "Manage Campaign | DialDesk",
+        "/ObImports": "Manage Allocations | DialDesk",
+        "/Obecrs": "Manage OutCall Scenarios | DialDesk",
         "/create_manual_call": "Manual In Call | DialDesk",
         "/update_ticket_status": "Ticket Status | DialDesk",
         "/out_create_manual_call": "Manual Out Call | DialDesk",
@@ -187,6 +194,14 @@ function App() {
         "/fortum_dashboard": "Fortum Dashboard | DialDesk",
         "/AbandonCallReports/external": "Abandon Call Reports | DialDesk",
         "/dialer_mapping": "Dialer Mapping | DialDesk",
+        "/MisAndReportMatrixs/ob_matrix": "Out Call Manage MIS Reports | DialDesk",
+        "/MasterField": "Out Master Field Mapping | DialDesk",
+        "/ScenarioAutomates/call_summary_out": "Out Call Summary Reports | DialDesk",
+        "/OutCallAutomation": "Out Call Automation | DialDesk",
+        "/ScenarioReportAutomation": "Scenario Report Automation  | DialDesk",
+        "/ObcloseFields": "Manage Out Call Close Field | DialDesk",
+        "/ObclientFields": "Manage Out Call Required Filled | DialDesk"	
+
     };
 
     const location = useLocation();
@@ -261,13 +276,13 @@ function App() {
               <Route path="/alert_mechanism" element={<ManageAlertsEscalations />} />
               <Route path="/CloseLoopings" element={<ManageInCallActions />} />
               <Route path="/out_manage_alert_escalations" element={<OutManageAlertsEscalations />} />
-              <Route path="/out_manage_customize_mis" element={<OutManageCustomizedMIS />} />
-              <Route path="/manage_reallocation" element={<ManageReAllocations />} />
+              <Route path="/ObCustomizedReportCreations" element={<OutManageCustomizedMIS />} />
+              <Route path="/ObReallocations" element={<ManageReAllocations />} />
               <Route path="/ob_add_call_flow" element={<OBAddCallFlow />} />
-              <Route path="/out_manage_call_actions" element={<OutManageCallActions />} />
-              <Route path="/manage_campaign" element={<ManageCampaign />} />
-              <Route path="/manage_allocations" element={<ManageAllocations />} />
-              <Route path="/out_manage_call_scenarios" element={<OutManageCallScenarios />} />
+              <Route path="/ObcloseLoopings" element={<OutManageCallActions />} />
+              <Route path="/Outbounds/add_campaign" element={<ManageCampaign />} />
+              <Route path="/ObImports" element={<ManageAllocations />} />
+              <Route path="/Obecrs" element={<OutManageCallScenarios />} />
               <Route path="/Agents" element={<CreateManualCall />} />
               <Route path="/closeloops" element={<UpdateTicketStatus />} />
               <Route path="/out_create_manual_call" element={<OutCreateManualCall />} />
@@ -306,6 +321,14 @@ function App() {
               <Route path="/MisReports/export_abend_call" element={<AbandonCall />} />
               <Route path="/MisReports/export_agent_wise_mis" element={<AgentWiseMis />} />
               <Route path="/UploadMisFiles/download" element={<ExportMisFiles />} />
+              <Route path="/MisAndReportMatrixs/ob_matrix"  element={<OutCallManageMISReports />} />
+              <Route path="/MasterField"  element={<OutMasterFieldMapping />} />
+              <Route path="/ScenarioAutomates/call_summary_out" element={<OutCallSummaryReports />} />
+              <Route path="/OutCallAutomation" element={<OutCallReportAutomation />} />
+              <Route path="/ScenarioReportAutomation" element={<ScenarioReportAutomation />} />
+              <Route path="/ObcloseFields" element={<ManageOutCallCloseField />} />
+              <Route path="/ObclientFields" element={<ManageOutCallRequiredFilled />} />
+              
           </Route>
       </Route>
     </Routes>

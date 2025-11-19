@@ -28,6 +28,12 @@ from call_scenario import router as call_scenario_router
 from Login_log import router as Login_log_router
 from auto_tagging import router as auto_tagging_router
 from create_manual_call import router as create_manual_call_router
+from manage_campaigns import router as manage_campaigns_router
+from manage_allocations import router as manage_allocations_router
+from manage_out_call_required_fields import router as manage_out_call_required_fields_router 
+from out_call_manage_scenarios import router as out_call_manage_scenarios_router
+from manage_out_call_mis_report import router as manage_out_call_mis_report_router
+from manage_out_call_close_fields import router as manage_out_call_close_fields_router
 
 
 app = FastAPI(title="CRM Backend")
@@ -64,6 +70,12 @@ app.include_router(call_scenario_router, tags=["Call Scenario"])
 app.include_router(Login_log_router, tags=["Login Log"])
 app.include_router(auto_tagging_router, tags=["Auto Tagging"])
 app.include_router(create_manual_call_router, tags=["Create Manual Call"])
+app.include_router(manage_campaigns_router)
+app.include_router(manage_allocations_router)
+app.include_router(manage_out_call_required_fields_router)
+app.include_router(out_call_manage_scenarios_router)
+app.include_router(manage_out_call_mis_report_router)
+app.include_router(manage_out_call_close_fields_router)
 
 
 
