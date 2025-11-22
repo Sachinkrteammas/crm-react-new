@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from math import floor
+
+from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import get_db4
-from typing import Dict
+from typing import Dict, Optional, Any, List
 
 router = APIRouter()
 
@@ -16,6 +18,474 @@ def get_all_clients_rights(db: Session = Depends(get_db4)):
     result = db.execute(query).fetchall()
 
     return [{"company_id": row[0], "company_name": row[1]} for row in result]
+
+
+@router.get("/clients-rights_is_dial")
+def get_all_clients_rights_is_dial(
+    db: Session = Depends(get_db4),
+        start_date: Optional[str] = Query(
+            None, description="Start date in YYYY-MM-DD"
+        ),
+        end_date: Optional[str] = Query(
+            None, description="End date in YYYY-MM-DD"
+        ),
+):
+    """
+    Fetch all active DD clients with Opening balance, cost centers,
+    and dynamically calculate Talktime and Subscription points.
+    """
+    if not start_date:
+        start_date = datetime.today().strftime("%Y-%m-%d")
+    if not end_date:
+        end_date = datetime.today().strftime("%Y-%m-%d")
+
+    clients_query = text("""
+        SELECT
+            rm.company_id,
+            rm.company_name,
+            COALESCE(eoc.Opening, 0) AS Opening
+        FROM registration_master rm
+        JOIN exp_opening_client eoc ON rm.company_id = eoc.ClientId
+        WHERE rm.STATUS = 'A' AND rm.is_dd_client = 1
+    """)
+    clients = db.execute(clients_query).fetchall()
+
+    output = []
+
+    for client in clients:
+        client_id = client.company_id
+        company_name = client.company_name
+        opening = float(client.Opening or 0)
+
+        # Assume your base opening as of 1-Sep
+        base_opening = float(client.Opening or 0)
+
+        # Define start of financial month (here 2025-09-01)
+        month_opening_date = "2025-09-01"
+
+        # Compute all releases before the chosen start_date
+        release_query = text("""
+            SELECT
+                    COALESCE(SUM(ti.total), 0) AS release_sum
+                FROM bill_pay_particulars bpp
+                INNER JOIN tbl_invoice ti
+                    ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                    AND bpp.financial_year = ti.finance_year
+                    AND bpp.branch_name = ti.branch_name
+                WHERE ti.cost_center IN (
+                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
+                )
+                AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date) - INTERVAL 1 DAY  AND Category IN ('talktime','subscription');
+        """)
+
+        release_before = db.execute(release_query, {
+            "client_id": client_id,
+            "month_opening_date": month_opening_date,
+            "start_date": start_date
+        }).fetchone()
+        release_before_value = float(release_before.release_sum or 0)
+
+        # Compute all consumption before the chosen start_date
+        consume_before_query = text("""
+            SELECT COALESCE(SUM(cm_total), 0) AS consume_sum
+            FROM billing_consume_daily
+            WHERE client_id = :client_id
+            AND DATE(cm_date) BETWEEN :month_opening_date AND DATE(:start_date) - INTERVAL 1 DAY
+        """)
+        consume_before = db.execute(consume_before_query, {
+            "client_id": client_id,
+            "month_opening_date": month_opening_date,
+            "start_date": start_date
+        }).fetchone()
+        consume_before_value = float(consume_before.consume_sum or 0)
+
+        # Calculate effective opening as on selected start_date
+        effective_opening = base_opening + release_before_value - consume_before_value
+
+        plan_query = text("""
+            SELECT
+                COALESCE(pm.CreditPointPercent, 0) AS CreditPointPercent,
+                COALESCE(pm.TalktimePercent, 0) AS TalktimePercent
+            FROM balance_master bm
+            JOIN plan_master pm ON bm.PlanId = pm.id
+            WHERE bm.clientId = :client_id
+            LIMIT 1
+        """)
+        plan = db.execute(plan_query, {"client_id": client_id}).fetchone()
+
+        if plan:
+            credit_percent = float(str(plan.CreditPointPercent).replace('%', '') or 0)
+            talktime_percent = float(str(plan.TalktimePercent).replace('%', '') or 0)
+        else:
+            credit_percent = 0.0
+            talktime_percent = 0.0
+
+        cost_query = text("""
+            SELECT cost_center
+            FROM cost_master
+            WHERE dialdesk_client_id = :client_id
+        """)
+        cost_centers = db.execute(cost_query, {"client_id": client_id}).fetchall()
+
+        total_talktime = 0.0
+        total_subscription = 0.0
+
+        for cc_row in cost_centers:
+            cost_center = cc_row.cost_center.strip() if cc_row.cost_center else None
+            if not cost_center:
+                continue
+
+            bill_query = text("""
+                SELECT total, Category
+                FROM bill_pay_particulars bpp
+                INNER JOIN tbl_invoice ti
+                    ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                    AND bpp.financial_year = ti.finance_year
+                    AND bpp.branch_name = ti.branch_name
+                WHERE ti.cost_center = :cost_center
+                AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+            """)
+            bill_rows = db.execute(bill_query, {
+                "cost_center": cost_center,
+                "start_date": start_date,
+                "end_date": end_date,
+            }).fetchall()
+
+            for b in bill_rows:
+                category = (b.Category or "").strip().lower()
+                total = float(b.total or 0)
+
+                if "talktime" in category:
+                    total_talktime += total
+                elif category == "subscription":
+                    total_subscription += total
+
+        talktime_value = round(total_talktime * (talktime_percent / 100), 2)
+        subscription_value = round(total_subscription * (credit_percent / 100), 2)
+
+
+
+        total_talktime_value = 0.0
+        total_subscription_value = 0.0
+
+        for cc_row in cost_centers:
+            cost_center = cc_row.cost_center.strip() if cc_row.cost_center else None
+            if not cost_center:
+                continue
+
+            invoice_query = text("""
+                        SELECT 
+                            LOWER(TRIM(category)) AS category,
+                            SUM(total) AS total_sum
+                        FROM tbl_invoice ti
+                        WHERE ti.cost_center = :cost_center
+                          AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+                          AND LOWER(TRIM(ti.category)) IN ('talktime', 'subscription')
+                        GROUP BY LOWER(TRIM(ti.category))
+                    """)
+            invoice_rows = db.execute(invoice_query, {
+                "cost_center": cost_center,
+                "start_date": start_date,
+                "end_date": end_date,
+            }).fetchall()
+
+            for b in invoice_rows:
+                category = (b.category or "").strip().lower()
+                total = float(b.total_sum or 0)
+                if category == "talktime":
+                    total_talktime_value += total
+                elif category == "subscription":
+                    total_subscription_value += total
+
+
+
+        consume_query = text("""
+            SELECT COALESCE(SUM(cm_total), 0) AS consume
+            FROM billing_consume_daily
+            WHERE client_id = :client_id
+            AND DATE(cm_date) BETWEEN :start_date AND :end_date
+        """)
+        consume_row = db.execute(consume_query, {
+            "client_id": client_id,
+            "start_date": start_date,
+            "end_date": end_date
+        }).fetchone()
+
+        consume_value = float(consume_row.consume or 0)
+
+        Release_billing = round(
+            (total_talktime_value * (talktime_percent / 100)) +
+            (total_subscription_value * (credit_percent / 100)),
+            2
+        )
+
+
+        output.append({
+            "company_id": client_id,
+            "company_name": company_name,
+            "opening": effective_opening,
+            "talktime_total": round(total_talktime, 2),
+            "subscription_total": round(total_subscription, 2),
+            "talktime_percent": talktime_percent,
+            "credit_percent": credit_percent,
+            "talktime_value": talktime_value,
+            "subscription_value": subscription_value,
+            "fresh_release": round(talktime_value + subscription_value, 2),
+            "consume": round(consume_value, 2),
+            "balance": round((effective_opening + talktime_value + subscription_value - consume_value), 2),
+            "total_talktime_value": round(total_talktime_value, 2),
+            "total_subscription_value": round(total_subscription_value, 2),
+            # "Release_billing": round(total_talktime_value + total_subscription_value, 2),
+            "Release_billing": round(
+                (total_talktime_value * (talktime_percent / 100)) +
+                (total_subscription_value * (credit_percent / 100)),
+                2
+            ),
+
+            "Exposure_billing_vr": round(effective_opening + Release_billing - consume_value, 2)
+        })
+
+    return output
+
+
+
+
+@router.get("/clients-rights_search")
+def get_clients_rights_search(
+    db: Session = Depends(get_db4),
+    start_date: Optional[str] = Query(..., description="YYYY-MM-DD"),
+    end_date: Optional[str] = Query(..., description="YYYY-MM-DD"),
+    client_id: int = Query(..., description="Client ID required for search"),
+):
+    """
+    Fetch detailed DD client summary (single client search only).
+    """
+
+    base_query = """
+        SELECT
+            rm.company_id,
+            rm.company_name,
+            COALESCE(eoc.Opening, 0) AS Opening
+        FROM registration_master rm
+        JOIN exp_opening_client eoc ON rm.company_id = eoc.ClientId
+        WHERE rm.STATUS = 'A' AND rm.is_dd_client = 1
+          AND rm.company_id = :client_id
+    """
+
+    client = db.execute(text(base_query), {"client_id": client_id}).fetchone()
+    if not client:
+        return {"message": "Client not found"}
+
+    company_name = client.company_name
+    opening = float(client.Opening or 0)
+
+    base_opening = float(opening or 0)
+
+    # Define start of financial month (here 2025-09-01)
+    month_opening_date = "2025-09-01"
+
+    # Compute all releases before the chosen start_date
+    release_query = text("""
+                SELECT
+                    COALESCE(SUM(ti.total), 0) AS release_sum
+                FROM bill_pay_particulars bpp
+                INNER JOIN tbl_invoice ti
+                    ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                    AND bpp.financial_year = ti.finance_year
+                    AND bpp.branch_name = ti.branch_name
+                WHERE ti.cost_center IN (
+                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
+                )
+                AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date) - INTERVAL 1 DAY  AND Category IN ('talktime','subscription');
+            """)
+
+    release_before = db.execute(release_query, {
+        "client_id": client_id,
+        "month_opening_date": month_opening_date,
+        "start_date": start_date
+    }).fetchone()
+    release_before_value = float(release_before.release_sum or 0)
+    print(release_before_value,"release_before_value===")
+
+    # Compute all consumption before the chosen start_date
+    consume_before_query = text("""
+                SELECT COALESCE(SUM(cm_total), 0) AS consume_sum
+                FROM billing_consume_daily
+                WHERE client_id = :client_id
+                AND DATE(cm_date) BETWEEN :month_opening_date AND DATE(:start_date) - INTERVAL 1 DAY
+            """)
+    consume_before = db.execute(consume_before_query, {
+        "client_id": client_id,
+        "month_opening_date": month_opening_date,
+        "start_date": start_date
+    }).fetchone()
+    consume_before_value = float(consume_before.consume_sum or 0)
+
+    print(consume_before_value,"consume_before_value====")
+
+    # Calculate effective opening as on selected start_date
+    effective_opening = base_opening + release_before_value - consume_before_value
+    print(effective_opening,"effective_opening===")
+
+    opening_query = text("""
+        SELECT eoc.Opening
+             + COALESCE((
+                 SELECT SUM(cm_total) 
+                 FROM billing_consume_daily bcd
+                 WHERE bcd.client_id = eoc.ClientId
+                   AND DATE(bcd.cm_date) < :start_date
+             ), 0) AS dynamic_opening
+        FROM exp_opening_client eoc
+        WHERE eoc.ClientId = :client_id
+    """)
+    opening_row = db.execute(opening_query, {
+        "client_id": client_id,
+        "start_date": start_date
+    }).fetchone()
+
+    opening = float(opening_row.dynamic_opening or 0)
+
+
+
+
+    # Plan details
+    plan_query = text("""
+        SELECT 
+            COALESCE(pm.CreditPointPercent, 0) AS CreditPointPercent,
+            COALESCE(pm.TalktimePercent, 0) AS TalktimePercent
+        FROM balance_master bm
+        JOIN plan_master pm ON bm.PlanId = pm.id
+        WHERE bm.clientId = :client_id
+        LIMIT 1
+    """)
+    plan = db.execute(plan_query, {"client_id": client_id}).fetchone()
+    credit_percent = float(str(plan.CreditPointPercent).replace('%', '') or 0) if plan else 0.0
+    talktime_percent = float(str(plan.TalktimePercent).replace('%', '') or 0) if plan else 0.0
+
+    # Cost centers
+    cost_query = text("""
+        SELECT cost_center 
+        FROM cost_master 
+        WHERE dialdesk_client_id = :client_id
+    """)
+    cost_centers = db.execute(cost_query, {"client_id": client_id}).fetchall()
+
+    total_talktime = 0.0
+    total_subscription = 0.0
+
+    for cc in cost_centers:
+        cost_center = (cc.cost_center or "").strip()
+        if not cost_center:
+            continue
+
+        bill_query = text("""
+            SELECT total, Category
+            FROM bill_pay_particulars bpp
+            INNER JOIN tbl_invoice ti
+                ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                AND bpp.financial_year = ti.finance_year
+                AND bpp.branch_name = ti.branch_name
+            WHERE ti.cost_center = :cost_center
+            AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+        """)
+        bill_rows = db.execute(bill_query, {
+            "cost_center": cost_center,
+            "start_date": start_date,
+            "end_date": end_date
+        }).fetchall()
+
+        for b in bill_rows:
+            category = (b.Category or "").strip().lower()
+            total = float(b.total or 0)
+            if "talktime" in category:
+                total_talktime += total
+            elif category == "subscription":
+                total_subscription += total
+
+    talktime_value = round(total_talktime * (talktime_percent / 100), 2)
+    subscription_value = round(total_subscription * (credit_percent / 100), 2)
+    fresh_release = round(talktime_value + subscription_value, 2)
+
+    total_talktime_value = 0.0
+    total_subscription_value = 0.0
+
+    for cc_row in cost_centers:
+        cost_center = cc_row.cost_center.strip() if cc_row.cost_center else None
+        if not cost_center:
+            continue
+
+        invoice_query = text("""
+                            SELECT 
+                                LOWER(TRIM(category)) AS category,
+                                SUM(total) AS total_sum
+                            FROM tbl_invoice ti
+                            WHERE ti.cost_center = :cost_center
+                              AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+                              AND LOWER(TRIM(ti.category)) IN ('talktime', 'subscription')
+                            GROUP BY LOWER(TRIM(ti.category))
+                        """)
+        invoice_rows = db.execute(invoice_query, {
+            "cost_center": cost_center,
+            "start_date": start_date,
+            "end_date": end_date,
+        }).fetchall()
+
+        for b in invoice_rows:
+            category = (b.category or "").strip().lower()
+            total = float(b.total_sum or 0)
+            if category == "talktime":
+                total_talktime_value += total
+            elif category == "subscription":
+                total_subscription_value += total
+
+    consume_query = text("""
+        SELECT COALESCE(SUM(cm_total), 0) AS consume
+        FROM billing_consume_daily
+        WHERE client_id = :client_id
+        AND DATE(cm_date) BETWEEN :start_date AND :end_date
+    """)
+    consume_row = db.execute(consume_query, {
+        "client_id": client_id,
+        "start_date": start_date,
+        "end_date": end_date
+    }).fetchone()
+    consume_value = float(consume_row.consume or 0)
+    print(opening,"opening==")
+    print(fresh_release,"fresh_release==")
+    print(consume_value,"consume_value==")
+
+    balance = round((effective_opening + fresh_release - consume_value), 2)
+
+    Release_billing = round(
+            (total_talktime_value * (talktime_percent / 100)) +
+            (total_subscription_value * (credit_percent / 100)),
+            2
+        )
+
+    return {
+        "company_id": client_id,
+        "company_name": company_name,
+        "opening": effective_opening,
+        "talktime_total": round(total_talktime, 2),
+        "subscription_total": round(total_subscription, 2),
+        "talktime_percent": talktime_percent,
+        "credit_percent": credit_percent,
+        "talktime_value": talktime_value,
+        "subscription_value": subscription_value,
+        "fresh_release": fresh_release,
+        "consume": round(consume_value, 2),
+        "balance": balance,
+        "total_talktime_value": round(total_talktime_value, 2),
+        "total_subscription_value": round(total_subscription_value, 2),
+        # "Release_billing": round(total_talktime_value + total_subscription_value, 2),
+        "Release_billing": round(
+            (total_talktime_value * (talktime_percent / 100)) +
+            (total_subscription_value * (credit_percent / 100)),
+            2
+        ),
+        "Exposure_billing_vr": round(effective_opening + Release_billing - consume_value, 2)
+    }
+
 
 
 @router.get("/clients-rights/{company_id}")

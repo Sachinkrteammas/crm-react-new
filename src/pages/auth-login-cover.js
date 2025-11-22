@@ -1,6 +1,6 @@
 
 //..Dynamic Successfully message show according uer_type login..//
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { login } from "../services/authService";
 import { Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
@@ -11,6 +11,8 @@ const AuthLoginCover = () => {
   const [formError, setFormError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -38,6 +40,15 @@ const AuthLoginCover = () => {
 
       localStorage.setItem("userData", JSON.stringify(response));
 
+       // ✅ Save email if Remember Me checked
+      if (rememberMe) {
+        localStorage.setItem("rememberedEmail", email);
+        localStorage.setItem("rememberedPassword", password); // save password too
+      } else {
+        localStorage.removeItem("rememberedEmail");
+        localStorage.removeItem("rememberedPassword");
+      }
+
       setTimeout(() => {
         const saved = localStorage.getItem("userData");
         console.log("✅ Confirmed saved userData:", saved);
@@ -50,6 +61,18 @@ const AuthLoginCover = () => {
       setFormError(err || "Invalid email or password");
     }
   };
+
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem("rememberedEmail");
+    const rememberedPassword = localStorage.getItem("rememberedPassword");
+
+    if (rememberedEmail) setEmail(rememberedEmail);
+    if (rememberedPassword) setPassword(rememberedPassword);
+    
+    if (rememberedEmail || rememberedPassword) setRememberMe(true);
+  }, []);
+
+
 
   return (
     <div className="authentication-wrapper authentication-cover">
@@ -146,6 +169,8 @@ const AuthLoginCover = () => {
                     className="form-check-input"
                     type="checkbox"
                     id="remember-me"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
                   />
                   <label className="form-check-label" htmlFor="remember-me">
                     Remember Me

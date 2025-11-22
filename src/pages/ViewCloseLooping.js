@@ -3,35 +3,42 @@ import React, { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import api from "../api"; // your axios instance
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 export default function CloseLooping() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [fields, setFields] = useState([]);
+  const [labels, setLabels] = useState([]);
+  const [storedClientId, setStoredClientId] = useState(null);
+
+  const dynamicFields = fields;   // 👈 this fixes the undefined error
 
   const rowFromState = location.state?.row ?? null;
 
   // Labels for SR Details
-  const labels = [
-    "Mobile Number",
-    "First Name",
-    "Last Name",
-    "Address",
-    "State",
-    "District/Area",
-    "Pin Code",
-    "Customer type",
-    "Date of Purchase",
-    "Dealer contact number",
-    "Dealer shop Name",
-    "Product Model Name",
-    "Not Serviceable Area PIN Code",
-    "Remark",
-    "CRM Issue",
-    "19 digit Sr. NO.",
-    "Invoice Date",
-    "Invoice No.",
-    "Email ID",
-  ];
+  // const labels = [
+  //   "Mobile Number",
+  //   "First Name",
+  //   "Last Name",
+  //   "Address",
+  //   "State",
+  //   "District/Area",
+  //   "Pin Code",
+  //   "Customer type",
+  //   "Date of Purchase",
+  //   "Dealer contact number",
+  //   "Dealer shop Name",
+  //   "Product Model Name",
+  //   "Not Serviceable Area PIN Code",
+  //   "Remark",
+  //   "CRM Issue",
+  //   "19 digit Sr. NO.",
+  //   "Invoice Date",
+  //   "Invoice No.",
+  //   "Email ID",
+  // ];
 
   // Labels for Call Details
   const callLabels = [
@@ -50,6 +57,8 @@ export default function CloseLooping() {
     "Scenario",
     "Sub-scenario1",
     "Sub-scenario2",
+    "Sub-scenario3",
+    "Sub-scenario4",
     "CALL ACTION",
     "CALL SUB ACTION",
     "REMARKS",
@@ -67,6 +76,8 @@ export default function CloseLooping() {
   const [scenarioList, setScenarioList] = useState([]);
   const [subScenarioList1, setSubScenarioList1] = useState([]);
   const [subScenarioList2, setSubScenarioList2] = useState([]);
+  const [subScenarioList3, setSubScenarioList3] = useState([]);
+  const [subScenarioList4, setSubScenarioList4] = useState([]);
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -80,6 +91,45 @@ const includeCurrentValue = (value, list) => {
   }
   return list;
 };
+
+
+  const loadLevel1 = async (clientId) => {
+    return await api
+      .get(`/core_api/categories/level1?client_id=${storedClientId}`)
+      .then(res => res.data || [])
+      .catch(() => []);
+  };
+
+  const loadLevel2 = async (parentId, clientId) => {
+    return await api
+      .get(`/core_api/categories/level2/${encodeURIComponent(parentId)}?client_id=${storedClientId}`)
+      .then(res => res.data || [])
+      .catch(() => []);
+  };
+
+  const loadLevel3 = async (parentId, clientId) => {
+    return await api
+      .get(`/core_api/categories/level3/${encodeURIComponent(parentId)}?client_id=${storedClientId}`)
+      .then(res => res.data || [])
+      .catch(() => []);
+  };
+
+  const loadLevel4 = async (parentId, clientId) => {
+    return await api
+      .get(`/core_api/categories/level4/${encodeURIComponent(parentId)}?client_id=${storedClientId}`)
+      .then(res => res.data || [])
+      .catch(() => []);
+  };
+
+  const loadLevel5 = async (parentId, clientId) => {
+    return await api
+      .get(`/core_api/categories/level5/${encodeURIComponent(parentId)}?client_id=${storedClientId}`)
+      .then(res => res.data || [])
+      .catch(() => []);
+  };
+
+
+
 
 const fetchData = async () => {
   if (!rowFromState) return;
@@ -96,12 +146,16 @@ const clientId =
   rowFromState?.ClientId ||
   rowFromState?.client_id;
 
-  const callId = rowFromState?.in_call_id || rowFromState?.id;
+  const callId = rowFromState?.callId || rowFromState?.id;
 
   console.log("clientId in fetchData:", clientId);
   console.log("rowFromState:", rowFromState);
 
   if (!clientId) return;
+  
+  if (clientId && !storedClientId) {
+    setStoredClientId(clientId); 
+    }
 
   setLoading(true);
   try {
@@ -118,6 +172,15 @@ const clientId =
 
     if (!res.data) return null;
     const record = Array.isArray(res.data) ? res.data[0] : res.data;
+
+//     if (labels.length === 0) {
+//   const dynamicLabels = Object.keys(record)
+//     .filter(k =>
+//       !["callId","CallDate","CallFrom","TAT","Due Date","Call Created","Category1","Category2","Category3","Category4","Category5"].includes(k)
+//     );
+  
+//   setLabels(dynamicLabels);
+// }
 
     // 3️⃣ Prefill form
     const copy = { ...initialForm };
@@ -155,10 +218,34 @@ const clientId =
     const sub2Option = sub2List.find(opt => opt.id.toString() === copy["Sub-scenario2"] || opt.ecrName?.trim() === record.Category3?.trim());
     copy["Sub-scenario2"] = sub2Option ? sub2Option.id.toString() : copy["Sub-scenario2"] || "";
 
+    // Load Sub-scenario 3
+    let sub3List = [];
+    if (copy["Sub-scenario2"]) {
+      sub3List = await api
+        .get(`/core_api/categories/level4/${encodeURIComponent(copy["Sub-scenario2"])}?client_id=${clientId}`)
+        .then(res => res.data || [])
+        .catch(() => []);
+    }
+    const sub3Option = sub3List.find(opt => opt.id.toString() === copy["Sub-scenario3"] || opt.ecrName?.trim() === record.Category4?.trim());
+    copy["Sub-scenario3"] = sub3Option ? sub3Option.id.toString() : copy["Sub-scenario3"] || "";
+
+    // Load Sub-scenario 4
+    let sub4List = [];
+    if (copy["Sub-scenario3"]) {
+      sub4List = await api
+        .get(`/core_api/categories/level5/${encodeURIComponent(copy["Sub-scenario3"])}?client_id=${clientId}`)
+        .then(res => res.data || [])
+        .catch(() => []);
+    }
+    const sub4Option = sub4List.find(opt => opt.id.toString() === copy["Sub-scenario4"] || opt.ecrName?.trim() === record.Category5?.trim());
+    copy["Sub-scenario4"] = sub4Option ? sub4Option.id.toString() : copy["Sub-scenario4"] || "";
+
     // 5️⃣ Include current (saved) values if missing in dropdown
     setScenarioList(includeCurrentValue(copy.Scenario, level1));
     setSubScenarioList1(includeCurrentValue(copy["Sub-scenario1"], sub1List));
     setSubScenarioList2(includeCurrentValue(copy["Sub-scenario2"], sub2List));
+    setSubScenarioList3(includeCurrentValue(copy["Sub-scenario3"], sub3List));
+    setSubScenarioList4(includeCurrentValue(copy["Sub-scenario4"], sub4List));
 
     // 6️⃣ Set form state
     setForm(copy);
@@ -168,6 +255,8 @@ const clientId =
     console.log("🔹 scenarioList:", scenarioList);
     console.log("🔹 subScenarioList1:", subScenarioList1);
     console.log("🔹 subScenarioList2:", subScenarioList2);
+    console.log("🔹 subScenarioList3:", subScenarioList3);
+    console.log("🔹 subScenarioList4:", subScenarioList4);
 
     return copy;
   } catch (err) {
@@ -188,36 +277,151 @@ const handleChange = async (e) => {
   setForm(prev => ({
     ...prev,
     [name]: value,
-    ...(name === "Scenario" ? { "Sub-scenario1": "", "Sub-scenario2": "" } : {}),
+    ...(name === "Scenario" ? { "Sub-scenario1": "", "Sub-scenario2": "", "Sub-scenario3": "", "Sub-scenario4": "" } : {}),
     ...(name === "Sub-scenario1" ? { "Sub-scenario2": "" } : {}),
+    ...(name === "Sub-scenario2" ? { "Sub-scenario3": "" } : {}),
+    ...(name === "Sub-scenario3" ? { "Sub-scenario4": "" } : {}),
   }));
 
   const clientId = localStorage.getItem("company_id") || rowFromState?.ClientId || rowFromState?.client_id;
 
   try {
-    if (name === "Scenario" && value) {
-      const res = await api.get(`/core_api/categories/level2/${encodeURIComponent(value)}?client_id=${clientId}`);
-      setSubScenarioList1(includeCurrentValue("", res.data || []));
+    if (name === "Scenario") {
+      if (!value) {
+        setSubScenarioList1([]);
+        setSubScenarioList2([]);
+        setSubScenarioList3([]);
+        setSubScenarioList4([]);
+        return;
+      }
+
+      const sub1 = await loadLevel2(value, clientId);
+      setSubScenarioList1(sub1);
       setSubScenarioList2([]);
+      setSubScenarioList3([]);
+      setSubScenarioList4([]);
     }
 
-    if (name === "Sub-scenario1" && value) {
-      const res = await api.get(`/core_api/categories/level3/${encodeURIComponent(value)}?client_id=${clientId}`);
-      setSubScenarioList2(includeCurrentValue("", res.data || []));
+
+    if (name === "Sub-scenario1") {
+      if (!value) {
+        setSubScenarioList2([]);
+        setSubScenarioList3([]);
+        setSubScenarioList4([]);
+        return;
+      }
+
+      const sub2 = await loadLevel3(value, clientId);
+      setSubScenarioList2(sub2);
+      setSubScenarioList3([]);
+      setSubScenarioList4([]);
+    }
+
+    if (name === "Sub-scenario2") {
+      if (!value) {
+        setSubScenarioList3([]);
+        setSubScenarioList4([]);
+        return;
+      }
+
+      const sub3 = await loadLevel4(value, clientId);
+      setSubScenarioList3(sub3);
+      setSubScenarioList4([]);
+    }
+
+    if (name === "Sub-scenario3") {
+      if (!value) {
+        setSubScenarioList4([]);
+        return;
+      }
+
+      const sub4 = await loadLevel5(value, clientId);
+      setSubScenarioList4(sub4);
     }
   } catch (err) {
     console.error(err);
   }
 };
 
+  useEffect(() => {
+    if (!storedClientId) return;
+
+    loadLevel1(storedClientId).then((data) => setScenarioList(data));
+  }, [storedClientId]);
+
+
+
+  const loadDynamicFields = async () => {
+    try {
+      const client_id =
+        location.state?.client_id ||
+        localStorage.getItem("company_id") ||
+        rowFromState?.ClientId;
+
+      if (!client_id) return;
+
+      const res = await api.get(`/fields`, {
+        params: { client_id }
+      });
+
+      const fieldList = res.data || [];
+
+      setFields(fieldList);
+
+      // 🔥 Build dynamic label list
+      setLabels(fieldList.map(f => f.FieldName));
+    } catch (err) {
+      console.error("Error loading dynamic fields", err);
+    }
+  };
+
+  useEffect(() => {
+  loadDynamicFields();
+}, []);
+
+
+  // 2️⃣ Rebuild form base AFTER labels loaded
+  useEffect(() => {
+    const base = [
+      ...labels,
+      ...callLabels,
+      "Scenario",
+      "Sub-scenario1",
+      "Sub-scenario2",
+      "Sub-scenario3",
+      "CALL ACTION",
+      "CALL SUB ACTION",
+      "REMARKS"
+    ].reduce((acc, label) => {
+      acc[label] = "";
+      return acc;
+    }, {});
+
+    // merge but do NOT overwrite existing fetchData values
+    setForm(prev => ({ ...base, ...prev }));
+  }, [labels]);
+
+
   // ----------------------------
   // Handle Update Function
   // ----------------------------
- 
+
 
 const handleSubmit = async () => {
-  const clientId = localStorage.getItem("company_id") || rowFromState?.ClientId || rowFromState?.client_id;
-  const recordId = rowFromState?.id || rowFromState?.in_call_id;
+  // const clientId = localStorage.getItem("company_id") || rowFromState?.ClientId || rowFromState?.client_id;
+  let companyId = localStorage.getItem("company_id");
+if (companyId === "null" || companyId === "undefined") companyId = null;
+
+const rawClientId = location.state?.client_id;
+const clientId =
+  (rawClientId && rawClientId !== "null" && rawClientId !== "undefined"
+    ? rawClientId
+    : null) ||
+  companyId ||
+  rowFromState?.ClientId ||
+  rowFromState?.client_id;
+
+  const recordId = rowFromState?.id || rowFromState?.callId;
   if (!clientId || !recordId) return alert("Client ID or Record ID not found.");
 
   setLoading(true);
@@ -236,10 +440,19 @@ const handleSubmit = async () => {
       payload[key] = value;
     });
 
+    // 🔥🔥🔥 ADD THIS — MAP DYNAMIC FIELDS (field1, field2... field22)
+    dynamicFields.forEach((f) => {
+      const backendKey = `Field${f.fieldNumber}`;   // field1, field2, field3...
+      const formKey = f.FieldName;                 // "Mobile Number", "Address", etc.
+
+      payload[backendKey] = form[formKey] ?? null;
+    });
+
     // ✅ Add mapped Category fields for backend
     payload.Category1 = getNameById(scenarioList, form.Scenario);
     payload.Category2 = getNameById(subScenarioList1, form["Sub-scenario1"]);
     payload.Category3 = getNameById(subScenarioList2, form["Sub-scenario2"]);
+    payload.Category4 = getNameById(subScenarioList3, form["Sub-scenario3"]);
 
     const res = await api.put(`/call/call-master/${clientId}/${recordId}`, payload);
 
@@ -256,11 +469,13 @@ const handleSubmit = async () => {
       setScenarioList(prev => includeCurrentValue(updatedForm.Scenario, prev));
       setSubScenarioList1(prev => includeCurrentValue(updatedForm["Sub-scenario1"], prev));
       setSubScenarioList2(prev => includeCurrentValue(updatedForm["Sub-scenario2"], prev));
+      setSubScenarioList3(prev => includeCurrentValue(updatedForm["Sub-scenario3"], prev));
 
       console.log("✅ Form and dropdowns updated after PUT:", updatedForm);
       console.log("🔹 scenarioList:", scenarioList);
       console.log("🔹 subScenarioList1:", subScenarioList1);
       console.log("🔹 subScenarioList2:", subScenarioList2);
+      console.log("🔹 subScenarioList3:", subScenarioList3);
     } else {
       alert("Update failed.");
     }
@@ -273,22 +488,122 @@ const handleSubmit = async () => {
 };
 
 
+
+  const handleCloseLooping = async () => {
+  try {
+    // --- SAME CLIENT ID LOGIC AS handleSubmit ---
+    let companyId = localStorage.getItem("company_id");
+    if (companyId === "null" || companyId === "undefined") companyId = null;
+
+    const rawClientId = location.state?.client_id;
+    const clientId =
+      (rawClientId && rawClientId !== "null" && rawClientId !== "undefined"
+        ? rawClientId
+        : null) ||
+      companyId ||
+      rowFromState?.ClientId ||
+      rowFromState?.client_id;
+
+    // --- SAME RECORD ID LOGIC ---
+    const recordId = rowFromState?.id || rowFromState?.callId;
+
+    if (!clientId || !recordId) {
+      return alert("Client ID or Record ID not found.");
+    }
+
+    const action = form["CALL ACTION"];
+    const subAction = form["CALL SUB ACTION"];
+    const followupDate = form["FOLLOW UP DATE"];
+
+    // 🔥 Prepare payload
+    const payload = {
+       CloseLoopCate1:
+        !action || action === "Select CALL ACTION"
+          ? null
+          : action === "Closed"
+          ? "Close By System"
+          : action,
+
+      CloseLoopCate2:
+        !subAction || subAction === "Select CALL SUB ACTION"
+          ? null
+          : subAction,
+
+      FollowupDate: followupDate ? followupDate : null,
+      closelooping_remarks: form["REMARKS"] || null
+    };
+
+    // 🔥 API Call
+    await api.put("/close-looping", payload, {
+      params: {
+        client_id: clientId,
+        callId: recordId
+      }
+    });
+
+    alert("Call closed successfully!");
+
+    // reload page or details if needed
+    // loadCallDetails();
+  } catch (err) {
+    console.error(err);
+    alert("Failed to close the call.");
+  }
+};
+
+
+
+
+
 // ----------------------------
 // Load data on mount / row change
 // ----------------------------
 useEffect(() => {
-  if (location.state) {
+  if (location.state && labels.length > 0) {
     fetchData();
   }
-}, [location.state]);
+}, [location.state, labels]);
 
 
   // ----------------------------
   // Handle Excel Download
   // ----------------------------
   const handleExcelDownload = () => {
-    showToast("Excel download started!", "success");
+  if (!form) {
+    showToast("No data to export!", "error");
+    return;
+  }
+
+  // Flatten form for Excel, override scenario fields with names
+  const dataToExport = {
+    ...form, // form fields (IDs)
+    "IN CALL ID": rowFromState?.callId || form.callId || "",
+    "CALL DATE": rowFromState?.CallDate || form.CallDate || "",
+    "CALL FROM": rowFromState?.CallFrom || form.CallFrom || "",
+    "DUE DATE": rowFromState?.["Due Date"] || form?.["Due Date"] || "",
+    "CALL CREATED": rowFromState?.["Call Created"] || form?.["Call Created"] || "",
+    "CALL ACTION": rowFromState?.["Call Action"] || form?.["Call Action"] || "",
+    "CALL SUB ACTION": rowFromState?.["Call Sub Action"] || form?.["Call Sub Action"] || "",
+    "REMARKS": rowFromState?.["Call Action Remarks"] || form?.["Call Action Remarks"] || "",
+    Scenario: scenarioList.find(opt => opt.id.toString() === (form.Scenario || "").toString())?.ecrName || form.Scenario,
+    "Sub-scenario1": subScenarioList1.find(opt => opt.id.toString() === (form["Sub-scenario1"] || "").toString())?.ecrName || form["Sub-scenario1"],
+    "Sub-scenario2": subScenarioList2.find(opt => opt.id.toString() === (form["Sub-scenario2"] || "").toString())?.ecrName || form["Sub-scenario2"],
+    "Sub-scenario3": subScenarioList3?.find(opt => opt.id.toString() === (form["Sub-scenario3"] || "").toString())?.ecrName || form["Sub-scenario3"],
+    "Sub-scenario4": subScenarioList4?.find(opt => opt.id.toString() === (form["Sub-scenario4"] || "").toString())?.ecrName || form["Sub-scenario4"],
   };
+
+  const worksheet = XLSX.utils.json_to_sheet([dataToExport]);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Call Record");
+
+  const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+  saveAs(file, `Call-${form.callId || "record"}.xlsx`);
+
+  showToast("Excel download started!", "success");
+};
+
+
 
   const srDetails = labels.map((label) => [label, form[label]]);
   const callDetails = [
@@ -297,7 +612,22 @@ useEffect(() => {
 
     // For IN CALL ID, show backend 'id' from rowFromState
     if (label === "IN CALL ID") {
-      value = rowFromState?.id || value;
+      value = rowFromState?.callId || value;
+    }
+    if (label === "CALL DATE") {
+      value = rowFromState?.CallDate || value;
+    }
+    if (label === "CALL FROM") {
+      value = rowFromState?.CallFrom || value;
+    }
+    if (label === "TAT") {
+      value = rowFromState?.TAT || value;
+    }
+    if (label === "DUE DATE") {
+      value = rowFromState?.["Due Date"] || value;
+    }
+    if (label === "CALL CREATED") {
+      value = rowFromState?.["Call Created"] || value;
     }
 
     // Fallback for other fields if missing
@@ -313,7 +643,7 @@ useEffect(() => {
         key="recording"
         type="button"
         className="bg-gray-200 px-2 py-1 rounded hover:bg-gray-300 flex justify-center items-center"
-        onClick={() => showToast("Recording clicked!", "success")}
+        onClick={() => showToast("No Recording!", "success")}
       >
         <Download className="h-3 w-3" />
       </button>,
@@ -323,7 +653,7 @@ useEffect(() => {
       <button
         key="logfile"
         type="button"
-        onClick={handleExcelDownload}
+        onClick={() => handleExcelDownload([form])}
         style={{
           display: "flex",
           alignItems: "center",
@@ -348,19 +678,102 @@ useEffect(() => {
     ],
   ];
 
-  const closeFields = [
+
+
+  const [closeFields, setCloseFields] = useState([
     {
       label: "CALL ACTION",
       type: "select",
-      options: ["Select CALL ACTION", "Resolved", "Pending"],
+      options: ["Select CALL ACTION", "Open", "Closed"],
     },
     {
       label: "CALL SUB ACTION",
       type: "select",
-      options: ["Select CALL SUB ACTION", "Follow-up", "Escalated"],
+      options: ["Select CALL SUB ACTION"],
+    },
+    {
+      label: "FOLLOW UP DATE",
+      type: "date",
     },
     { label: "REMARKS", type: "textarea" },
-  ];
+  ]);
+
+
+
+  const handleCloseLoopingChange = async (e) => {
+    const { name, value } = e.target;
+
+    // Update form state immediately
+    setForm((prev) => ({ ...prev, [name]: value }));
+
+    // Only run API when CALL ACTION changes
+    if (name !== "CALL ACTION") return;
+
+    try {
+      // -------------------------------
+      // 🔹 CLIENT ID RESOLUTION (same as handleCloseLooping)
+      // -------------------------------
+      let companyId = localStorage.getItem("company_id");
+      if (companyId === "null" || companyId === "undefined") companyId = null;
+
+      const rawClientId = location.state?.client_id;
+      const clientId =
+        (rawClientId &&
+        rawClientId !== "null" &&
+        rawClientId !== "undefined"
+          ? rawClientId
+          : null) ||
+        companyId ||
+        rowFromState?.ClientId ||
+        rowFromState?.client_id;
+
+      if (!clientId) {
+        console.error("Client ID not found.");
+        return;
+      }
+
+      // -------------------------------
+      // NO API if default option
+      // -------------------------------
+      if (!value || value === "Select CALL ACTION") return;
+
+      // -------------------------------
+      // 🔥 Fetch SUB ACTION list
+      // -------------------------------
+      const res = await api.get(`/close-looping/sub-actions`, {
+        params: {
+          action: value,
+          client_id: clientId,
+        },
+      });
+
+      const options = res.data || [];
+
+      // -------------------------------
+      // 🔥 Update CALL SUB ACTION options
+      // -------------------------------
+      setCloseFields((prev) =>
+        prev.map((field) =>
+          field.label === "CALL SUB ACTION"
+            ? {
+                ...field,
+                options: ["Select CALL SUB ACTION", ...options],
+              }
+            : field
+        )
+      );
+
+      // Reset selected sub action
+      setForm((prev) => ({ ...prev, "CALL SUB ACTION": "" }));
+    } catch (err) {
+      console.error("Failed to load sub actions:", err);
+    }
+  };
+
+
+
+
+
 
   const commonInputStyle = {
     width: "100%",
@@ -397,9 +810,9 @@ useEffect(() => {
         </div>
       )}
       <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="bg-gray-50 min-h-screen">
       <div className="bg-white shadow rounded-xl p-6 relative">
-        {toast.message && (
+        {/* {toast.message && (
           <div
             className={`absolute top-4 left-1/2 transform -translate-x-1/2 px-4 py-2 rounded-lg shadow-md text-sm font-medium ${
               toast.type === "success"
@@ -407,6 +820,34 @@ useEffect(() => {
                 : "bg-red-500 text-white"
             }`}
             style={{ zIndex: 50, minWidth: "220px", textAlign: "center" }}
+          >
+            {toast.message}
+          </div>
+        )} */}
+
+
+        {toast.message && (
+          <div
+            style={{
+              position: "absolute",
+              top: "20px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 9999,
+              minWidth: "200px",
+              maxWidth: "90%",
+              padding: "10px 16px",
+              borderRadius: "8px",
+              textAlign: "center",
+              fontWeight: 500,
+              fontSize: "14px",
+              color: toast.type === "success" ? "#ffffff" : "#ffffff", // dark text for green, white for red
+              backgroundColor: toast.type === "success" ? "#22c55e" : "#ef4444", // green or red
+              boxShadow: "0 4px 12px rgba(0,0,0,0.15)", // subtle shadow
+              opacity: 0.95,
+              pointerEvents: "none", // allow clicks through
+              transition: "transform 0.3s ease, opacity 0.3s ease",
+            }}
           >
             {toast.message}
           </div>
@@ -431,8 +872,8 @@ useEffect(() => {
                 </tr>
 
                 {/* Scenario Fields */}
-          {["Scenario","Sub-scenario1","Sub-scenario2"].map((field) => {
-                  const list = field === "Scenario" ? scenarioList : field === "Sub-scenario1" ? subScenarioList1 : subScenarioList2;
+          {["Scenario","Sub-scenario1","Sub-scenario2", "Sub-scenario3",].map((field) => {
+                  const list = field === "Scenario" ? scenarioList : field === "Sub-scenario1" ? subScenarioList1 : field === "Sub-scenario2" ? subScenarioList2 : field === "Sub-scenario3"? subScenarioList3 : subScenarioList4;
                   return (
                     <tr key={field}>
                       <td className="border p-2 font-semibold">{field}</td>
@@ -455,7 +896,7 @@ useEffect(() => {
                 </tr>
 
                 {labels.map((label, index) => (
-                  <React.Fragment key={label}>
+                  // <React.Fragment key={label}>
                     <tr className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                       <td className="border p-2">{label}</td>
                       <td className="border p-2">
@@ -469,7 +910,9 @@ useEffect(() => {
                       </td>
                     </tr>
 
-                    {label === "Email ID" && (
+                  ))}    
+
+                    {/* {label === "Email ID" && ( */}
                       <tr>
                         <td colSpan={2} className="p-3 text-right">
                           <div className="mt-3 text-right">
@@ -483,9 +926,9 @@ useEffect(() => {
                           </div>
                         </td>
                       </tr>
-                    )}
-                  </React.Fragment>
-                ))}
+                    {/* )} */}
+                  {/* </React.Fragment> */}
+                
 
                 <tr className="bg-gray-200">
                   <th className="p-2 text-left font-semibold border">
@@ -531,24 +974,38 @@ useEffect(() => {
                           onChange={handleChange}
                         />
                       )}
+
                       {field.type === "select" && (
                         <select
                           style={selectStyle}
                           name={field.label}
                           value={form[field.label] || field.options[0]}
-                          onChange={handleChange}
+                          onChange={
+                            field.label === "CALL ACTION"
+                              ? handleCloseLoopingChange
+                              : handleChange
+                          }
                         >
                           {field.options.map((opt) => (
                             <option key={opt}>{opt}</option>
                           ))}
                         </select>
                       )}
+                      {field.type === "date" && (
+                        <input
+                          type="date"
+                          style={commonInputStyle}
+                          name={field.label}
+                          value={form[field.label] || ""}
+                          onChange={handleChange}
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <button type="button" className="mt-4 btn btn-primary">
+            <button type="button" className="mt-4 btn btn-primary"  onClick={handleCloseLooping}>
               CLOSE LOOPING
             </button>
 

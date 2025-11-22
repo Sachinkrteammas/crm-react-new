@@ -14,6 +14,8 @@ import { useNavigate } from "react-router-dom";
 function CallDetails() {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [inCallAction, setInCallAction] = useState(""); // default empty or "In Call Action"
+  const [call_id, setCallId] = useState(null); // default empty 
 
   const [scenarioList, setScenarioList] = useState([]); // Level 1
   const [scenario1List, setScenario1List] = useState([]); // Level 2
@@ -25,6 +27,12 @@ function CallDetails() {
   const [selectedScenario1, setSelectedScenario1] = useState(""); // Level 2
   const [selectedScenario2, setSelectedScenario2] = useState(""); // Level 3
   const [selectedScenario3, setSelectedScenario3] = useState(""); // Level 4
+
+  const [scenarioName, setScenarioName] = useState("");
+  const [scenario1Name, setScenario1Name] = useState("");
+  const [scenario2Name, setScenario2Name] = useState("");
+  const [scenario3Name, setScenario3Name] = useState("");
+  const [scenario4Name, setScenario4Name] = useState("");
 
   // 🔹 User info
   const userType = localStorage.getItem("user_type");
@@ -88,26 +96,27 @@ function CallDetails() {
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // fetch scenario map
-    if (!activeCompanyId) return;
-    api
-      .get(`/core_api/categories/all?client_id=${activeCompanyId}`)
-      .then((res) => {
-        const map = {};
-        res.data.forEach((item) => (map[item.id] = item.ecrName));
-        setScenarioMap(map);
-      })
-      .catch((err) => console.error("Error fetching scenarios:", err));
-  }, [activeCompanyId]);
+  // useEffect(() => {
+  //   // fetch scenario map
+  //   if (!activeCompanyId) return;
+  //   api
+  //     .get(`/core_api/categories/all?client_id=${activeCompanyId}`)
+  //     .then((res) => {
+  //       const map = {};
+  //       res.data.forEach((item) => (map[item.id] = item.ecrName));
+  //       setScenarioMap(map);
+  //     })
+  //     .catch((err) => console.error("Error fetching scenarios:", err));
+  // }, [activeCompanyId]);
 
   // load level1 scenarios
   useEffect(() => {
+    if (!activeCompanyId || selectedClient === "null") return;
     api
-      .get("/core_api/categories/level1?client_id=301")
+      .get(`/core_api/categories/level1?client_id=${activeCompanyId}`)
       .then((res) => setScenarioList(res.data))
       .catch((err) => console.error("Error fetching level1 scenarios:", err));
-  }, []);
+  }, [activeCompanyId]);
 
   // filtered data for search
   const filteredData = useMemo(() => {
@@ -130,6 +139,10 @@ function CallDetails() {
   const handleScenarioChange = (e) => {
     const selectedId = e.target.value;
     setSelectedScenario(selectedId);
+
+    const obj = scenarioList.find(o => o.id == selectedId);
+    setScenarioName(obj?.ecrName || "");
+
     setScenario1List([]);
     setScenario2List([]);
     setScenario3List([]);
@@ -137,6 +150,9 @@ function CallDetails() {
     setSelectedScenario1("");
     setSelectedScenario2("");
     setSelectedScenario3("");
+    setScenario1Name("");
+    setScenario2Name("");
+    setScenario3Name("");
 
     if (selectedId) {
       api
@@ -149,11 +165,17 @@ function CallDetails() {
   const handleScenario1Change = (e) => {
     const selectedId = e.target.value;
     setSelectedScenario1(selectedId);
+
+    const obj = scenario1List.find(o => o.id == selectedId);
+    setScenario1Name(obj?.ecrName || "");
+
     setScenario2List([]);
     setScenario3List([]);
     setScenario4List([]);
     setSelectedScenario2("");
     setSelectedScenario3("");
+    setScenario2Name("");
+    setScenario3Name("");
 
     if (selectedId) {
       api
@@ -166,9 +188,14 @@ function CallDetails() {
   const handleScenario2Change = (e) => {
     const selectedId = e.target.value;
     setSelectedScenario2(selectedId);
+
+    const obj = scenario2List.find(o => o.id == selectedId);
+    setScenario2Name(obj?.ecrName || "");
+
     setScenario3List([]);
     setScenario4List([]);
     setSelectedScenario3("");
+    setScenario3Name("");
 
     if (selectedId) {
       api
@@ -180,8 +207,13 @@ function CallDetails() {
 
   const handleScenario3Change = (e) => {
     const selectedId = e.target.value;
+
+    const obj = scenario3List.find(o => o.id == selectedId);
+    setScenario3Name(obj?.ecrName || "");
+
     setSelectedScenario3(selectedId);
     setScenario4List([]);
+    setScenario4Name("");
 
     if (selectedId) {
       api
@@ -209,6 +241,13 @@ const handleViewClick = async () => {
         client_id: activeCompanyId,
         from_date: formattedStart,
         to_date: formattedEnd,
+        call_id : call_id || null,
+        in_call_action: inCallAction,
+        Category1: scenarioName?.trim(),
+        Category2: scenario1Name?.trim(),
+        Category3: scenario2Name?.trim(),
+        Category4: scenario3Name?.trim(),
+        Category5: "",
       },
     });
 
@@ -328,39 +367,45 @@ const handleViewClick = async () => {
                   <label className="form-label" htmlFor="start-date">
                     Start Date
                   </label>
-                  <DatePicker
-                    selected={startDate}
-                    onChange={(date) => setStartDate(date)}
-                    dateFormat="dd-MM-yyyy"
-                    placeholderText="DD-MM-YYYY"
-                    className="form-control"
+                  <input
+                    type="date"
                     id="start-date"
-                    maxDate={endDate}
+                    className="form-control"
+                    value={startDate ? startDate.toISOString().split("T")[0] : ""}
+                    max={endDate ? endDate.toISOString().split("T")[0] : ""}
+                    onChange={(e) => setStartDate(new Date(e.target.value))}
                   />
                 </div>
 
                 <div style={customColStyle} className="col-md-6 col-sm-12">
-                  <label className="form-label me-1" htmlFor="end-date">
+                  <label className="form-label" htmlFor="end-date">
                     End Date
                   </label>
-                  <DatePicker
-                    selected={endDate}
-                    onChange={(date) => setEndDate(date)}
-                    dateFormat="dd-MM-yyyy"
-                    placeholderText="DD-MM-YYYY"
-                    className="form-control"
+                  <input
+                    type="date"
                     id="end-date"
-                    minDate={startDate}
-                  />
+                    className="form-control"
+                    value={endDate ? endDate.toISOString().split("T")[0] : ""}
+                    min={startDate ? startDate.toISOString().split("T")[0] : ""}
+                    onChange={(e) => setEndDate(new Date(e.target.value))}
+                  />  
                 </div>
 
                 <div style={customColStyle} className="col-md-6 col-sm-12">
                   <label className="form-label" htmlFor="in-call-action">
                     In Call Action
                   </label>
-                  <select id="in-call-action" className="form-select">
-                    <option value="In Call Action">In Call Action</option>
+                  <select 
+                    id="in-call-action" 
+                    className="form-select"
+                    value={inCallAction}
+                    onChange={(e) => setInCallAction(e.target.value)}
+                  >
+                    <option value="">In Call Action</option>
                     <option value="Pending">Pending</option>
+                    <option value="Open">Open</option>
+                    <option value="Closed">Closed</option>
+                    <option value="Close By System">Close By System</option>
                   </select>
                 </div>
 
@@ -372,6 +417,8 @@ const handleViewClick = async () => {
                     type="text"
                     id="first-id"
                     className="form-control prefix-mask"
+                    value={call_id}
+                    onChange={(e) => setCallId(e.target.value)}
                   />
                 </div>
 
@@ -484,9 +531,9 @@ const handleViewClick = async () => {
                       View
                     </button>
 
-                    <button type="submit" className="btn btn-primary px-4 py-2">
+                    {/* <button type="submit" className="btn btn-primary px-4 py-2">
                       Closeloop
-                    </button>
+                    </button> */}
                   </div>
                 </div>
 
@@ -581,7 +628,7 @@ const handleViewClick = async () => {
                       </p>
                       <div>
                         <button
-                          className="btn btn-outline-secondary btn-sm me-2"
+                          className="btn btn-outline-primary btn-sm me-2"
                           disabled={currentPage === 1}
                           onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                         >
@@ -591,7 +638,7 @@ const handleViewClick = async () => {
                           Page {currentPage} of {totalPages}
                         </span>
                         <button
-                          className="btn btn-outline-secondary btn-sm ms-2"
+                          className="btn btn-outline-primary btn-sm ms-2"
                           disabled={currentPage === totalPages}
                           onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
                         >

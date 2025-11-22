@@ -4,22 +4,25 @@ import DatePicker from "react-datepicker";
 import api from "../api";
 
 export default function CreateManualCall() {
-  const [form, setForm] = useState({
-    inCallId: "",
-    callFrom: "",
-    scenario: "",
-    scenario1: "",
-    Name: "",
-    Contact: "",
-    City: "",
-    State: "",
-    pincode: "",
-    productname: "",
-    sourceofpurchase: "",
-    DOP: "",
-    Remarks: "",
-    dateofpurchase: "",
-    });
+  // const [form, setForm] = useState({
+  //   inCallId: "",
+  //   callFrom: "",
+  //   scenario: "",
+  //   scenario1: "",
+  //   Name: "",
+  //   Contact: "",
+  //   City: "",
+  //   State: "",
+  //   pincode: "",
+  //   productname: "",
+  //   sourceofpurchase: "",
+  //   DOP: "",
+  //   Remarks: "",
+  //   dateofpurchase: "",
+  //   });
+
+  const [fields, setFields] = useState([]);
+  const [form, setForm] = useState({});
 
   const [historyData, setHistoryData] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -30,18 +33,25 @@ export default function CreateManualCall() {
 
 
 
-  //scenario dropdown data
   const [scenarioList, setScenarioList] = useState([]);
   const [scenario1List, setScenario1List] = useState([]);
+  const [scenario2List, setScenario2List] = useState([]);
+  const [scenario3List, setScenario3List] = useState([]);
+  const [scenario4List, setScenario4List] = useState([]);
 
-  
-  // selected values
   const [scenario, setScenario] = useState("");
   const [scenario1, setScenario1] = useState("");
+  const [scenario2, setScenario2] = useState("");
+  const [scenario3, setScenario3] = useState("");
+  const [scenario4, setScenario4] = useState("");
+
 
   
   const [scenarioName, setScenarioName] = useState("");
   const [scenario1Name, setScenario1Name] = useState("");
+  const [scenario2Name, setScenario2Name] = useState("");
+  const [scenario3Name, setScenario3Name] = useState("");
+  const [scenario4Name, setScenario4Name] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -50,7 +60,7 @@ export default function CreateManualCall() {
   // Search pagination
   const [searchPage, setSearchPage] = useState(1);
 
-
+  const [apiData, setApiData] = useState([]);
 
 
   const isFormEmpty = () => {
@@ -103,6 +113,32 @@ export default function CreateManualCall() {
       setSelectedClient(companyId);
     }
   }, []);
+
+
+  // Fetch fields dynamically
+  useEffect(() => {
+    const loadFields = async () => {
+      try {
+        const res = await api.get("/fields", {
+          params: { client_id: activeCompanyId },
+        });
+
+        setFields(res.data);
+
+        // Initialize form state
+        const initial = {};
+        res.data.forEach(f => {
+          initial[f.FieldName] = "";
+        });
+        setForm(initial);
+
+      } catch (err) {
+        console.error("Error fetching fields", err);
+      }
+    };
+
+    loadFields();
+  }, [activeCompanyId]);
 
 
 
@@ -167,6 +203,7 @@ useEffect(() => {
 }, [activeCompanyId]);
 
 
+
   useEffect(() => {
     if (activeCompanyId) {
       fetchScenarioLevel1();
@@ -180,40 +217,119 @@ useEffect(() => {
       });
       setScenarioList(res.data || []);
     } catch (err) {
-      console.log("Level 1 Scenario Error:", err);
+      console.log("Level1 Error:", err);
+    }
+  };
+
+
+
+  useEffect(() => {
+  if (scenario) {
+    fetchScenarioLevel2(scenario);
+  }
+
+  setScenario1("");
+  setScenario2("");
+  setScenario3("");
+  setScenario4("");
+
+  setScenario1List([]);
+  setScenario2List([]);
+  setScenario3List([]);
+  setScenario4List([]);
+}, [scenario]);
+
+
+
+
+  const fetchScenarioLevel2 = async (id) => {
+    try {
+      const res = await api.get(`/core_api/categories/level2/${id}`, {
+        params: { client_id: activeCompanyId }
+      });
+      setScenario1List(res.data || []);
+    } catch (err) {
+      console.log("Level2 Error:", err);
     }
   };
 
 
   useEffect(() => {
-    if (scenario) {
-      fetchScenarioLevel2(scenario);
-    } else {
-      setScenario1("");              // reset UI dropdown
-      setScenario1Name("");          // reset name
-      setScenario1List([]);          // clear list
-
-      // ❗ also clear in form payload
-      setForm(prev => ({
-        ...prev,
-        scenario: "",
-        scenario1: ""
-      }));
+    if (scenario1) {
+      fetchScenarioLevel3(scenario1);
     }
-  }, [scenario]);
+
+    setScenario2("");
+    setScenario3("");
+    setScenario4("");
+    setScenario2List([]);
+    setScenario3List([]);
+    setScenario4List([]);
+  }, [scenario1]);
 
 
 
-  const fetchScenarioLevel2 = async (scenarioId) => {
+  const fetchScenarioLevel3 = async (id) => {
     try {
-      const res = await api.get(`/core_api/categories/level2/${scenarioId}`, {
+      const res = await api.get(`/core_api/categories/level3/${id}`, {
         params: { client_id: activeCompanyId }
       });
-      setScenario1List(res.data || []);
+      setScenario2List(res.data || []);
     } catch (err) {
-      console.log("Level 2 Scenario Error:", err);
+      console.log("Level3 Error:", err);
     }
   };
+
+
+  useEffect(() => {
+    if (scenario2) {
+      fetchScenarioLevel4(scenario2);
+    }
+
+    setScenario3("");
+    setScenario4("");
+    setScenario3List([]);
+    setScenario4List([]);
+  }, [scenario2]);
+
+
+
+  const fetchScenarioLevel4 = async (id) => {
+    try {
+      const res = await api.get(`/core_api/categories/level4/${id}`, {
+        params: { client_id: activeCompanyId }
+      });
+      setScenario3List(res.data || []);
+    } catch (err) {
+      console.log("Level4 Error:", err);
+    }
+  };
+
+
+  useEffect(() => {
+    if (scenario3) {
+      fetchScenarioLevel5(scenario3);
+    }
+
+    setScenario4("");
+    setScenario4List([]);
+
+  }, [scenario3]);
+
+
+  const fetchScenarioLevel5 = async (id) => {
+    try {
+      const res = await api.get(`/core_api/categories/level5/${id}`, {
+        params: { client_id: activeCompanyId }
+      });
+      setScenario4List(res.data || []);
+    } catch (err) {
+      console.log("Level5 Error:", err);
+    }
+  };
+
+
+
 
 
 
@@ -262,69 +378,86 @@ useEffect(() => {
 
 
 
-  const submitTaggingForm = async () => {
-  try {
-    setLoading(true);
+
+  // Handle value change
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     const payload = {
-      client_id: activeCompanyId,
-      msisdn: form.callFrom,
-      category1: form.scenario,
-      category2: form.scenario1,
-      field1: form.Name,
-      field2: form.Contact,
-      field3: form.City,
-      field4: form.State,
-      field5: form.pincode,
-      field6: form.productname,
-      field7: form.sourceofpurchase,
-      field8: form.DOP,
-      field9: form.Remarks,
-      field10: form.dateofpurchase,
-      call_type: "Inbound"
+      msisdn: form.callFrom, // or whichever field is MSISDN
+      category1: scenarioName,
+      category2: scenario1Name,
+      category3: scenario2Name,
+      category4: scenario3Name,
+      category5: scenario4Name,
+      call_type: "Inbound",
+
+      fields: {}
     };
 
-    const res = await api.post("/call-create", payload);
-
-    alert(res.data.message || "Call inserted successfully");
-
-    // reset after submit
-    setForm({
-      callFrom: "",
-      scenario: "",
-      scenario1: "",
-      Name: "",
-      Contact: "",
-      City: "",
-      State: "",
-      pincode: "",
-      productname: "",
-      sourceofpurchase: "",
-      DOP: "",
-      Remarks: "",
-      dateofpurchase: "",
+    // Convert FieldName → FieldNumber mapping
+    fields.forEach((field) => {
+      payload.fields[field.fieldNumber] = form[field.FieldName] || null;
     });
 
-    fetchHistoryData(); // refresh table
-  } catch (error) {
-    console.error("Submit Error:", error);
-    alert("Something went wrong");
-  } finally {
-    setLoading(false);
+    console.log("FINAL PAYLOAD:", payload);
+
+    try {
+      await api.post("/call-create", payload, {
+        params: { client_id: activeCompanyId }
+      });
+      alert("Saved successfully");
+      await fetchHistoryData();
+    } catch (err) {
+      console.error(err);
+      alert("Error saving");
+    }
+  };
+
+
+
+  const fetchCallFlow = async () => {
+    try {
+      if (!activeCompanyId) return;
+
+      const res = await api.get("/call-flow", {
+        params: {
+          client_id: activeCompanyId,
+          category: scenarioName || "",
+          type: scenario1Name || "",
+          subtype: scenario2Name || "",
+          subtype1: scenario3Name || "",
+          subtype2: scenario4Name || "",
+        },
+      });
+
+      setApiData(Array.isArray(res.data) ? res.data : []);
+    } catch (error) {
+      console.error("Call Flow API Error:", error);
+      setApiData([]);
+    }
+  };
+
+
+
+  useEffect(() => {
+  // Only call API when at least scenarioName is selected
+  if (scenarioName) {
+    fetchCallFlow();
   }
-};
+}, [scenarioName, scenario1Name, scenario2Name, scenario3Name, scenario4Name, activeCompanyId]);
 
 
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log("Prompt data submitted:", form);
-  };
 
   return (
     <>
@@ -385,71 +518,69 @@ useEffect(() => {
 
           {/* — Tagging — */}
           <div className="tab-pane fade show active" id="pane-tagging" role="tabpanel">
+             {/* 🆕 2-column layout */}
+          <div className="row">
+
+            {/* LEFT SIDE — Tagging Form */}
+            <div className="col-md-8">
             <div className="card mb-4">
               <div className="card-header">
                 <h6 className="mb-0">Tagging Form</h6>
               </div>
               <div className="card-body">
                 <form className="row g-4" onSubmit={handleSubmit}>
+
+                  <div className="col-md-3">
+                    <label className="form-label">Call From</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={form.callFrom || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, callFrom: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  {/* 🔹 SCENARIO LEVEL 1 */}
+                  <div className="col-md-3">
+                    <label className="form-label">Scenario Level 1</label>
+                    <select
+                      className="form-select"
+                      value={scenario || ""}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        setScenario(selectedId);
+
+                        const obj = scenarioList.find(o => o.id == selectedId);
+                        setScenarioName(obj?.ecrName || "");
+                      }}
+                    >
+                      <option value="">Select</option>
+                      {scenarioList.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.ecrName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 🔹 SCENARIO LEVEL 2 */}
+                  {scenario1List.length > 0 && (
                     <div className="col-md-3">
-                      <label className="form-label">Call From</label>
-                      <input
-                        name="callFrom"
-                        className="form-control"
-                        value={form.callFrom}
-                        onChange={handleChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Scenario</label>
+                      <label className="form-label">Scenario Level 2</label>
                       <select
-                        name="scenario"
                         className="form-select"
+                        value={scenario1 || ""}
                         onChange={(e) => {
                           const selectedId = e.target.value;
+                          setScenario1(selectedId);
 
-                          const selectedObj = scenarioList.find(s => s.id == selectedId);
-                          const nameValue = selectedObj?.ecrName || "";
-
-                          setScenarioName(nameValue);
-
-                          // send NAME instead of ID
-                          handleChange({ target: { name: "scenario", value: nameValue } });
-
-                          // for scenario1 loading
-                          setScenario(selectedId);
+                          const obj = scenario1List.find(o => o.id == selectedId);
+                          setScenario1Name(obj?.ecrName || "");
                         }}
                       >
-                        <option value="">Select Scenario</option>
-                        {scenarioList.map(item => (
-                          <option key={item.id} value={item.id}>
-                            {item.ecrName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">Scenario 1</label>
-                        <select
-                          name="scenario1"
-                          className="form-select"
-                          onChange={(e) => {
-                            const selectedId = e.target.value;
-
-                            const selectedObj = scenario1List.find(s => s.id == selectedId);
-                            const nameValue = selectedObj?.ecrName || "";
-
-                            setScenario1Name(nameValue);
-
-                            // send NAME instead of ID
-                            handleChange({ target: { name: "scenario1", value: nameValue } });
-
-                            // if needed for further dropdown
-                            setScenario1(selectedId);
-                          }}
-                        >
-                        <option value="">Select Scenario 1</option>
+                        <option value="">Select</option>
                         {scenario1List.map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.ecrName}
@@ -457,113 +588,134 @@ useEffect(() => {
                         ))}
                       </select>
                     </div>
+                  )}
 
+                  {/* 🔹 SCENARIO LEVEL 3 */}
+                  {scenario2List.length > 0 && (
                     <div className="col-md-3">
-                      <label className="form-label">Name</label>
-                        <input
-                          name="Name"
-                          className="form-control"
-                          value={form.Name}
-                          onChange={handleChange}
-                        />
-                    </div>
+                      <label className="form-label">Scenario Level 3</label>
+                      <select
+                        className="form-select"
+                        value={scenario2 || ""}
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+                          setScenario2(selectedId);
 
+                          const obj = scenario2List.find(o => o.id == selectedId);
+                          setScenario2Name(obj?.ecrName || "");
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {scenario2List.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.ecrName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* 🔹 SCENARIO LEVEL 4 */}
+                  {scenario3List.length > 0 && (
                     <div className="col-md-3">
-                      <label className="form-label">Contact</label>
-                      <input
-                        name="Contact"
-                        className="form-control"
-                        value={form.Contact}
-                        onChange={handleChange}
-                      />
-                    </div>
+                      <label className="form-label">Scenario Level 4</label>
+                      <select
+                        className="form-select"
+                        value={scenario3 || ""}
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+                          setScenario3(selectedId);
 
+                          const obj = scenario3List.find(o => o.id == selectedId);
+                          setScenario3Name(obj?.ecrName || "");
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {scenario3List.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.ecrName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* 🔹 SCENARIO LEVEL 5 */}
+                  {scenario4List.length > 0 && (
                     <div className="col-md-3">
-                      <label className="form-label">City</label>
-                        <input
-                          name="City"
-                          className="form-control"
-                          value={form.City}
-                          onChange={handleChange}
-                        />
+                      <label className="form-label">Scenario Level 5</label>
+                      <select
+                        className="form-select"
+                        value={scenario4 || ""}
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+                          setScenario4(selectedId);
+
+                          const obj = scenario4List.find(o => o.id == selectedId);
+                          setScenario4Name(obj?.ecrName || "");
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {scenario4List.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.ecrName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+                  )}
 
-                    <div className="col-md-3">
-                      <label className="form-label">State</label>
-                        <input
-                          name="State"
-                          className="form-control"
-                          value={form.State}
-                          onChange={handleChange}
-                        />
-                    </div>
+                    {fields
+                      .sort((a, b) => a.fieldNumber - b.fieldNumber)
+                      .map((field) => (
+                        <div className="col-md-3" key={field.id}>
+                          <label className="form-label">{field.FieldName}</label>
 
-                    <div className="col-md-3">
-                      <label className="form-label">Pin Code</label>
-                      <input
-                        name="pincode"
-                        className="form-control"
-                        value={form.pincode}
-                        onChange={handleChange}
-                      />
-                    </div>
+                          {/* TextBox */}
+                          {field.FieldType === "TextBox" && (
+                            <input
+                              type="text"
+                              name={field.FieldName}
+                              className="form-control"
+                              value={form[field.FieldName] || ""}
+                              onChange={handleChange}
+                            />
+                          )}
 
-                    <div className="col-md-3">
-                      <label className="form-label">Product Name</label>
-                      <input
-                        name="productname"
-                        className="form-control"
-                        value={form.productname}
-                        onChange={handleChange}
-                      />
-                    </div>
+                          {/* TextArea */}
+                          {field.FieldType === "TextArea" && (
+                            <textarea
+                              name={field.FieldName}
+                              className="form-control"
+                              rows="1"
+                              value={form[field.FieldName] || ""}
+                              onChange={handleChange}
+                            ></textarea>
+                          )}
 
-                    <div className="col-md-3">
-                      <label className="form-label">Source Of Purchase</label>
-                      <input
-                        name="sourceofpurchase"
-                        className="form-control"
-                        value={form.sourceofpurchase}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">Select DOP</label>
-                      <input
-                        name="DOP"
-                        className="form-control"
-                        value={form.DOP}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-
-                    <div className="col-md-3">
-                      <label className="form-label">Remarks</label>
-                      <input
-                        name="Remarks"
-                        className="form-control"
-                        value={form.Remarks}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">Date Of Purchase</label>
-                      <input
-                        name="dateofpurchase"
-                        className="form-control"
-                        value={form.dateofpurchase}
-                        onChange={handleChange}
-                      />
-                    </div>
-
+                          {/* DropDown */}
+                          {field.FieldType === "DropDown" && (
+                            <select
+                              name={field.FieldName}
+                              className="form-select"
+                              value={form[field.FieldName] || ""}
+                              onChange={handleChange}
+                            >
+                              <option value="">Select</option>
+                              {field.values.map((v) => (
+                                <option key={v.id} value={v.Value}>
+                                  {v.Value}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      ))}
                     <div className="col-12">
                       <button
                         type="button"
                         className="btn btn-primary"
-                        onClick={submitTaggingForm}
+                        onClick={handleSubmit}
                       >
                         SUBMIT
                       </button>
@@ -572,6 +724,37 @@ useEffect(() => {
               </div>
             </div>
           </div>
+
+          {/* RIGHT SIDE — API Response */}
+          <div className="col-md-4">
+            <div className="card mb-4" style={{ height: "650px", overflowY: "auto" }}>
+
+              <div className="card-body">
+
+                {/* Display API Data */}
+                {apiData && apiData.length > 0 ? (
+                  apiData.map((item) => (
+                    <div className="mb-3 p-2 border rounded" key={item.id}>
+                      <h6 className="fw-bold">{item.category}</h6>
+                      {/* <p className="mb-1"><strong>Type:</strong> {item.type}</p>
+                      <p className="mb-1"><strong>Subtypes:</strong> {item.subtype} / {item.subtype1} / {item.subtype2}</p> */}
+
+                      {/* Show HTML safely */}
+                      <div
+                        className="mt-2"
+                        dangerouslySetInnerHTML={{ __html: item.resolution }}
+                      ></div>
+                    </div>
+                  ))
+                ) : (
+                  <p> </p>
+                )}
+
+              </div>
+            </div>
+          </div>
+        </div>
+        </div>
 
           {/* — History — */}
           <div className="tab-pane fade" id="pane-history" role="tabpanel">
@@ -585,64 +768,34 @@ useEffect(() => {
                   <table className="table table-hover mb-0">
                     <thead className="table-light">
                       <tr>
-                        {[
-                          "In Call ID",
-                          "Call From",
-                          "Scenarios",
-                          "Sub Scenarios",
-                          "Name",
-                          "Contact",
-                          "City",
-                          "State",
-                          "Pin Code",
-                          "Product Name",
-                          "Source of Purchase",
-                          "DOP",
-                          "Remarks",
-                          "Date of Purchase",
-                          "Call Action",
-                          "Call Sub Action",
-                          "Calling Date"
-                        ].map((h) => (
-                          <th key={h}>{h}</th>
-                        ))}
+                        {historyData.length > 0 &&
+                          Object.keys(historyData[0]).map((key) => (
+                            <th key={key}>{key}</th>
+                          ))}
                       </tr>
                     </thead>
 
                     <tbody>
                       {loadingHistory ? (
                         <tr>
-                          <td colSpan="17" className="text-center p-3">Loading...</td>
+                          <td colSpan="50" className="text-center p-3">Loading...</td>
                         </tr>
                       ) : historyData.length === 0 ? (
                         <tr>
-                          <td colSpan="17" className="text-center p-3">No data available in table</td>
+                          <td colSpan="50" className="text-center p-3">
+                            No data available in table
+                          </td>
                         </tr>
                       ) : (
                         currentRows.map((row, idx) => (
                           <tr key={idx}>
-                            <td>{row["In Call ID"]}</td>
-                            <td>{row["Call From"]}</td>
-                            <td>{row["Scenarios"]}</td>
-                            <td>{row["Sub Scenarios"]}</td>
-                            <td>{row["Name"]}</td>
-                            <td>{row["Contact"]}</td>
-                            <td>{row["City"]}</td>
-                            <td>{row["State"]}</td>
-                            <td>{row["Pin Code"]}</td>
-                            <td>{row["Product Name"]}</td>
-                            <td>{row["Source of Purchase"]}</td>
-                            <td>{row["DOP"]}</td>
-                            <td>{row["Remarks"]}</td>
-                            <td>{row["Date of Purchase"]}</td>
-                            <td>{row["Call Action"]}</td>
-                            <td>{row["Call Sub Action"]}</td>
-                            <td>{row["Calling Date"] ? row["Calling Date"].split("T")[0] : ""}</td>
+                            {Object.keys(historyData[0]).map((key) => (
+                              <td key={key}>{row[key] || ""}</td>
+                            ))}
                           </tr>
                         ))
                       )}
                     </tbody>
-
                   </table>
                   {/* Pagination */}
                   {historyData.length > 0 && (
@@ -685,73 +838,56 @@ useEffect(() => {
               <div className="card-body">
                 <div className="row g-4 align-items-end">
                     <div className="col-md-3">
-                      <label className="form-label">IN CALL ID</label>
-                      <input
-                        name="inCallId"
-                        className="form-control"
-                        value={form.inCallId}
-                        onChange={handleChange}
-                      />
-                    </div>
+                    <label className="form-label">Call From</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={form.callFrom || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, callFrom: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  {/* 🔹 SCENARIO LEVEL 1 */}
+                  <div className="col-md-3">
+                    <label className="form-label">Scenario Level 1</label>
+                    <select
+                      className="form-select"
+                      value={scenario || ""}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        setScenario(selectedId);
+
+                        const obj = scenarioList.find(o => o.id == selectedId);
+                        setScenarioName(obj?.ecrName || "");
+                      }}
+                    >
+                      <option value="">Select</option>
+                      {scenarioList.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.ecrName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* 🔹 SCENARIO LEVEL 2 */}
+                  {scenario1List.length > 0 && (
                     <div className="col-md-3">
-                      <label className="form-label">Call From</label>
-                      <input
-                        name="callFrom"
-                        className="form-control"
-                        value={form.callFrom}
-                        onChange={handleChange}
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label d-block">Call Date</label>
-                      <DatePicker
-                        selected={form.startDate}
-                        onChange={(date) => setForm({ ...form, startDate: date })}
-                        className="form-control"
-                        placeholderText="Call Date"
-                        dateFormat="dd-MM-yyyy"
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label">Scenario</label>
+                      <label className="form-label">Scenario Level 2</label>
                       <select
-                        name="scenario"
                         className="form-select"
-                        onChange={(e) => {
-                          const selectedId = e.target.value;
-                          setScenario(selectedId);
-
-                          const selectedObj = scenarioList.find(s => s.id == selectedId);
-                          setScenarioName(selectedObj?.ecrName || "");
-
-                          handleChange(e);
-                        }}
-                      >
-                        <option value="">Select Scenario</option>
-                        {scenarioList.map(item => (
-                          <option key={item.id} value={item.id}>
-                            {item.ecrName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">Scenario 1</label>
-                      <select
-                        name="scenario1"
-                        className="form-select"
+                        value={scenario1 || ""}
                         onChange={(e) => {
                           const selectedId = e.target.value;
                           setScenario1(selectedId);
 
-                          const selectedObj = scenario1List.find(s => s.id == selectedId);
-                          setScenario1Name(selectedObj?.ecrName || "");
-
-                          handleChange(e);
+                          const obj = scenario1List.find(o => o.id == selectedId);
+                          setScenario1Name(obj?.ecrName || "");
                         }}
                       >
-                        <option value="">Select Scenario 1</option>
+                        <option value="">Select</option>
                         {scenario1List.map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.ecrName}
@@ -759,112 +895,134 @@ useEffect(() => {
                         ))}
                       </select>
                     </div>
+                  )}
 
+                  {/* 🔹 SCENARIO LEVEL 3 */}
+                  {scenario2List.length > 0 && (
                     <div className="col-md-3">
-                      <label className="form-label">Name</label>
-                      <input
-                        name="Name"
-                        className="form-control"
-                        value={form.Name}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">Contact</label>
-                      <input
-                        name="Contact"
-                        className="form-control"
-                        value={form.Contact}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">City</label>
-                      <input
-                        name="City"
-                        className="form-control"
-                        value={form.City}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">State</label>
-                      <input
-                        name="State"
-                        className="form-control"
-                        value={form.State}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">Pin Code</label>
-                      <input
-                        name="pincode"
-                        className="form-control"
-                        value={form.pincode}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">Product Name</label>
-                      <input
-                        name="productname"
-                        className="form-control"
-                        value={form.productname}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">Source of Purchase</label>
-                      <input
-                        name="sourceofpurchase"
-                        className="form-control"
-                        value={form.sourceofpurchase}
-                        onChange={handleChange}
-                      />
-                    </div>
-
-                    <div className="col-md-3">
-                      <label className="form-label">Select DOP</label>
+                      <label className="form-label">Scenario Level 3</label>
                       <select
-                        name="DOP"
                         className="form-select"
-                        value={form.DOP}
-                        onChange={handleChange}
+                        value={scenario2 || ""}
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+                          setScenario2(selectedId);
+
+                          const obj = scenario2List.find(o => o.id == selectedId);
+                          setScenario2Name(obj?.ecrName || "");
+                        }}
                       >
+                        <option value="">Select</option>
+                        {scenario2List.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.ecrName}
+                          </option>
+                        ))}
                       </select>
                     </div>
+                  )}
 
+                  {/* 🔹 SCENARIO LEVEL 4 */}
+                  {scenario3List.length > 0 && (
                     <div className="col-md-3">
-                      <label className="form-label">Remarks</label>
-                      <input
-                        name="Remarks"
-                        className="form-control"
-                        value={form.Remarks}
-                        onChange={handleChange}
-                      />
-                    </div>
+                      <label className="form-label">Scenario Level 4</label>
+                      <select
+                        className="form-select"
+                        value={scenario3 || ""}
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+                          setScenario3(selectedId);
 
-                    <div className="col-md-3">
-                      <label className="form-label">Date of Purchase</label>
-                      <input
-                        name="dateofpurchase"
-                        className="form-control"
-                        value={form.dateofpurchase}
-                        onChange={handleChange}
-                      />
+                          const obj = scenario3List.find(o => o.id == selectedId);
+                          setScenario3Name(obj?.ecrName || "");
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {scenario3List.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.ecrName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
+                  )}
+
+                  {/* 🔹 SCENARIO LEVEL 5 */}
+                  {scenario4List.length > 0 && (
+                    <div className="col-md-3">
+                      <label className="form-label">Scenario Level 5</label>
+                      <select
+                        className="form-select"
+                        value={scenario4 || ""}
+                        onChange={(e) => {
+                          const selectedId = e.target.value;
+                          setScenario4(selectedId);
+
+                          const obj = scenario4List.find(o => o.id == selectedId);
+                          setScenario4Name(obj?.ecrName || "");
+                        }}
+                      >
+                        <option value="">Select</option>
+                        {scenario4List.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.ecrName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                    {fields
+                      .sort((a, b) => a.fieldNumber - b.fieldNumber)
+                      .map((field) => (
+                        <div className="col-md-3" key={field.id}>
+                          <label className="form-label">{field.FieldName}</label>
+
+                          {/* TextBox */}
+                          {field.FieldType === "TextBox" && (
+                            <input
+                              type="text"
+                              name={field.FieldName}
+                              className="form-control"
+                              value={form[field.FieldName] || ""}
+                              onChange={handleChange}
+                            />
+                          )}
+
+                          {/* TextArea */}
+                          {field.FieldType === "TextArea" && (
+                            <textarea
+                              name={field.FieldName}
+                              className="form-control"
+                              rows="1"
+                              value={form[field.FieldName] || ""}
+                              onChange={handleChange}
+                            ></textarea>
+                          )}
+
+                          {/* DropDown */}
+                          {field.FieldType === "DropDown" && (
+                            <select
+                              name={field.FieldName}
+                              className="form-select"
+                              value={form[field.FieldName] || ""}
+                              onChange={handleChange}
+                            >
+                              <option value="">Select</option>
+                              {field.values.map((v) => (
+                                <option key={v.id} value={v.Value}>
+                                  {v.Value}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      ))}
                   <div className="d-flex justify-content-center mt-3">
                     <button
                       className="btn btn-primary"
                       onClick={handleSearch}
-                      disabled={isFormEmpty()}
+                      // disabled={isFormEmpty()}
                     >
                       Search
                     </button>
@@ -882,66 +1040,45 @@ useEffect(() => {
                   <table className="table table-hover mb-0">
                     <thead className="table-light">
                       <tr>
-                        {[
-                          
-                          "In Call ID",
-                          "Call From",
-                          "Calling Date",
-                          "Scenarios",
-                          "Sub Scenarios",
-                          "Name",
-                          "Contact",
-                          "City",
-                          "State",
-                          "Pin Code",
-                          "Product Name",
-                          "Source of Purchase",
-                          "DOP",
-                          "Remarks",
-                          "Date of Purchase"
-                          
-                        ].map(h=> <th key={h}>{h}</th> )}
+                        {searchResults.length > 0 &&
+                          Object.keys(searchResults[0]).map((col) => (
+                            <th key={col}>{col}</th>
+                          ))}
                       </tr>
                     </thead>
+
                     <tbody>
                       {loadingSearch ? (
                         <tr>
-                          <td colSpan="17" className="text-center p-3">Searching...</td>
+                          <td colSpan="100" className="text-center p-3">
+                            Searching...
+                          </td>
                         </tr>
                       ) : searchResults.length === 0 ? (
                         <tr>
-                          <td colSpan="17" className="text-center p-3">No data available in table</td>
+                          <td colSpan="100" className="text-center p-3">
+                            No data available in table
+                          </td>
                         </tr>
                       ) : (
                         paginatedSearchResults.map((row, idx) => (
                           <tr key={idx}>
-                            <td>{row["In Call ID"]}</td>
-                            <td>{row["Call From"]}</td>
-                            <td>
-                              {row["Calling Date"]
-                                ? new Date(row["Calling Date"]).toLocaleString("en-IN", {
-                                    year: "numeric",
-                                    month: "2-digit",
-                                    day: "2-digit",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    second: "2-digit",
-                                    hour12: false,
-                                  })
-                                : ""}
-                            </td>
-                            <td>{row["Scenarios"]}</td>
-                            <td>{row["Sub Scenarios"]}</td>
-                            <td>{row["Name"]}</td>
-                            <td>{row["Contact"]}</td>
-                            <td>{row["City"]}</td>
-                            <td>{row["State"]}</td>
-                            <td>{row["Pin Code"]}</td>
-                            <td>{row["Product Name"]}</td>
-                            <td>{row["Source of Purchase"]}</td>
-                            <td>{row["DOP"]}</td>
-                            <td>{row["Remarks"]}</td>
-                            <td>{row["Date of Purchase"]}</td>
+                            {Object.keys(searchResults[0]).map((col) => (
+                              <td key={col}>
+                                {/* Special formatting for Calling Date */}
+                                {col === "Calling Date" && row[col]
+                                  ? new Date(row[col]).toLocaleString("en-IN", {
+                                      year: "numeric",
+                                      month: "2-digit",
+                                      day: "2-digit",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                      second: "2-digit",
+                                      hour12: false,
+                                    })
+                                  : row[col] || ""}
+                              </td>
+                            ))}
                           </tr>
                         ))
                       )}

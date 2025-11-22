@@ -113,6 +113,7 @@ import OutCallReportAutomation from "./pages/OutCallReportAutomation";
 import ScenarioReportAutomation from "./pages/ScenarioReportAutomation";
 import ManageOutCallCloseField from "./pages/ManageOutCallCloseField";
 import ManageOutCallRequiredFilled from "./pages/ManageOutCallRequiredFilled";
+import ExposureView from "./pages/exposure_view";
 
 
 function App() {
@@ -328,6 +329,7 @@ function App() {
               <Route path="/ScenarioReportAutomation" element={<ScenarioReportAutomation />} />
               <Route path="/ObcloseFields" element={<ManageOutCallCloseField />} />
               <Route path="/ObclientFields" element={<ManageOutCallRequiredFilled />} />
+              <Route path="/exposure_view" element={<ExposureView />} />
               
           </Route>
       </Route>
