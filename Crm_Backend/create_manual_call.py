@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body,Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import date
@@ -10,25 +10,227 @@ from datetime import datetime
 
 
 
-class CallCreate(BaseModel):
-    client_id: int
-    msisdn: Optional[int] = None
-    category1: Optional[str] = None
-    category2: Optional[str] = None
-    field1: Optional[str] = None
-    field2: Optional[str] = None
-    field3: Optional[str] = None
-    field4: Optional[str] = None
-    field5: Optional[str] = None
-    field6: Optional[str] = None
-    field7: Optional[str] = None
-    field8: Optional[str] = None
-    field9: Optional[str] = None
-    field10: Optional[str] = None
-    call_type: Optional[str] = "Inbound"   # default
+# class CallCreate(BaseModel):
+#     client_id: int
+#     msisdn: Optional[int] = None
+#     category1: Optional[str] = None
+#     category2: Optional[str] = None
+#     field1: Optional[str] = None
+#     field2: Optional[str] = None
+#     field3: Optional[str] = None
+#     field4: Optional[str] = None
+#     field5: Optional[str] = None
+#     field6: Optional[str] = None
+#     field7: Optional[str] = None
+#     field8: Optional[str] = None
+#     field9: Optional[str] = None
+#     field10: Optional[str] = None
+#     call_type: Optional[str] = "Inbound"   # default
 
 
 router = APIRouter()
+
+
+
+def get_dynamic_fields(db, client_id):
+    query = text("""
+        SELECT fieldNumber, FieldName
+        FROM field_master
+        WHERE ClientId = :client_id AND (FieldStatus IS NULL)
+        ORDER BY fieldNumber
+    """)
+    rows = db.execute(query, {"client_id": client_id}).fetchall()
+    return [dict(r._mapping) for r in rows]
+
+
+def get_dynamic_categories(db, client_id):
+    query = text("""
+        SELECT Label 
+        FROM ecr_master
+        WHERE Client = :client_id
+        GROUP BY Label
+        ORDER BY Label
+    """)
+    rows = db.execute(query, {"client_id": client_id}).fetchall()
+    return [row[0] for row in rows]      # example → [1,2,3,4,5]
+
+
+def build_dynamic_query(dynamic_fields, dynamic_categories):
+    select_parts = [
+        "SrNo AS `In Call ID`",
+        "MSISDN AS `Call From`",
+        "CallDate AS `Calling Date`"
+    ]
+
+    # Add Category1, Category2, Category3… dynamically
+    for label in dynamic_categories:
+        select_parts.append(f"Category{label} AS `Scenario Level {label}`")
+
+    # Add Field1, Field2, Field3… dynamically
+    for f in dynamic_fields:
+        select_parts.append(f"Field{f['fieldNumber']} AS `{f['FieldName']}`")
+
+    return ",\n                ".join(select_parts)
+
+
+
+
+@router.get("/fields")
+def get_fields(client_id: int, db: Session = Depends(get_db4)):
+    try:
+        query = text("""
+            SELECT 
+                fm.id,
+                fm.fieldNumber,
+                fm.FieldName,
+                fm.FieldType,
+                fmv.id AS value_id,
+                fmv.FieldValueName AS value_text
+            FROM field_master fm
+            LEFT JOIN field_master_value fmv
+                ON fm.id = fmv.FieldId
+            WHERE fm.ClientId = :client_id
+              AND (fm.FieldStatus IS NULL)
+            ORDER BY fm.fieldNumber, fmv.id
+        """)
+
+        rows = db.execute(query, {"client_id": client_id}).fetchall()
+
+        # Group fields
+        field_map = {}
+
+        for row in rows:
+            fid = row.id
+
+            if fid not in field_map:
+                field_map[fid] = {
+                    "id": row.id,
+                    "fieldNumber": row.fieldNumber,
+                    "FieldName": row.FieldName,
+                    "FieldType": row.FieldType,
+                    "values": []  # Only used if dropdown
+                }
+
+            # If FieldType = DropDown, append dropdown values
+            if row.FieldType == "DropDown" and row.value_id is not None:
+                field_map[fid]["values"].append({
+                    "id": row.value_id,
+                    "Value": row.value_text
+                })
+
+        # Convert dict to list
+        fields = list(field_map.values())
+
+        return fields
+
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+
+
+@router.post("/call-create")
+def create_call(
+    client_id: int = Query(...),
+    data: dict = Body(...),
+    db: Session = Depends(get_db4)
+):
+    try:
+        # 1️⃣ Fetch dynamic fields
+        field_query = text("""
+            SELECT fieldNumber 
+            FROM field_master 
+            WHERE ClientId = :client_id
+              AND (FieldStatus IS NULL)
+            ORDER BY fieldNumber
+        """)
+        field_rows = db.execute(field_query, {"client_id": client_id}).fetchall()
+        dynamic_fields = [row.fieldNumber for row in field_rows]
+
+        # 2️⃣ Prepare dynamic field params
+        field_params = {}
+        max_fields = max(dynamic_fields) if dynamic_fields else 0
+
+        for num in range(1, max_fields + 1):
+            key = f"Field{num}"
+            field_params[key] = data.get("fields", {}).get(str(num), None)
+
+        # 3️⃣ Auto SrNo
+        srno_query = text("""
+            SELECT COALESCE(MAX(SrNo), 0) AS last_srno,
+                   COALESCE(MAX(SrNo2), 0) AS last_srno2
+            FROM call_master
+            WHERE ClientId = :client_id
+        """)
+        result = db.execute(srno_query, {"client_id": client_id}).fetchone()
+        next_srno = result.last_srno + 1
+        next_srno2 = result.last_srno2 + 1
+
+        # 4️⃣ Build dynamic SQL
+        field_cols = ", ".join(field_params.keys())
+        field_vals = ", ".join([f":{k}" for k in field_params.keys()])
+
+        insert_sql = f"""
+            INSERT INTO call_master (
+                SrNo,
+                SrNo2,
+                ClientId,
+                MSISDN,
+                Category1,
+                Category2,
+                Category3,
+                Category4,
+                Category5,
+                CallType,
+                CallDate,
+                {field_cols}
+            ) VALUES (
+                :SrNo,
+                :SrNo2,
+                :ClientId,
+                :MSISDN,
+                :Category1,
+                :Category2,
+                :Category3,
+                :Category4,
+                :Category5,
+                :CallType,
+                :CallDate,
+                {field_vals}
+            )
+        """
+
+        params = {
+            "SrNo": next_srno,
+            "SrNo2": next_srno2,
+            "ClientId": client_id,
+            "MSISDN": data.get("msisdn"),
+            "Category1": data.get("category1"),
+            "Category2": data.get("category2"),
+            "Category3": data.get("category3"),
+            "Category4": data.get("category4"),
+            "Category5": data.get("category5"), 
+            "CallType": data.get("call_type"),
+            "CallDate": datetime.now(),
+            **field_params
+        }
+
+        db.execute(text(insert_sql), params)
+        db.commit()
+
+        return {"status": "success", "SrNo": next_srno}
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+
+
+
+
+
 
 @router.get("/create_manual_call")
 def get_manual_call_details(
@@ -37,27 +239,19 @@ def get_manual_call_details(
     enddate: date = Query(...),
     db: Session = Depends(get_db4)
 ):
-    
+
     try:
-        query = text("""
+        # 1️⃣ Load dynamic metadata
+        dynamic_fields = get_dynamic_fields(db, client_id)
+        dynamic_categories = get_dynamic_categories(db, client_id)
+
+        # 2️⃣ Build dynamic select columns
+        select_columns = build_dynamic_query(dynamic_fields, dynamic_categories)
+
+        # 3️⃣ Create final dynamic query
+        query = text(f"""
             SELECT 
-                MSISDN AS `Call From`,
-                SrNo AS `In Call ID`,
-                Category1 AS `Scenarios`,
-                Category2 AS `Sub Scenarios`,
-                Field1 AS `Name`,
-                Field2 AS `Contact`,
-                Field3 AS `City`,
-                Field4 AS `State`,
-                Field5 AS `Pin Code`,
-                Field6 AS `Product Name`,
-                Field7 AS `Source of Purchase`,
-                Field8 AS `DOP`,
-                Field9 AS `Remarks`,
-                Field10 AS `Date of Purchase`,
-                CallDate AS `Calling Date`,
-                CloseLoopCate1 AS `Call Action`,
-                CloseLoopCate2 AS `Call Sub Action`                
+                {select_columns}
             FROM call_master
             WHERE ClientID = :ClientId
               AND DATE(CallDate) BETWEEN :startdate AND :enddate
@@ -70,10 +264,10 @@ def get_manual_call_details(
             "enddate": enddate
         }).fetchall()
 
-        # Convert SQLAlchemy Row objects → Python dict
+        # Convert SQLAlchemy Row → dict
         data = [dict(row._mapping) for row in result]
 
-        return  data
+        return data
 
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -81,108 +275,85 @@ def get_manual_call_details(
 
 
 
+
+
 @router.get("/search_manual_call")
 def search_manual_call(
+    request: Request,
     client_id: int = Query(...),
-    in_call_id: str | None = None,
-    call_from: str | None = None,
-    scenario: str | None = None,
-    sub_scenario1: str | None = None,
-    name: str | None = None,
-    contact: str | None = None,
-    city: str | None = None,
-    state: str | None = None,
-    pincode: str | None = None,
-    product_name: str | None = None,
-    source_of_purchase: str | None = None,
-    remarks: str | None = None,
-    date_of_purchase: str | None = None,
-    call_date: date | None = None,
     db: Session = Depends(get_db4)
 ):
     try:
-        base_query = """
-            SELECT 
-                MSISDN AS `Call From`,
-                SrNo AS `In Call ID`,
-                Category1 AS `Scenarios`,
-                Category2 AS `Sub Scenarios`,
-                Field1 AS `Name`,
-                Field2 AS `Contact`,
-                Field3 AS `City`,
-                Field4 AS `State`,
-                Field5 AS `Pin Code`,
-                Field6 AS `Product Name`,
-                Field7 AS `Source of Purchase`,
-                Field8 AS `DOP`,
-                Field9 AS `Remarks`,
-                Field10 AS `Date of Purchase`,
-                CallDate AS `Calling Date`
+        # 1️⃣ Extract all query params except client_id
+        raw_params = dict(request.query_params)
+        raw_params.pop("client_id", None)
+
+        # 2️⃣ Get dynamic field mapping
+        rows = db.execute(text("""
+            SELECT fieldNumber, fieldName
+            FROM field_master
+            WHERE ClientId = :client_id
+        """), {"client_id": client_id}).fetchall()
+
+        field_map = {row.fieldName: f"Field{row.fieldNumber}" for row in rows}
+
+        # 3️⃣ SELECT fields dynamically
+        select_parts = [
+            "MSISDN AS `Call From`",
+            "SrNo AS `In Call ID`",
+            "Category1 AS `Scenarios`",
+            "Category2 AS `Sub Scenarios1`",
+            "Category3 AS `Sub Scenarios2`",
+            "Category4 AS `Sub Scenarios3`",
+            "Category5 AS `Sub Scenarios4`",
+            "CallDate AS `Calling Date`"
+        ]
+
+        for label, dbcol in field_map.items():
+            select_parts.append(f"{dbcol} AS `{label}`")
+
+        select_query = ", ".join(select_parts)
+
+        # 4️⃣ Base query
+        sql = f"""
+            SELECT {select_query}
             FROM call_master
             WHERE ClientID = :client_id
         """
 
         params = {"client_id": client_id}
 
-        if in_call_id:
-            base_query += " AND SrNo = :in_call_id"
-            params["in_call_id"] = in_call_id
+        # 5️⃣ Static filters
+        static_map = {
+            "in_call_id": "SrNo",
+            "call_from": "MSISDN",
+            "scenario": "Category1",
+            "sub_scenario1": "Category2",
+            "sub_scenario2": "Category3",
+            "sub_scenario3": "Category4",
+            "sub_scenario4": "Category5",
+            "call_date": "DATE(CallDate)",
+        }
 
-        if call_from:
-            base_query += " AND MSISDN = :call_from"
-            params["call_from"] = call_from
+        for key, val in raw_params.items():
+            if not val:
+                continue
 
-        if scenario:
-            base_query += " AND Category1 = :scenario"
-            params["scenario"] = scenario
+            # static filters
+            if key in static_map:
+                sql += f" AND {static_map[key]} = :{key}"
+                params[key] = val
+                continue
 
-        if sub_scenario1:
-            base_query += " AND Category2 = :sub_scenario1"
-            params["sub_scenario1"] = sub_scenario1
+            # dynamic field filters
+            if key in field_map:
+                sql += f" AND {field_map[key]} LIKE :{key}"
+                params[key] = f"%{val}%"
 
-        if name:
-            base_query += " AND Field1 = :name"
-            params["name"] = name
+        sql += " ORDER BY SrNo ASC"
 
-        if contact:
-            base_query += " AND Field2 = :contact"
-            params["contact"] = contact
-
-        if city:
-            base_query += " AND Field3 = :city"
-            params["city"] = city
-
-        if state:
-            base_query += " AND Field4 = :state"
-            params["state"] = state
-
-        if pincode:
-            base_query += " AND Field5 = :pincode"
-            params["pincode"] = pincode
-
-        if product_name:
-            base_query += " AND Field6 = :product_name"
-            params["product_name"] = product_name
-
-        if source_of_purchase:
-            base_query += " AND Field7 = :source_of_purchase"
-            params["source_of_purchase"] = source_of_purchase
-
-        if remarks:
-            base_query += " AND Field9 LIKE :remarks"
-            params["remarks"] = f"%{remarks}%"
-
-        if date_of_purchase:
-            base_query += " AND Field10 = :date_of_purchase"
-            params["date_of_purchase"] = date_of_purchase
-
-        if call_date:
-            base_query += " AND DATE(CallDate) = :call_date"
-            params["call_date"] = call_date
-
-        base_query += " ORDER BY SrNo ASC"
-
-        result = db.execute(text(base_query), params).fetchall()
+        # Execute
+        result = db.execute(text(sql), params).fetchall()
         data = [dict(r._mapping) for r in result]
 
         return {"count": len(data), "data": data}
@@ -195,73 +366,218 @@ def search_manual_call(
 
 
 
-
-@router.post("/call-create")
-def create_call(data: CallCreate, db: Session = Depends(get_db4)):
+@router.put("/call/call-master/{client_id}/{record_id}")
+def update_call(
+    client_id: int,
+    record_id: int,
+    data: dict = Body(...),
+    db: Session = Depends(get_db4)
+):
     try:
-        query = text("""
-            INSERT INTO call_master_auto (
-                ClientId,
-                MSISDN,
-                Category1,
-                Category2,
-                Field1,
-                Field2,
-                Field3,
-                Field4,
-                Field5,
-                Field6,
-                Field7,
-                Field8,
-                Field9,
-                Field10,
-                CallDate,
-                CallType
-            )
-            VALUES (
-                :ClientId,
-                :MSISDN,
-                :Category1,
-                :Category2,
-                :Field1,
-                :Field2,
-                :Field3,
-                :Field4,
-                :Field5,
-                :Field6,
-                :Field7,
-                :Field8,
-                :Field9,
-                :Field10,
-                :CallDate,
-                :CallType
-            )
+        # 1️⃣ Fetch dynamic fields for this client
+        field_query = text("""
+            SELECT fieldNumber 
+            FROM field_master 
+            WHERE ClientId = :client_id
+              AND (FieldStatus IS NULL)
+            ORDER BY fieldNumber
         """)
+        field_rows = db.execute(field_query, {"client_id": client_id}).fetchall()
+        dynamic_fields = [row.fieldNumber for row in field_rows]
+
+        # 2️⃣ Build dynamic field params (Field1, Field2...)
+        field_params = {}
+        for num in dynamic_fields:
+            key = f"Field{num}"    # Field1, Field2...
+            field_params[key] = data.get(key)  # 👈 FIXED
+
+        # 3️⃣ Build update SET clause
+        update_fields = []
+
+        # Category fields
+        category_map = {
+            "Category1": data.get("Category1"),
+            "Category2": data.get("Category2"),
+            "Category3": data.get("Category3"),
+            "Category4": data.get("Category4"),
+            "Category5": data.get("Category5"),
+        }
+        for key, val in category_map.items():
+            if val is not None:
+                update_fields.append(f"{key} = :{key}")
+
+        # CallType
+        if data.get("CallType") is not None:
+            update_fields.append("CallType = :CallType")
+
+        # Dynamic fields
+        for key in field_params.keys():
+            update_fields.append(f"{key} = :{key}")
+
+        if not update_fields:
+            raise HTTPException(400, "No valid fields provided for update.")
+
+        update_sql = f"""
+            UPDATE call_master
+            SET {", ".join(update_fields)}
+            WHERE ClientId = :client_id AND SrNo = :record_id
+        """
 
         params = {
-            "ClientId": data.client_id,
-            "MSISDN": data.msisdn,
-            "Category1": data.category1,
-            "Category2": data.category2,
-            "Field1": data.field1,
-            "Field2": data.field2,
-            "Field3": data.field3,
-            "Field4": data.field4,
-            "Field5": data.field5,
-            "Field6": data.field6,
-            "Field7": data.field7,
-            "Field8": data.field8,
-            "Field9": data.field9,
-            "Field10": data.field10,
-            "CallDate": datetime.now(),
-            "CallType": data.call_type,
+            "client_id": client_id,
+            "record_id": record_id,
+            **category_map,
+            "CallType": data.get("CallType"),
+            **field_params
         }
 
-        db.execute(query, params)
+        print("⚡ FINAL PARAMS SENT TO DB:", params)
+
+        db.execute(text(update_sql), params)
         db.commit()
 
-        return {"status": "success", "message": "Call inserted successfully"}
+        return {"status": "success", "updated_id": record_id}
 
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
+
+
+
+
+
+
+@router.get("/close-looping/sub-actions")
+def get_close_loop_sub_actions(
+    action: str = Query(..., description="Value of CloseLoopCate1 (Open/Closed/etc.)"),
+    client_id: int = Query(...),
+    db: Session = Depends(get_db4)
+):
+    """
+    Fetch all CloseLoopCate2 values where CloseLoopCate1 matches the selected CALL ACTION.
+    """
+    try:
+        query = text("""
+            SELECT DISTINCT CloseLoopCate2
+            FROM call_master
+            WHERE ClientId = :client_id
+              AND CloseLoopCate1 = :cate1
+              AND CloseLoopCate2 IS NOT NULL
+              AND TRIM(CloseLoopCate2) <> ''
+            ORDER BY CloseLoopCate2
+        """)
+
+        result = db.execute(query, {
+            "client_id": client_id,
+            "cate1": action
+        })
+
+        rows = [row[0] for row in result.fetchall()]
+
+        return rows  # return plain list like ["Resolved", "Follow Up", etc.]
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+
+
+
+
+
+
+@router.put("/close-looping")
+def close_looping(
+    client_id: int = Query(...),
+    callId: int = Query(...),
+    payload: dict = Body(...),
+    db: Session = Depends(get_db4)
+):
+    try:
+        close_action = payload.get("CloseLoopCate1")
+        close_sub_action = payload.get("CloseLoopCate2")
+        remarks = payload.get("closelooping_remarks")
+        follow_up_date  = payload.get("FollowupDate")
+
+        update_query = text("""
+            UPDATE call_master
+            SET 
+                CloseLoopCate1 = :cate1,
+                CloseLoopCate2 = :cate2,
+                closelooping_remarks = :remark,
+                FollowupDate = :follow_up_date,
+                CloseLoopingDate = NOW()
+            WHERE ClientId = :client_id
+              AND SrNo = :call_id
+        """)
+
+        result = db.execute(update_query, {
+            "client_id": client_id,
+            "call_id": callId,
+            "cate1": close_action,
+            "cate2": close_sub_action,
+            "remark": remarks,
+            "follow_up_date": follow_up_date
+        })
+
+        db.commit()
+
+        if result.rowcount == 0:
+            return {"status": "error", "message": "Record not found"}
+
+        return {"status": "success", "message": "Call closed successfully"}
+
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "message": str(e)}
+
+
+
+
+@router.get("/call-flow")
+def get_call_flow(
+    client_id: int = Query(...),
+    category: str = Query(None),
+    type: str = Query(None),
+    subtype: str = Query(None),
+    subtype1: str = Query(None),
+    subtype2: str = Query(None),
+    db: Session = Depends(get_db4)
+):
+    try:
+        query = """
+            SELECT id, client_id, category, `type`, subtype, subtype1, subtype2, resolution
+            FROM call_flow
+            WHERE client_id = :client_id
+        """
+
+        params = {"client_id": client_id}
+
+        if category:
+            query += " AND category = :category"
+            params["category"] = category
+
+        if type:
+            query += " AND `type` = :type"
+            params["type"] = type
+
+        if subtype:
+            query += " AND subtype = :subtype"
+            params["subtype"] = subtype
+
+        if subtype1:
+            query += " AND subtype1 = :subtype1"
+            params["subtype1"] = subtype1
+
+        if subtype2:
+            query += " AND subtype2 = :subtype2"
+            params["subtype2"] = subtype2
+
+        result = db.execute(text(query), params).fetchall()
+
+        # FIXED: Convert rows to dictionaries properly
+        return [dict(row._mapping) for row in result]
+
+    except Exception as e:
+        return {"error": str(e)}

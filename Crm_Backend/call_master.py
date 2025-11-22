@@ -32,6 +32,8 @@ def get_call_master_data(
     client_id: int,
     from_date: Optional[str] = Query(None),
     to_date: Optional[str] = Query(None),
+    call_id: Optional[int] = Query(None),
+    in_call_action: Optional[str] = Query(None),
     Category1: Optional[str] = Query(None),
     Category2: Optional[str] = Query(None),
     Category3: Optional[str] = Query(None),
@@ -57,18 +59,24 @@ def get_call_master_data(
         # Build column list
         field_map = {f["fieldNumber"]: f["FieldName"] for f in field_meta}
         columns = [f"field{fnum}" for fnum in field_map]
-        columns += ["CallDate", "Category1", "Category2", "Category3", "Category4", "Category5"]
+        columns += ["SrNo","CallDate","MSISDN","tat","duedate","callcreated","CloseLoopingDate","CloseLoopCate1","CloseLoopCate2", "Category1", "Category2", "Category3", "Category4", "Category5","closelooping_remarks","FollowupDate","CaseCloseBy"]
 
         # Step 2: WHERE clause setup
         where_clauses = ["ClientId = :client_id"]
         params = {"client_id": client_id}
 
         if from_date:
-            where_clauses.append("CallDate >= :from_date")
+            where_clauses.append("DATE(CallDate) >= :from_date")
             params["from_date"] = from_date
         if to_date:
-            where_clauses.append("CallDate <= :to_date")
+            where_clauses.append("DATE(CallDate) <= :to_date")
             params["to_date"] = to_date
+        if call_id:
+            where_clauses.append("SrNo = :call_id") 
+            params["call_id"]  = call_id 
+        if in_call_action:
+            where_clauses.append("CloseLoopCate1 = :in_call_action")
+            params["in_call_action"] = in_call_action
 
         # Optional category filters (OR inside group)
         category_conditions = []
@@ -78,7 +86,8 @@ def get_call_master_data(
                 params[f"Category{i}"] = val
 
         if category_conditions:
-            where_clauses.append(f"({' OR '.join(category_conditions)})")
+            # where_clauses.append(f"({' OR '.join(category_conditions)})")
+            where_clauses.extend(category_conditions)
 
         where_clause = " AND ".join(where_clauses)
         select_cols = ", ".join(columns)
@@ -94,12 +103,23 @@ def get_call_master_data(
             for fnum, label in field_map.items():
                 record[label] = row.get(f"field{fnum}")
             record.update({
+                "callId": row.get("SrNo"),
                 "CallDate": row.get("CallDate"),
+                "CallFrom": row.get("MSISDN"),
+                "TAT": row.get("tat"),
+                "Due Date": row.get("duedate"),
+                "Call Created": row.get("callcreated"),
+                "Call Action": row.get("CloseLoopCate1"),
+                "Call Sub Action": row.get("CloseLoopCate2"),
+                "Closer Date": row.get("CloseLoopingDate"),
                 "Category1": row.get("Category1"),
                 "Category2": row.get("Category2"),
                 "Category3": row.get("Category3"),
                 "Category4": row.get("Category4"),
                 "Category5": row.get("Category5"),
+                "Call Action Remarks": row.get("closelooping_remarks"),
+                "Follow Up Date": row.get("FollowupDate"),
+                "Case Closed By": row.get("CaseCloseBy"),
             })
             response.append(record)
 
