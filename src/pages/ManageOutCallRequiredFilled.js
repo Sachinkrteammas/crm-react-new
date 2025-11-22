@@ -467,93 +467,80 @@ export default function ManageOutCallRequiredFields() {
         {/* Table (design aligned with In-Call page) */}
         {selectedClient && selectedCampaign ? (
           <>
-            <div className="table-responsive border rounded shadow-sm">
-              <table className="table table-hover table-striped table-bordered align-middle">
-                <thead
-                  className="table-dark sticky-top"
-                  style={{ top: "0", zIndex: 10 }}
-                >
-                  <tr>
-                    <th className="text-center">#</th>
-                    <th className="text-center">Field Name</th>
-                    <th className="text-center">Type</th>
-                    <th className="text-center">Validation</th>
-                    <th className="text-center">Required</th>
-                    <th className="text-center">Priority</th>
-                    <th className="text-center">Field</th>
-                    <th className="text-center">Actions</th>
+        <div className="table-responsive" style={{ maxHeight: "450px", overflowY: "auto" }}>
+          <table className="table table-hover table-striped table-bordered align-middle">
+            <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 5 }}>
+              <tr>
+                <th className="text-center">#</th>
+                <th className="text-center">Field Name</th>
+                <th className="text-center">Type</th>
+                <th className="text-center">Validation</th>
+                <th className="text-center">Required</th>
+                <th className="text-center">Priority</th>
+                <th className="text-center">Field</th>
+                <th className="text-center">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="text-center py-4">
+                    <div className="spinner-border" />
+                  </td>
+                </tr>
+              ) : fields.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="text-center text-muted py-3">
+                    No fields found
+                  </td>
+                </tr>
+              ) : (
+                fields.map((f, i) => (
+                  <tr key={f.id}>
+                    <td className="text-center">{i + 1}</td>
+                    <td className="text-center">{f.FieldName}</td>
+                    <td className="text-center">{f.FieldType}</td>
+                    <td className="text-center">{f.FieldValidation || "-"}</td>
+                    <td className="text-center">{f.RequiredCheck ? "Yes" : "No"}</td>
+                    <td className="text-center">{f.Priority || "-"}</td>
+                    <td className="text-center">{f.fieldNumber || "-"}</td>
+
+                    <td className="text-center">
+                      <div className="d-flex justify-content-center gap-2">
+                        <button
+                          className="btn btn-sm btn-outline-warning"
+                          onClick={() => handleEditField(f)}
+                        >
+                          ✏ Edit
+                        </button>
+
+                        <button
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleDeleteField(f.id)}
+                        >
+                          🗑 Delete
+                        </button>
+
+                        <button
+                          className="btn btn-sm btn-outline-info"
+                          disabled={!(
+                            f.FieldType === "DropDown" ||
+                            f.FieldType === "Dropdown"
+                          )}
+                          onClick={() => toggleValuesPanel(f)}
+                        >
+                          📂 Values
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-              </table>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-              {/* SCROLL BODY */}
-              <div style={{ maxHeight: "450px", overflowY: "auto" }}>
-                <table className="table table-hover table-striped table-bordered align-middle">
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan="8" className="text-center py-4">
-                          <div className="spinner-border" />
-                        </td>
-                      </tr>
-                    ) : fields.length === 0 ? (
-                      <tr>
-                        <td colSpan="8" className="text-center text-muted py-3">
-                          No fields found
-                        </td>
-                      </tr>
-                    ) : (
-                      fields.map((f, i) => (
-                        <tr key={f.id}>
-                          <td className="text-center">{i + 1}</td>
-                          <td className="text-center">{f.FieldName}</td>
-                          <td className="text-center">{f.FieldType}</td>
-                          <td className="text-center">
-                            {f.FieldValidation || "-"}
-                          </td>
-                          <td className="text-center">
-                            {f.RequiredCheck ? "Yes" : "No"}
-                          </td>
-                          <td className="text-center">{f.Priority || "-"}</td>
-                          <td className="text-center">
-                            {f.fieldNumber || "-"}
-                          </td>
-
-                          <td className="text-center">
-                            <div className="d-flex justify-content-center gap-2">
-                              <button
-                                className="btn btn-sm btn-outline-warning"
-                                onClick={() => handleEditField(f)}
-                              >
-                                ✏ Edit
-                              </button>
-                              <button
-                                className="btn btn-sm btn-outline-danger"
-                                onClick={() => handleDeleteField(f.id)}
-                              >
-                                🗑 Delete
-                              </button>
-                              <button
-                                className="btn btn-sm btn-outline-info"
-                                disabled={
-                                  !(
-                                    f.FieldType === "DropDown" ||
-                                    f.FieldType === "Dropdown"
-                                  )
-                                }
-                                onClick={() => toggleValuesPanel(f)}
-                              >
-                                📂 Values
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
 
             {/* Inline Field Values panel (matches In-Call page design) */}
             {activeFieldForValues && (
