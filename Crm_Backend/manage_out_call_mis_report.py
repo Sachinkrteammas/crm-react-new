@@ -37,8 +37,6 @@ def get_reports(db: Session = Depends(get_db4)):
     return [dict(row._mapping) for row in rows]
 
 
-
-
 # -------- INSERT (POST) --------
 @router.post("/create")
 def create_mis(report: MISCreate, db: Session = Depends(get_db4)):

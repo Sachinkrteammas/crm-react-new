@@ -28,7 +28,7 @@ export default function ManageOutCallRequiredFields() {
   const [editingFieldId, setEditingFieldId] = useState(null);
 
   // values state (inline panel)
-  const [valuesMap, setValuesMap] = useState({}); // valuesMap[fieldId] = [ {id, FieldValueName}, ... ]
+  const [valuesMap, setValuesMap] = useState({}); 
   const [valueForm, setValueForm] = useState({ FieldValueName: "" });
   const [editingValue, setEditingValue] = useState(null);
   const [activeFieldForValues, setActiveFieldForValues] = useState(null);

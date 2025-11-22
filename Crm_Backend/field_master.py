@@ -175,3 +175,8 @@ def delete_field_value(client_id: int, field_id: int, field_value_id: int, db: S
     if not result:
         raise HTTPException(status_code=404, detail="Field value not found")
     return {"message": "Field value deleted successfully"}
+
+
+
+
+

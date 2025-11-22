@@ -78,9 +78,6 @@ app.include_router(manage_out_call_mis_report_router)
 app.include_router(manage_out_call_close_fields_router)
 
 
-
-
-
 # ✅ Create a function that runs the API logic automatically
 def scheduled_call_summary():
     try:

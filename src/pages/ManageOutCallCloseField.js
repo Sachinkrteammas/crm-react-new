@@ -22,9 +22,7 @@ const ManageOutCallCloseField = () => {
   const [campaigns, setCampaigns] = useState([]);
   const [selectedCampaign, setSelectedCampaign] = useState("");
 
-  // Use company_id as canonical client id storage (matches your working component)
   const companyId = localStorage.getItem("company_id");
-  // Keep clientIdFromStorage as fallback only (if you previously wrote it during login)
   const clientIdFromStorage = localStorage.getItem("clientId");
   const userType = localStorage.getItem("user_type");
 
@@ -36,7 +34,7 @@ const ManageOutCallCloseField = () => {
   const [valueInput, setValueInput] = useState("");
   const [editingValueId, setEditingValueId] = useState(null);
 
-  // small helper to remove any leftover bootstrap backdrop / body class
+
   const removeBootstrapBackdrop = () => {
     try {
       document.body.classList.remove("modal-open");
@@ -271,7 +269,6 @@ const ManageOutCallCloseField = () => {
       }
       resetForm();
 
-      // ensure cleanup if any backdrop/class left
       setShowModal(false);
       removeBootstrapBackdrop();
 
@@ -446,7 +443,6 @@ const ManageOutCallCloseField = () => {
     setValueInput("");
     setEditingValueId(null);
 
-    // cleanup any leftover backdrop/class
     removeBootstrapBackdrop();
   };
 
