@@ -13,6 +13,9 @@ function AutoTagging() {
   const [endDate, setEndDate] = useState(null);
   const [tableData, setTableData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [recordsPerPage] = useState(10);   // Change if needed
+
 
 
 
@@ -35,6 +38,11 @@ const [scenario1Name, setScenario1Name] = useState("");
 const [scenario2Name, setScenario2Name] = useState("");
 const [scenario3Name, setScenario3Name] = useState("");
 const [scenario4Name, setScenario4Name] = useState("");
+
+
+const [callId, setCallId] = useState("");
+const [callAction, setCallAction] = useState("");
+
 
 
 
@@ -153,11 +161,56 @@ const [scenario4Name, setScenario4Name] = useState("");
 };
 
 
-const handleScenario2Change = (id) => {
-  setScenario2(id);
-  const selected = scenario2List.find(x => x.id === Number(id));
-  setScenario2Name(selected ? selected.ecrName : "");
-};
+  const handleScenario2Change = async (id) => {
+    setScenario2(id);
+    const selected = scenario2List.find(x => x.id === Number(id));
+    setScenario2Name(selected ? selected.ecrName : "");
+
+    setScenario3(""); setScenario4("");
+    setScenario3Name(""); setScenario4Name("");
+    setScenario3List([]); setScenario4List([]);
+
+    if (!id) return;
+
+    try {
+      const res = await api.get(`/core_api/categories/level4/${id}`, {
+        params: { client_id: activeCompanyId }
+      });
+      setScenario3List(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+
+
+  const handleScenario3Change = async (id) => {
+    setScenario3(id);
+    const selected = scenario3List.find(x => x.id === Number(id));
+    setScenario3Name(selected ? selected.ecrName : "");
+
+    setScenario4("");
+    setScenario4Name("");
+    setScenario4List([]);
+
+    if (!id) return;
+
+    try {
+      const res = await api.get(`/core_api/categories/level5/${id}`, {
+        params: { client_id: activeCompanyId }
+      });
+      setScenario4List(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+
+  const handleScenario4Change = (id) => {
+    setScenario4(id);
+    const selected = scenario4List.find(x => x.id === Number(id));
+    setScenario4Name(selected ? selected.ecrName : "");
+  };
 
 
 
@@ -189,9 +242,13 @@ const handleScenario2Change = (id) => {
             client_id: activeCompanyId,   // selected client
             startdate: formattedStart,    // query param
             enddate: formattedEnd,      // query param
+            call_id: callId || null,
+            call_action: callAction || "",
             scenario: scenarioName || "",
             scenario1: scenario1Name || "",
             scenario2: scenario2Name || "",
+            scenario3: scenario3Name || "",
+            scenario4: scenario4Name || "",
         }
     });
 
@@ -226,6 +283,25 @@ const handleScenario2Change = (id) => {
     });
     saveAs(file, "in_call_details.xlsx");
   };
+
+
+
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = tableData.slice(indexOfFirstRecord, indexOfLastRecord);
+
+  const totalPages = Math.ceil(tableData.length / recordsPerPage);
+
+  const goToNext = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const goToPrev = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+
+
 
   const customColStyle = { flex: "0 0 auto", width: "19.666667%" };
   return (
@@ -293,15 +369,25 @@ const handleScenario2Change = (id) => {
                 {/* Other filters */}
                 <div style={customColStyle} className="col-md-6 col-sm-12">
                   <label className="form-label">In Call Action</label>
-                  <select className="form-select">
-                    <option>In Call Action</option>
-                    <option>Pending</option>
+                  <select 
+                    className="form-select"
+                    value={callAction}
+                    onChange={(e) => setCallAction(e.target.value)}
+                    >
+                    <option value="">In Call Action</option>
+                    <option value="Open">Open</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Close By System">Closed</option>
                   </select>
                 </div>
 
                 <div style={customColStyle} className="col-md-6 col-sm-12">
                   <label className="form-label">First In Call Id</label>
-                  <input type="text" className="form-control" disabled/>
+                  <input 
+                      type="text" 
+                      className="form-control" 
+                      value={callId}
+                      onChange={(e) => setCallId(e.target.value)}/>
                 </div>
 
                 <div style={customColStyle} className="col-md-6 col-sm-12">
@@ -358,16 +444,13 @@ const handleScenario2Change = (id) => {
                   </select>
                 </div>
 
+                {/* Scenario3 */}
                 <div style={customColStyle} className="col-md-6 col-sm-12">
                   <label className="form-label">Select Scenario3</label>
                   <select
                     className="form-select"
-                    value={scenario2}
-                    onChange={(e) => {
-                      const idValue = e.target.value;
-                      const selected = scenario3List.find((s) => s.id === Number(idValue));
-                      setScenario2({ id: idValue, name: selected ? selected.ecrName : "" });
-                    }}
+                    value={scenario3}
+                    onChange={(e) => handleScenario3Change(e.target.value)}
                   >
                     <option value="">Select Scenario3</option>
                     {scenario3List.length === 0 ? (
@@ -382,16 +465,13 @@ const handleScenario2Change = (id) => {
                   </select>
                 </div>
 
+                {/* Scenario4 */}
                 <div style={customColStyle} className="col-md-6 col-sm-12">
                   <label className="form-label">Select Scenario4</label>
                   <select
                     className="form-select"
-                    value={scenario2}
-                    onChange={(e) => {
-                      const idValue = e.target.value;
-                      const selected = scenario4List.find((s) => s.id === Number(idValue));
-                      setScenario2({ id: idValue, name: selected ? selected.ecrName : "" });
-                    }}
+                    value={scenario4}
+                    onChange={(e) => handleScenario4Change(e.target.value)}
                   >
                     <option value="">Select Scenario4</option>
                     {scenario4List.length === 0 ? (
@@ -404,7 +484,7 @@ const handleScenario2Change = (id) => {
                       ))
                     )}
                   </select>
-                </div>
+                </div>  
 
                 {/* Buttons */}
                 <div className="col-12">
@@ -430,26 +510,52 @@ const handleScenario2Change = (id) => {
 
             {/* TABLE SHOWING RESULTS */}
             {tableData.length > 0 && (
-              <div className="table-responsive p-3">
-                <table className="table table-bordered table-sm">
-                  <thead className="table-light">
-                    <tr>
-                      {Object.keys(tableData[0]).map((col) => (
-                        <th key={col}>{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tableData.map((row, idx) => (
-                      <tr key={idx}>
-                        {Object.values(row).map((val, i) => (
-                          <td key={i}>{val}</td>
+              <>
+                <div className="table-responsive p-3">
+                  <table className="table table-bordered table-sm">
+                    <thead className="table-light">
+                      <tr>
+                        {Object.keys(tableData[0]).map((col) => (
+                          <th key={col}>{col}</th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+
+                    <tbody>
+                      {currentRecords.map((row, idx) => (
+                        <tr key={idx}>
+                          {Object.values(row).map((val, i) => (
+                            <td key={i}>{val}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* FIXED PAGINATION (not moving during horizontal scroll) */}
+                <div className="d-flex justify-content-between align-items-center p-3">
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    disabled={currentPage === 1}
+                    onClick={goToPrev}
+                  >
+                    Previous
+                  </button>
+
+                  <span className="fw-bold">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    disabled={currentPage === totalPages}
+                    onClick={goToNext}
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>
