@@ -1,0 +1,176 @@
+.exposure-container {
+  padding: 20px;
+  background-color: #f6f7f9;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: black !important;
+
+}
+
+/* Page Title */
+.page-title {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+/* Header Row */
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.month-title {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.status-legend {
+  display: flex;
+  gap: 10px;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.badge.active {
+  background-color: #28a745;
+}
+
+.badge.hold {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.badge.deactive {
+  background-color: #dc3545;
+}
+
+/* Sequence Text */
+.sequence-note {
+  font-size: 13px;
+  color: #555;
+  margin: 6px 0 15px 0;
+}
+
+/* Filter Inputs */
+.filters-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.filters-bar input {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  min-width: 150px;
+  font-size: 14px;
+}
+
+.filters-bar .btn {
+  padding: 7px 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  color: #fff;
+  border: none;
+  transition: 0.3s;
+}
+
+.btn.search {
+  background-color: #3b4f63;
+}
+
+.btn.export {
+  background-color: #6c757d;
+}
+
+/* Table Styling */
+.table-container {
+  overflow-x: auto;
+  background-color: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+.exposure-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: center;
+  font-size: 13px;
+}
+
+.exposure-table th,
+.exposure-table td {
+  border: 1px solid #ccc;
+  padding: 6px;
+}
+
+.exposure-table th {
+  background-color: #f3f4f6;
+  font-weight: 600;
+}
+
+/* Ledger Header Color */
+.ledger-header {
+  background-color: #e8e8e8;
+}
+
+/* Credit Header Color */
+.credit-header {
+  background-color: #f6dede;
+}
+
+/* Action Header Color */
+.action-header {
+  background-color: #e6e6e6;
+}
+
+/* Client Colors */
+.client-name.green {
+  background-color: #33a854;
+  color: white;
+  font-weight: 600;
+}
+
+.client-name.yellow {
+  background-color: #ffc107;
+  color: #333;
+  font-weight: 600;
+}
+
+.client-name.red {
+  background-color: #d9534f;
+  color: white;
+  font-weight: 600;
+}
+
+/* Negative Balances */
+.negative {
+  color: red;
+  font-weight: 600;
+}
+
+/* Send SMS Button */
+.btn-sms {
+  background-color: #198754;
+  color: white;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btn-sms:hover {
+  background-color: #146c43;
+}
