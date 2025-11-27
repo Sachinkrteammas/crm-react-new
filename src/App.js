@@ -114,6 +114,10 @@ import ScenarioReportAutomation from "./pages/ScenarioReportAutomation";
 import ManageOutCallCloseField from "./pages/ManageOutCallCloseField";
 import ManageOutCallRequiredFilled from "./pages/ManageOutCallRequiredFilled";
 import ExposureView from "./pages/exposure_view";
+import ChannelUtilization from "./pages/ChannelUtilization";
+import DidLogsReports from "./pages/DidLogReports";
+import AgentProductivity from "./pages/AgentProductivity";
+import SlaAgentsReports from "./pages/SlaAgentsReports";
 
 
 function App() {
@@ -201,7 +205,11 @@ function App() {
         "/OutCallAutomation": "Out Call Automation | DialDesk",
         "/ScenarioReportAutomation": "Scenario Report Automation  | DialDesk",
         "/ObcloseFields": "Manage Out Call Close Field | DialDesk",
-        "/ObclientFields": "Manage Out Call Required Filled | DialDesk"	
+        "/ObclientFields": "Manage Out Call Required Filled | DialDesk",
+        "/channel_utilization": "Channel Utilization | DialDesk",	
+        "/didlogs_reports" : "Did Logs Reports | DialDesk",
+        "/agent_avr" : "Agents AVR Productivity Report | DialDesk",
+        "/sla_agents_reports" : "SLA Agents Reports | DialDesk",
 
     };
 
@@ -330,6 +338,10 @@ function App() {
               <Route path="/ObcloseFields" element={<ManageOutCallCloseField />} />
               <Route path="/ObclientFields" element={<ManageOutCallRequiredFilled />} />
               <Route path="/exposure_view" element={<ExposureView />} />
+              <Route path="/channel_utilization" element={<ChannelUtilization />} />
+              <Route path="/didlogs_reports"  element={<DidLogsReports />} />
+              <Route path="/agent_avr" element={<AgentProductivity/>} />
+              <Route path="/sla_agents_reports" element={<SlaAgentsReports/>} />
               
           </Route>
       </Route>

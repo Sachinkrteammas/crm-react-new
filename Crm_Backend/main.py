@@ -34,6 +34,10 @@ from manage_out_call_required_fields import router as manage_out_call_required_f
 from out_call_manage_scenarios import router as out_call_manage_scenarios_router
 from manage_out_call_mis_report import router as manage_out_call_mis_report_router
 from manage_out_call_close_fields import router as manage_out_call_close_fields_router
+from channel_utilizations import router as channel_utilizations_router
+from didlogs_reports import router as didlogs_reports_router
+from agents_productivity_reports import router as agents_productivity_reports_router
+from sla_reports import router as sla_reports_router
 
 
 app = FastAPI(title="CRM Backend")
@@ -76,6 +80,10 @@ app.include_router(manage_out_call_required_fields_router)
 app.include_router(out_call_manage_scenarios_router)
 app.include_router(manage_out_call_mis_report_router)
 app.include_router(manage_out_call_close_fields_router)
+app.include_router(channel_utilizations_router)
+app.include_router(didlogs_reports_router)
+app.include_router(agents_productivity_reports_router)
+app.include_router(sla_reports_router)
 
 
 # ✅ Create a function that runs the API logic automatically
