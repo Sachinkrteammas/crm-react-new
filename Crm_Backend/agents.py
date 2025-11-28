@@ -88,7 +88,7 @@ def get_all_clients_rights_is_dial(
         # Compute all consumption before the chosen start_date
         consume_before_query = text("""
             SELECT COALESCE(SUM(cm_total), 0) AS consume_sum
-            FROM billing_consume_daily
+            FROM billing_consume_daily_new
             WHERE client_id = :client_id
             AND DATE(cm_date) BETWEEN :month_opening_date AND DATE(:start_date) - INTERVAL 1 DAY
         """)
@@ -201,7 +201,7 @@ def get_all_clients_rights_is_dial(
 
         consume_query = text("""
             SELECT COALESCE(SUM(cm_total), 0) AS consume
-            FROM billing_consume_daily
+            FROM billing_consume_daily_new
             WHERE client_id = :client_id
             AND DATE(cm_date) BETWEEN :start_date AND :end_date
         """)
@@ -310,7 +310,7 @@ def get_clients_rights_search(
     # Compute all consumption before the chosen start_date
     consume_before_query = text("""
                 SELECT COALESCE(SUM(cm_total), 0) AS consume_sum
-                FROM billing_consume_daily
+                FROM billing_consume_daily_new
                 WHERE client_id = :client_id
                 AND DATE(cm_date) BETWEEN :month_opening_date AND DATE(:start_date) - INTERVAL 1 DAY
             """)
@@ -331,7 +331,7 @@ def get_clients_rights_search(
         SELECT eoc.Opening
              + COALESCE((
                  SELECT SUM(cm_total) 
-                 FROM billing_consume_daily bcd
+                 FROM billing_consume_daily_new bcd
                  WHERE bcd.client_id = eoc.ClientId
                    AND DATE(bcd.cm_date) < :start_date
              ), 0) AS dynamic_opening
@@ -440,7 +440,7 @@ def get_clients_rights_search(
 
     consume_query = text("""
         SELECT COALESCE(SUM(cm_total), 0) AS consume
-        FROM billing_consume_daily
+        FROM billing_consume_daily_new
         WHERE client_id = :client_id
         AND DATE(cm_date) BETWEEN :start_date AND :end_date
     """)
