@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from "react";
+// SL/AL/RL Report For Hourly..//
+import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import api from "../api";
@@ -8,98 +9,111 @@ export default function SlaAgentsReports() {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [rows, setRows] = useState([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [loading, setLoading] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState("CrystalEyeCentr00000");
+
+  const campaigns = [
+    { id: "CrystalEyeCentr00000", name: "CrystalEyeCentr00000" }
+  ]; // only this campaign
+
+  useEffect(() => {
+    const today = new Date();
+    setStartDate(today);
+    setEndDate(today);
+  }, []);
+
+  const formatDate = (date) => {
+    const d = new Date(date);
+    return `${d.getFullYear()}-${(d.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${d.getDate().toString().padStart(2, "0")}`;
+  };
+
+  const pct = (v) =>
+    v !== null && v !== undefined ? `${(v * 100).toFixed(2)}%` : "-";
 
   const validate = () => {
-    console.log(startDate, "start tsting");
-    console.log(endDate, "end testing");
     if (!startDate || !endDate) {
-      alert("Please select both From and To dates");
+      alert("Please select From and To dates");
+      return false;
+    }
+    if (!selectedCampaign) {
+      alert("Please select a campaign");
       return false;
     }
     return true;
   };
 
-  const pct = (v) => (v !== null && v !== undefined ? `${(v * 100).toFixed(2)}%` : "-");
-
   const fetchReport = async () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      const formatDate = (date) => {
-        const d = new Date(date);
-        const month = `${d.getMonth() + 1}`.padStart(2, "0");
-        const day = `${d.getDate()}`.padStart(2, "0");
-        const year = d.getFullYear();
-        return `${year}-${month}-${day}`;
-      };
-
       const s = formatDate(startDate);
       const e = formatDate(endDate);
 
-      console.log(s, "startDate", e, "endDate");
+      const res = await api.get("/sla/agents", {
+        params: {
+          start_date: s,
+          end_date: e,
+          campaign_ids: selectedCampaign,
+        },
+      });
 
-      const res = await api.get("/sla/agents", { params: { start_date: s, end_date: e } });
-      setRows(res.data?.data || []);
-      setPage(1);
+      // Map backend fields and filter hours 9-20
+      const mapped = res.data?.data
+        .map((r) => {
+          const hour = r.TimeSlot ? parseInt(r.TimeSlot.substring(11, 13)) : null;
+          return {
+            date: r.TimeSlot?.substring(0, 10),
+            hour,
+            total_calls: r.TotalCalls,
+            answered: r.Answered,
+            abandon: r.Abandon,
+            sla_calls: r.SLA_Calls,
+            manpower: r.Manpower,
+            al_percent: r.AL_Percentage != null ? r.AL_Percentage / 100 : null,
+            sl_percent: r.SL_Percentage != null ? r.SL_Percentage / 100 : null,
+          };
+        })
+        .filter((r) => r.hour >= 9 && r.hour <= 20);
+
+      setRows(mapped || []);
     } catch (err) {
       console.error(err);
-      alert("Failed to load SLA Report");
+      alert("Could not load SLA Report");
     } finally {
       setLoading(false);
     }
   };
-
 
   const downloadExcel = async () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      // Format date in local timezone
-      const formatDate = (date) => {
-        const d = new Date(date);
-        const month = `${d.getMonth() + 1}`.padStart(2, "0");
-        const day = `${d.getDate()}`.padStart(2, "0");
-        const year = d.getFullYear();
-        return `${year}-${month}-${day}`;
-      };
-
       const s = formatDate(startDate);
       const e = formatDate(endDate);
 
       const res = await api.get("/sla/agents/export", {
-        params: { start_date: s, end_date: e },
+        params: {
+          start_date: s,
+          end_date: e,
+          campaign_ids: selectedCampaign,
+        },
         responseType: "blob",
       });
 
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const url = window.URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `SLA_Agents_${s}_to_${e}.xlsx`;
+      a.download = `SLA_Report_${s}_to_${e}.xlsx`;
       a.click();
     } catch (err) {
       console.error(err);
-      alert("Failed to download Excel");
+      alert("Excel download failed");
     } finally {
       setLoading(false);
     }
   };
-
-
-  // Search + Pagination
-  const filteredData = useMemo(() => {
-    return rows.filter(
-      (r) =>
-        r.date?.toLowerCase().includes(search.toLowerCase()) ||
-        String(r.hour).includes(search)
-    );
-  }, [rows, search]);
-
-  const totalPages = Math.ceil(filteredData.length / pageSize);
-  const pageData = filteredData.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <>
@@ -113,37 +127,49 @@ export default function SlaAgentsReports() {
         </div>
       )}
 
-      <div className={`priority-wrapper ${loading ? "blurred" : ""}`}></div>
-
       <div className="mt-4">
-        <h3 className="fw-bold mb-4">SLA Report</h3>
+        <h3 className="fw-bold mb-4">SLA Report </h3>
 
-        {/* Filters */}
         <div className="card shadow-sm p-4 mb-4">
-          <div className="row g-2">
+          <div className="row g-3">
             <div className="col-md-3">
+              <label className="fw-semibold d-block mb-1">Campaign</label>
+              <select
+                className="form-select"
+                value={selectedCampaign}
+                onChange={(e) => setSelectedCampaign(e.target.value)}
+              >
+                {campaigns.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="col-md-2">
               <label className="fw-semibold d-block mb-1">From Date</label>
               <DatePicker
                 selected={startDate}
-                onChange={(d) => setStartDate(d)}
+                onChange={setStartDate}
                 className="form-control"
-                placeholderText="dd-mm-yyyy"
               />
             </div>
-            <div className="col-md-3">
+
+            <div className="col-md-2">
               <label className="fw-semibold d-block mb-1">To Date</label>
               <DatePicker
                 selected={endDate}
-                onChange={(d) => setEndDate(d)}
+                onChange={setEndDate}
                 className="form-control"
-                placeholderText="dd-mm-yyyy"
               />
             </div>
-            <div className="col-md-6 d-flex align-items-end gap-2">
-              <button className="btn btn-primary" onClick={fetchReport}>
+
+            <div className="col-md-12 d-flex gap-2 mt-3">
+              <button className="btn btn-primary" onClick={fetchReport} disabled={loading}>
                 View Data
               </button>
-              <button className="btn btn-success" onClick={downloadExcel}>
+              <button className="btn btn-success" onClick={downloadExcel} disabled={loading}>
                 Download Excel
               </button>
             </div>
@@ -152,88 +178,43 @@ export default function SlaAgentsReports() {
 
         {/* Table */}
         <div className="card shadow-sm p-4">
-          <div className="d-flex mb-3 gap-2">
-            <input
-              className="form-control"
-              placeholder="Search by Date / Hour..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select
-              className="form-select"
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setPage(1);
-              }}
-              style={{ width: "100px" }}
-            >
-              <option value={10}>10</option>
-              <option value={25}>25</option>
-              <option value={50}>50</option>
-            </select>
-          </div>
-
           <div className="table-responsive">
-            <table className="table table-bordered table-hover">
+            <table className="table table-bordered">
               <thead className="table-dark">
                 <tr>
                   <th>S.N</th>
                   <th>Date</th>
                   <th>Hour</th>
-                  <th>Total Calls</th>
+                  <th>Total</th>
                   <th>Answered</th>
                   <th>Manpower</th>
-                  <th>AI %</th>
-                  <th>SL %</th>
-                  <th>RL %</th>
+                  <th>AL%</th>
+                  <th>SL%</th>
                 </tr>
               </thead>
               <tbody>
-                {pageData.length > 0 ? (
-                  pageData.map((r, i) => (
+                {rows.length ? (
+                  rows.map((r, i) => (
                     <tr key={i}>
-                      <td>{(page - 1) * pageSize + i + 1}</td>
+                      <td>{i + 1}</td>
                       <td>{r.date}</td>
                       <td>{r.hour}</td>
                       <td>{r.total_calls}</td>
                       <td>{r.answered}</td>
                       <td>{r.manpower}</td>
-                      <td>{pct(r.ai_percent)}</td>
+                      <td>{pct(r.al_percent)}</td>
                       <td>{pct(r.sl_percent)}</td>
-                      <td>{pct(r.rl_percent)}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="9" className="text-center py-3">
-                      No data available in table
+                    <td colSpan="10" className="text-center py-3">
+                      No Data Available
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
-          </div>
-
-          {/* Pagination */}
-          <div className="d-flex justify-content-between mt-2">
-            <button
-              className="btn btn-outline-secondary btn-sm"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              Previous
-            </button>
-            <span>
-              Page {page} of {totalPages || 1}
-            </span>
-            <button
-              className="btn btn-outline-secondary btn-sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              Next
-            </button>
           </div>
         </div>
       </div>

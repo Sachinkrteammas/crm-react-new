@@ -38,6 +38,8 @@ from channel_utilizations import router as channel_utilizations_router
 from didlogs_reports import router as didlogs_reports_router
 from agents_productivity_reports import router as agents_productivity_reports_router
 from sla_reports import router as sla_reports_router
+# ---------------- Scheduler Function ----------------
+from schedular import scheduled_sla_email  # Import only the function
 
 
 app = FastAPI(title="CRM Backend")
@@ -86,6 +88,7 @@ app.include_router(agents_productivity_reports_router)
 app.include_router(sla_reports_router)
 
 
+
 # ✅ Create a function that runs the API logic automatically
 def scheduled_call_summary():
     try:
@@ -102,16 +105,21 @@ def scheduled_call_summary():
         print("Error in scheduled job:", e)
     finally:
         db_gen.close()
+        
+
 
 
 # ✅ Create scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=00)  # every day 9:00 PM
+scheduler.add_job(scheduled_sla_email, 'cron', hour=21, minute=30)  # Daily at 21:30
+
 scheduler.start()
 
 @app.on_event("startup")
 def on_startup():
     print("🚀 Scheduler started — Call Summary job will run daily at 9:00 PM")
+    print("🚀 Scheduler started — SLA Reports will run daily at 9:30 PM")
 
 @app.on_event("shutdown")
 def on_shutdown():
