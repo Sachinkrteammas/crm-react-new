@@ -1,11 +1,13 @@
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import date
-from database import get_db4  # adjust to your actual import path
+from datetime import date, datetime, timedelta
+from database import get_db2, get_db4  # adjust to your actual import path
 from call_scenario import send_call_summary  # adjust path
 from sqlalchemy.orm import Session
 import os
+from sqlalchemy import text
+from daily_consume import BillingDailyRequest, compute_ib_consumption
 from auth import router as auth_router
 from reports import router as reports_router
 from core_api import router as core_api
@@ -42,6 +44,9 @@ from did_mapping import router as did_mapping_router
 from campaigns_mapping import router as campaigns_mapping_router
 # ---------------- Scheduler Function ----------------
 from schedular import scheduled_sla_email  # Import only the function
+from daily_consume import router as daily_consume_router
+from logincreation_master import router as logincreation_master_router
+
 
 
 app = FastAPI(title="CRM Backend")
@@ -90,6 +95,8 @@ app.include_router(agents_productivity_reports_router)
 app.include_router(sla_reports_router)
 app.include_router(did_mapping_router)
 app.include_router(campaigns_mapping_router)
+app.include_router(daily_consume_router, tags=["Daily Consume"])
+app.include_router(logincreation_master_router, tags=["Login Creation Master"])
 
 
 
@@ -100,27 +107,94 @@ def scheduled_call_summary():
         db_gen = get_db4()
         db: Session = next(db_gen)
 
+        # DB connection for vicidial tables
+        db2_gen = get_db2()
+        db2 = next(db2_gen)
+
         client_id = int(os.getenv("DEFAULT_CLIENT_ID", 1))  # fallback to 1
         report_date = date.today()
 
         print(f"Running scheduled report for client {client_id} on {report_date}")
-        send_call_summary(client_id=client_id, report_date=report_date, db=db)
+        send_call_summary(client_id=client_id, report_date=report_date, db=db, db2=db2)
     except Exception as e:
         print("Error in scheduled job:", e)
     finally:
         db_gen.close()
+        db2_gen.close()
+
         
+
+
+        
+
+
+# # -------------------------------------------------------
+# # DAILY BILLING SCHEDULER (runs at 3 AM)
+# # -------------------------------------------------------
+# def scheduled_daily_billing():
+#     try:
+#         # Manual DB session
+#         db_gen = get_db4()
+#         db: Session = next(db_gen)
+
+#         # 1️⃣ Fetch all eligible DD clients
+#         sql = text("""
+#             SELECT rm.company_id
+#             FROM registration_master rm
+#             JOIN exp_opening_client eoc ON rm.company_id = eoc.ClientId
+#             WHERE rm.STATUS = 'A' AND rm.is_dd_client = 1
+#         """)
+
+#         rows = db.execute(sql).mappings().fetchall()
+#         client_ids = [r["company_id"] for r in rows]
+
+#         if not client_ids:
+#             print("⚠ No DD clients found for scheduler")
+#             return
+
+#         # 2️⃣ Compute billing date = yesterday
+#         billing_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+
+#         print(f"Running daily billing scheduler on {billing_date} → Clients: {client_ids}")
+
+#         # 3️⃣ Call your API logic exactly as it is
+#         for cid in client_ids:
+#             print(f"→ Billing client: {cid}")
+
+#             req = BillingDailyRequest(
+#                 company_id=cid,
+#                 billing_date=billing_date
+#             )
+
+#             # This calls your FULL existing logic (no changes)
+#             compute_ib_consumption(
+#                 request=req,
+#                 db=db,
+#                 db2=get_db2().__next__()
+#             )
+
+#     except Exception as e:
+#         print("Error in daily billing scheduler:", e)
+
+#     finally:
+#         try:
+#             db_gen.close()
+#         except:
+#             pass
+
+
+
 
 # ✅ Create scheduler
 scheduler = BackgroundScheduler()
-scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=00)  # every day 9:00 PM
-
-
+scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
+# scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
 scheduler.start()
 
 @app.on_event("startup")
 def on_startup():
-    print("🚀 Scheduler started — Call Summary job will run daily at 9:00 PM")
+    print("🚀 Scheduler started — Call Summary job will run daily at 9:30 PM")
+    # print("🚀 Scheduler started — Daily Billing active will run daily at 3:00 AM")
 
 @app.on_event("shutdown")
 def on_shutdown():

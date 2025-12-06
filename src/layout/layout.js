@@ -1,7 +1,7 @@
 //.. Show Dynamic menu according Client company_id..///
 import { Outlet } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 
 const Layout = () => {
@@ -13,6 +13,10 @@ const Layout = () => {
   const [menuData, setMenuData] = useState([]);
   const storedUsername = localStorage.getItem("username");
   const storedUserType = localStorage.getItem("user_type");
+  const [selectedParent, setSelectedParent] = useState(null);
+  const [activeMenu, setActiveMenu] = useState(null);
+
+  const navigate = useNavigate();
 
   const user = {
     name: storedUsername || "John Doe",
@@ -109,19 +113,29 @@ useEffect(() => {
   //   }
   // }, [companyId]);
 
-  const renderMenu = (items) => {
-    if (!Array.isArray(items)) return null; // <-- Add this check
+  const renderMenu = (items, level = 1) => {
+    if (!Array.isArray(items)) return null;
+
     return items.map((item) => {
       const hasChildren = item.children && item.children.length > 0;
       const isOpen = openMenus[item.id] || false;
+      // Check if this menu or any of its children matches the current path
+      const isActive =
+        location.pathname === `/${item.page_url}` ||
+        (hasChildren &&
+          item.children.some(
+            (child) => location.pathname === `/${child.page_url}`
+          ));
+
+      // If level 1 and active, set as selectedParent
+      if (level === 1 && isActive && selectedParent?.id !== item.id) {
+        setSelectedParent(item);
+      }
 
       return (
-        <li
-          key={item.id}
-          className={`menu-item ${hasChildren ? (isOpen ? "open" : "") : ""} ${
-            item.page_url && isActiveMenu([`/${item.page_url}`]) ? "active" : ""
-          }`}
-        >
+        <li key={item.id} className={`menu-item ${hasChildren ? (isOpen ? "open" : "") : ""} ${
+            isActive ? "active" : ""
+          }`}>
           {hasChildren ? (
             <>
               <a
@@ -130,25 +144,36 @@ useEffect(() => {
                 onClick={(e) => {
                   e.preventDefault();
                   toggleMenu(item.id);
+
+                  // Only top-level updates selectedParent
+                  if (level === 1) {
+                    setSelectedParent(item);
+                  }
+                  else if (level === 2 && item.children.length > 0) {
+                    // Navigate to SubMenuPage if this child has children
+                    navigate(`/submenu/${item.id}`, { state: { children: item.children, parentName: item.page_name } });
+                  }
                 }}
               >
                 <i className="menu-icon icon-base ti tabler-folder"></i>
                 <div>{item.page_name}</div>
               </a>
-              <ul
-                className="menu-sub"
-                style={{ display: isOpen ? "block" : "none" }}
-              >
-                {renderMenu(item.children)}
-              </ul>
+
+              {level < 2 && (
+                <ul className="menu-sub" style={{ display: isOpen ? "block" : "none" }}>
+                  {renderMenu(item.children, level + 1)}
+                </ul>
+              )}
             </>
           ) : (
             <Link
               to={`/${item.page_url || ""}`}
-              className="menu-link"
-              onClick={handleMenuLinkClick}
+              className={`menu-link ${isActive ? "primary" : ""}`}
+              onClick={(e) => {
+                handleMenuLinkClick();   // keeps mobile sidebar behavior
+                setActiveMenu(item.id);  // marks this child as active
+              }}
             >
-
               <div>{item.page_name}</div>
             </Link>
           )}
@@ -349,7 +374,7 @@ useEffect(() => {
             {/* Dashboard */}
             <li
               className={`menu-item ${
-                location.pathname === "/dashboard" ? "active" : ""
+                location.pathname === "/dashboard" || location.pathname === "/outbound_dashboard" ? "active" : ""
               }`}
             >
               <Link
@@ -576,7 +601,7 @@ useEffect(() => {
           </nav>
 
           <div className="content-wrapper">
-            <div className="container-xxl flex-grow-1 container-p-y">
+            <div className="container-xxl flex-grow-1 container-p-y">                              
               <Outlet /> {/* Routes will render here */}
             </div>
             <div className="content-backdrop fade"></div>

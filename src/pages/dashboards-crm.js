@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   PieChart,
   Pie,
@@ -325,6 +326,8 @@ const Dashboard = () => {
     }
   };
 
+  const navigate = useNavigate();
+
   return (
     <>
       <div className="row mb-4">
@@ -490,7 +493,13 @@ const Dashboard = () => {
 
                         {/* Call Type */}
                         <div className="col-sm">
-                          <select className="form-select">
+                          <select className="form-select"
+                          onChange={(e) => {
+                            if (e.target.value === "outbounds") {
+                              navigate(`/outbound_dashboard`);
+                            }
+                          }}
+                          >
                             <option value="inbounds">Inbounds</option>
                             <option value="outbounds">Outbounds</option>
                           </select>

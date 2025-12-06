@@ -797,9 +797,10 @@ useEffect(() => {
                       )}
                     </tbody>
                   </table>
+                  </div>
                   {/* Pagination */}
                   {historyData.length > 0 && (
-                    <div className="d-flex justify-content-between align-items-center p-3">
+                    <div className="d-flex justify-content-between align-items-center p-3 border-top">
 
                       <button
                         className="btn btn-sm btn-outline-primary"
@@ -822,8 +823,7 @@ useEffect(() => {
                       </button>
 
                     </div>
-                  )}
-                </div>
+                  )}                
               </div>
             </div>
           </div>
@@ -1084,6 +1084,7 @@ useEffect(() => {
                       )}
                     </tbody>
                   </table>
+                  </div>
                   {/* Pagination */}
                   {searchResults.length > 0 && (
                     <div className="d-flex justify-content-between align-items-center mt-3">
@@ -1108,7 +1109,7 @@ useEffect(() => {
                       </button>
                     </div>
                   )}
-                </div>
+                
               </div>
             </div>
           </div>

@@ -225,6 +225,10 @@ function CallDetails() {
 
   // View click: request data from server using selected dates
 const handleViewClick = async () => {
+  if (!activeCompanyId || activeCompanyId === "null") {
+    alert("Please select Client.");
+    return;
+  }
   if (!startDate || !endDate) {
     alert("Please select both start and end dates.");
     return;

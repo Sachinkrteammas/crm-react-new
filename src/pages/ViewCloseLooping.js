@@ -12,6 +12,8 @@ export default function CloseLooping() {
   const [fields, setFields] = useState([]);
   const [labels, setLabels] = useState([]);
   const [storedClientId, setStoredClientId] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const dynamicFields = fields;   // 👈 this fixes the undefined error
 
@@ -389,6 +391,7 @@ const handleChange = async (e) => {
       "Sub-scenario1",
       "Sub-scenario2",
       "Sub-scenario3",
+      "Sub-scenario4",
       "CALL ACTION",
       "CALL SUB ACTION",
       "REMARKS"
@@ -453,6 +456,7 @@ const clientId =
     payload.Category2 = getNameById(subScenarioList1, form["Sub-scenario1"]);
     payload.Category3 = getNameById(subScenarioList2, form["Sub-scenario2"]);
     payload.Category4 = getNameById(subScenarioList3, form["Sub-scenario3"]);
+    payload.Category5 = getNameById(subScenarioList4, form["Sub-scenario4"]);
 
     const res = await api.put(`/call/call-master/${clientId}/${recordId}`, payload);
 
@@ -470,6 +474,7 @@ const clientId =
       setSubScenarioList1(prev => includeCurrentValue(updatedForm["Sub-scenario1"], prev));
       setSubScenarioList2(prev => includeCurrentValue(updatedForm["Sub-scenario2"], prev));
       setSubScenarioList3(prev => includeCurrentValue(updatedForm["Sub-scenario3"], prev));
+      setSubScenarioList4(prev => includeCurrentValue(updatedForm["Sub-scenario4"], prev));
 
       console.log("✅ Form and dropdowns updated after PUT:", updatedForm);
       console.log("🔹 scenarioList:", scenarioList);
@@ -615,7 +620,7 @@ useEffect(() => {
       value = rowFromState?.callId || value;
     }
     if (label === "CALL DATE") {
-      value = rowFromState?.CallDate || value;
+      value = rowFromState?.CallDate.replace("T"," ") || value;
     }
     if (label === "CALL FROM") {
       value = rowFromState?.CallFrom || value;
@@ -771,6 +776,36 @@ useEffect(() => {
   };
 
 
+  const handleUploadImage = async () => {
+    if (!rowFromState) return alert("Call ID not found");
+    if (!uploadFile) return alert("Please select an image");
+
+    const clientId = storedClientId;
+    const callId = rowFromState?.callId || rowFromState?.id;
+
+    if (!clientId || !callId) return alert("Client ID or Call ID missing");
+
+    const formData = new FormData();
+    formData.append("call_id", callId);
+    formData.append("image", uploadFile);
+
+    try {
+      setUploading(true);
+      const res = await api.post(`/upload_image/${clientId}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      console.log("Upload Response:", res.data);
+      alert(`Image uploaded successfully!\nSaved at: ${res.data.file_saved}`);
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Image upload failed");
+    } finally {
+      setUploading(false);
+    }
+  };
 
 
 
@@ -872,8 +907,8 @@ useEffect(() => {
                 </tr>
 
                 {/* Scenario Fields */}
-          {["Scenario","Sub-scenario1","Sub-scenario2", "Sub-scenario3",].map((field) => {
-                  const list = field === "Scenario" ? scenarioList : field === "Sub-scenario1" ? subScenarioList1 : field === "Sub-scenario2" ? subScenarioList2 : field === "Sub-scenario3"? subScenarioList3 : subScenarioList4;
+          {["Scenario","Sub-scenario1","Sub-scenario2", "Sub-scenario3","Sub-scenario4",].map((field) => {
+                  const list = field === "Scenario" ? scenarioList : field === "Sub-scenario1" ? subScenarioList1 : field === "Sub-scenario2" ? subScenarioList2 : field === "Sub-scenario3"? subScenarioList3 : field === "Sub-scenario4"? subScenarioList4 : [];
                   return (
                     <tr key={field}>
                       <td className="border p-2 font-semibold">{field}</td>
@@ -1012,13 +1047,22 @@ useEffect(() => {
             <div className="mt-6 border-t pt-1">
               <h6 className="font-semibold text-gray-700 mb-2">UPLOAD IMAGE</h6>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                {/* File Input */}
                 <input
                   type="file"
+                  onChange={(e) => setUploadFile(e.target.files[0])}
                   className="border p-2 rounded w-full sm:w-64"
                   style={{ minWidth: "200px" }}
                 />
-                <button type="button" className="btn btn-primary">
-                  Submit
+
+                {/* Submit Button */}
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleUploadImage}
+                  disabled={uploading}
+                >
+                  {uploading ? "Uploading..." : "Submit"}
                 </button>
               </div>
             </div>

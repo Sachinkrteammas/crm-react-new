@@ -11,8 +11,10 @@ import { Eye } from "lucide-react";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
+import api from "../api";
 
 export default function OutCallDetails() {
+  const userType = localStorage.getItem("user_type");
   const company_id = localStorage.getItem("company_id");
   const today = new Date().toISOString().split("T")[0];
 
@@ -55,13 +57,48 @@ export default function OutCallDetails() {
     "subScenario3",
   ];
 
+
+
+  // For Super-Admin / Admin
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(company_id);
+
+  // Determine which company_id to use
+  const activeCompanyId =
+    userType === "Super-Admin" || userType === "Admin"
+      ? selectedClient
+      : company_id;
+
+  // Fetch clients list for Admin/SuperAdmin
   useEffect(() => {
-    if (!company_id) return;
+    if (userType === "Super-Admin" || userType === "Admin") {
+      api
+        .get("/agents/clients-rights")
+        .then((res) => {
+          const sorted = res.data.sort((a, b) =>
+            a.company_name.localeCompare(b.company_name)
+          );
+          setClients(sorted);
+        })
+        .catch((err) => console.error("Error fetching clients:", err));
+    }
+  }, []);
+
+  // Auto set client for normal users
+  useEffect(() => {
+    if (userType !== "Super-Admin" && userType !== "Admin") {
+      setSelectedClient(company_id);
+    }
+  }, []);
+
+
+  useEffect(() => {
+    if (!activeCompanyId) return;
     (async () => {
-      const t = await getCampaignTypes(company_id);
+      const t = await getCampaignTypes(activeCompanyId);
       setTypes(t || []);
     })();
-  }, [company_id]);
+  }, [activeCompanyId]);
 
   const updateForm = (name, value) =>
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -75,7 +112,7 @@ export default function OutCallDetails() {
         setCampaigns([]);
         updateForm("campaign", "");
         if (value) {
-          const c = await getCampaigns(company_id, value);
+          const c = await getCampaigns(activeCompanyId, value);
           setCampaigns(c || []);
         }
       }
@@ -84,13 +121,13 @@ export default function OutCallDetails() {
         setAllocs([]);
         updateForm("allocation", "");
         if (value) {
-          const allocRes = await getAllocations(company_id, value);
+          const allocRes = await getAllocations(activeCompanyId, value);
           setAllocs(allocRes || []);
 
-          const scenarioRes = await getScenarios(company_id, null, 1);
-          const sub1Res = await getScenarios(company_id, null, 2);
-          const sub2Res = await getScenarios(company_id, null, 3);
-          const sub3Res = await getScenarios(company_id, null, 4);
+          const scenarioRes = await getScenarios(activeCompanyId, null, 1);
+          const sub1Res = await getScenarios(activeCompanyId, null, 2);
+          const sub2Res = await getScenarios(activeCompanyId, null, 3);
+          const sub3Res = await getScenarios(activeCompanyId, null, 4);
 
           setScenarioOptions(scenarioRes || []);
           setSub1Options(sub1Res || []);
@@ -122,7 +159,7 @@ export default function OutCallDetails() {
 
   // const handleView = async (e) => {
   //   e?.preventDefault();
-  //   if (!company_id) return;
+  //   if (!activeCompanyId) return;
 
   //   if (!form.startDate || !form.endDate) {
   //     setDateError("Please select both Start Date and End Date.");
@@ -148,7 +185,7 @@ export default function OutCallDetails() {
 
   //   setLoading(true);
   //   try {
-  //     const res = await getOutCallDetails(company_id, filters);
+  //     const res = await getOutCallDetails(activeCompanyId, filters);
   //     setTableData(res.data || []);
   //     setCounts(calculateCounts(res.data || []));
   //     setBreadcrumb(res.breadcrumb || []);
@@ -165,7 +202,7 @@ export default function OutCallDetails() {
 
   const handleView = async (e) => {
     e?.preventDefault();
-    if (!company_id) return;
+    if (!activeCompanyId) return;
 
     if (!form.startDate || !form.endDate) {
       setDateError("Please select both Start Date and End Date.");
@@ -191,7 +228,7 @@ export default function OutCallDetails() {
 
     setLoading(true);
     try {
-      const res = await getOutCallDetails(company_id, filters);
+      const res = await getOutCallDetails(activeCompanyId, filters);
       setTableData(res.data || []);
       setCounts(calculateCounts(res.data || []));
       setBreadcrumb(res.breadcrumb || []);
@@ -218,7 +255,7 @@ export default function OutCallDetails() {
   //     const filters = Object.fromEntries(
   //       Object.entries(form).filter(([_, value]) => value !== "" && value !== null && value !== undefined)
   //     );
-  //     const res = await getOutCallDetails(company_id, filters);
+  //     const res = await getOutCallDetails(activeCompanyId, filters);
   //     const data = res.data || [];
   //     if (!data.length) return alert("No data available for the selected filters.");
 
@@ -285,7 +322,7 @@ export default function OutCallDetails() {
 
   const handleExport = async () => {
     const Username = localStorage.getItem("username"); // ✅ get username
-    const ClientId = company_id || "Unknown Client"; // ✅ get client ID
+    const ClientId = activeCompanyId || "Unknown Client"; // ✅ get client ID
     if (!form.startDate || !form.endDate) {
       return alert("Please select Start Date and End Date.");
     }
@@ -305,7 +342,7 @@ export default function OutCallDetails() {
       // -----------------------------
       // 2️⃣ Fetch main outcall details
       // -----------------------------
-      const res = await getOutCallDetails(company_id, filters);
+      const res = await getOutCallDetails(activeCompanyId, filters);
       const data = Array.isArray(res?.data) ? res.data : [];
       if (!data.length) {
         return alert("No data available for selected filters.");
@@ -442,17 +479,39 @@ export default function OutCallDetails() {
   const totalPages = Math.ceil(filteredRows.length / rowsPerPage); // ✅ use filteredRows
 
   return (
-    <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
+    <>
       {loading && (
         <div className="loader-overlay">
-          <div className="bar" />
-          <div className="bar" />
-          <div className="bar" />
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
         </div>
       )}
 
+      <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
       <div className="card p-4">
+        <div className="d-flex justify-content-between align-items-center mb-4">
         <h5 className="mb-4">Out Call Details</h5>
+
+        {(userType === "Super-Admin" || userType === "Admin") && (
+        <div style={{ maxWidth: "250px" }}>
+          <select
+            className="form-select"
+            value={selectedClient}
+            onChange={(e) => setSelectedClient(e.target.value)}
+          >
+            <option value="">-- Select Client --</option>
+            {clients.map((c) => (
+              <option key={c.company_id} value={c.company_id}>
+                {c.company_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      </div>
 
         <form onSubmit={handleView}>
           {/* --- Dropdowns / Inputs --- */}
@@ -823,5 +882,6 @@ export default function OutCallDetails() {
         )}
       </div>
     </div>
+    </>
   );
 }

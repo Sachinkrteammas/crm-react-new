@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body,Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Body,Request, UploadFile, Form, File
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import date
 from database import get_db4
-from pydantic import BaseModel
-from typing import Optional
+import shutil
 from datetime import datetime
+import os
 
 
 
@@ -30,6 +30,7 @@ from datetime import datetime
 
 router = APIRouter()
 
+UPLOAD_DIR = "uploads"
 
 
 def get_dynamic_fields(db, client_id):
@@ -581,3 +582,38 @@ def get_call_flow(
 
     except Exception as e:
         return {"error": str(e)}
+
+
+
+
+
+
+@router.post("/upload_image/{client_id}")
+async def upload_image(
+    client_id: int,
+    call_id: str = Form(...),
+    image: UploadFile = File(...),
+):
+    # Validate image content type
+    if image.content_type not in ["image/jpeg", "image/png"]:
+        raise HTTPException(status_code=400, detail="Only JPEG/PNG images allowed")
+
+    # Create dynamic directory "uploads/<client_id>/"
+    client_path = os.path.join(UPLOAD_DIR, str(client_id))
+    os.makedirs(client_path, exist_ok=True)
+
+    # Build file path "uploads/<client_id>/<call_id>.jpg"
+    ext = image.filename.split(".")[-1]
+    file_path = os.path.join(client_path, f"{call_id}.{ext}")
+
+    # Save the image to the server
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(image.file, buffer)
+
+
+    return {
+        "status": "success",
+        "client_id": client_id,
+        "call_id": call_id,
+        "file_saved": file_path,
+    }

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from datetime import date
-from database import get_db4
+from database import get_db4, get_db2
 from email_utils import send_email
 import os, html
 
@@ -16,6 +16,7 @@ def send_call_summary(
     client_id: int = Query(...),
     report_date: date = Query(...),
     db: Session = Depends(get_db4),
+    db2: Session = Depends(get_db2)
 ):
     try:
         # 1️⃣ Call Scenario
@@ -74,6 +75,91 @@ def send_call_summary(
             consultation_mode.append({"Consultation Mode": "Other ( No Booking )", "Count": other_total_data})
         consultation_mode.extend(consultation_mode_data)
 
+        query5 = text("""
+            SELECT 
+                u.full_name AS `Agent Name`,
+                COUNT(v.user) AS `Calls taken in OB+IB`
+            FROM vicidial_agent_log v
+            JOIN vicidial_users u ON v.user = u.user
+            WHERE DATE(v.event_time) = CURDATE()
+              AND v.campaign_id IN ('Cryst002')
+              AND v.lead_id IS NOT NULL
+            GROUP BY v.user
+        """)
+
+        agent_rows = db2.execute(query5).mappings().all()
+        agent_rows = [dict(r) for r in agent_rows]
+
+
+
+        # 6️⃣ Hourly Call Summary (Your Provided Query)
+        hourly_query = text("""
+            SELECT DATE(call_date) `Date`, 
+                HOUR(call_date) `Time Slot`,
+                COUNT(1) Total, 
+                SUM(IF(t2.user!='VDCL',1,0)) `Answered`,
+
+                IF(t2.user!='VDCL',
+                    COUNT(DISTINCT(t2.user))-1,
+                    COUNT(DISTINCT(t2.user))
+                ) `Manpower`,
+
+                ROUND(SUM(IF(t2.user!='VDCL',1,0)) / COUNT(1) * 100, 2) `AL %`,
+                ROUND(SUM(
+                    IF(t2.user!='VDCL' AND t2.queue_seconds<=20,1,0)
+                ) / COUNT(1) * 100, 2) `SL %`
+
+            FROM asterisk.vicidial_closer_log t2
+            INNER JOIN vicidial_users vu ON t2.user = vu.user
+            LEFT JOIN asterisk.vicidial_agent_log t1 
+                ON t1.uniqueid = t2.uniqueid 
+                AND t1.lead_id != '' 
+                AND t2.user = t1.user
+
+            LEFT JOIN (
+                SELECT uniqueid, SUM(parked_sec) p 
+                FROM park_log 
+                WHERE STATUS = 'GRABBED' 
+                AND DATE(parked_time) = CURDATE() 
+                GROUP BY uniqueid
+            ) t3 ON t1.uniqueid = t3.uniqueid
+
+            WHERE DATE(t2.call_date) = CURDATE() 
+              AND t2.campaign_id IN('CrystalEyeCentr00000','Cryst000')
+
+            GROUP BY HOUR(t2.call_date);
+        """)
+
+        hourly_rows = db2.execute(hourly_query).mappings().all()
+        hourly_data = [dict(r) for r in hourly_rows]
+
+
+        # Compute totals
+        total_total = sum(row["Total"] for row in hourly_data)
+        total_answered = sum(row["Answered"] for row in hourly_data)
+
+        # AL% Total = (sum answered / sum total) * 100
+        total_al = round((total_answered / total_total) * 100, 2) if total_total else 0
+
+        # SL% Total = Weighted average
+        weighted_sl_num = sum(
+            (row["SL %"] * row["Total"]) for row in hourly_data
+        )
+        total_sl = round(weighted_sl_num / total_total, 2) if total_total else 0
+
+        # Add bottom total row exactly like your screenshot
+        hourly_data.append({
+            "Date": "Total",
+            "Time Slot": "",
+            "Total": total_total,
+            "Answered": total_answered,
+            "Manpower": "",    # No total for manpower
+            "AL %": total_al,
+            "SL %": total_sl
+        })
+
+
+
         # 🧱 Helper to build structured section data
         def make_table(title, data, exclude_first_from_total=False):
             if not data:
@@ -122,11 +208,73 @@ def send_call_summary(
                 </tr>
             </table><br>
             """
+        
+        def make_agent_table(agent_data):
+            if not agent_data:
+                return "<p>No Agent Call Summary Available</p>"
+
+            rows = "".join(
+                f"""
+                <tr>
+                    <td style='text-align:center;'>{html.escape(row['Agent Name'])}</td>
+                    <td style='text-align:center;'>{row['Calls taken in OB+IB']}</td>
+                </tr>
+                """
+                for row in agent_data
+            )
+
+            return f"""
+            <h3>APR</h3>
+             <table border='1' cellspacing='0' cellpadding='6' style="border-collapse:collapse; font-family:Arial; font-size:14px; width:60%; table-layout:fixed; text-align:center; margin-bottom:10px;">
+                <tr style="background:rgb(184, 204, 228); font-weight:bold;">
+                    <th style="width:70%;">Agent Name</th>
+                    <th style="width:30%;">Calls taken in OB+IB</th>
+                </tr>
+                {rows}
+            </table>
+            """
+        
+
+
+        def make_hourly_table(data):
+            rows = ""
+            for row in data:
+                rows += f"""
+                <tr>
+                    <td>{row['Date']}</td>
+                    <td>{row['Time Slot']}</td>
+                    <td>{row['Total']}</td>
+                    <td>{row['Answered']}</td>
+                    <td>{row['Manpower']}</td>
+                    <td>{row['AL %']}</td>
+                    <td>{row['SL %']}</td>
+                </tr>
+                """
+
+            return f"""
+            <h3>Hourly Call Summary</h3>
+            <table border='1' cellspacing='0' cellpadding='6' style="border-collapse:collapse; font-family:Arial; font-size:14px; width:60%; table-layout:fixed; text-align:center; margin-bottom:10px;">
+                <tr style="background:rgb(184, 204, 228); font-weight:bold;">
+                    <th>Date</th>
+                    <th>Time Slot</th>
+                    <th>Total</th>
+                    <th>Answered</th>
+                    <th>Manpower</th>
+                    <th>AL %</th>
+                    <th>SL %</th>
+                </tr>
+                {rows}
+            </table>
+            """
+
 
         html_content = f"""
         <p>Hi,</p>
 
         {''.join([make_html_table(sec['title'], sec['data'], sec['total']) for sec in sections])}
+        {make_agent_table(agent_rows)}
+        {make_hourly_table(hourly_data)}
+
         <p>Regards,</p>
         """
 

@@ -77,11 +77,17 @@ const IVRReport = () => {
     }
   };
 
-  const handleExport = () => {
-      if (ivrData.length === 0) {
-        alert("No data to export.");
-        return;
-      }
+  const handleExport = async () => {
+    if (ivrData.length === 0) {
+      alert("No data to export.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Allow React to render the loader
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       // Create a worksheet
       const worksheet = XLSX.utils.json_to_sheet(ivrData);
@@ -101,6 +107,11 @@ const IVRReport = () => {
         type: "application/octet-stream",
       });
       saveAs(file, "ivr_report.xlsx");
+    } catch (error) {
+      console.error("Error exporting IVR report:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

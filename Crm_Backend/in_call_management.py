@@ -131,6 +131,7 @@ class AbandCallResponse(BaseModel):
     created_at: Optional[datetime]
     created_by: Optional[int]
     active: Optional[int]
+    company_name: Optional[str] = None
 
 # ---------------------------
 # Add / Create Aband Call Setting
@@ -168,16 +169,29 @@ def add_aband_call(data: AbandCallCreate, db: Session = Depends(get_db4), user_i
 @router.get("/aband_call/list", response_model=List[AbandCallResponse])
 def list_aband_calls(search_client: Optional[str] = None, db: Session = Depends(get_db4)):
     """
-    Get all aband call settings, optionally filtered by client_id
+    Get all aband call settings, optionally filtered by client_id,
+    including company_name from registration_master
     """
     if search_client:
-        query = text("SELECT * FROM aband_call_time WHERE client_id LIKE :client ORDER BY created_at DESC")
+        query = text("""
+            SELECT a.*, r.company_name
+            FROM aband_call_time a
+            LEFT JOIN registration_master r ON a.client_id = r.company_id
+            WHERE a.client_id LIKE :client
+            ORDER BY a.created_at DESC
+        """)
         rows = db.execute(query, {"client": f"%{search_client}%"}).mappings().all()
     else:
-        query = text("SELECT * FROM aband_call_time ORDER BY created_at DESC")
+        query = text("""
+            SELECT a.*, r.company_name
+            FROM aband_call_time a
+            LEFT JOIN registration_master r ON a.client_id = r.company_id
+            ORDER BY a.created_at DESC
+        """)
         rows = db.execute(query).mappings().all()
     
     return [dict(row) for row in rows]
+
 
 # ---------------------------
 # Delete Aband Call Setting

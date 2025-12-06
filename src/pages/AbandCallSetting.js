@@ -43,9 +43,21 @@ const AbandCallSetting = () => {
     }
   };
 
+  // Fetch settings once on mount
   useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const data = await getAbandCallSettings(); // no searchClient
+        const sorted = data.sort((a, b) =>
+          String(a.client_id).localeCompare(String(b.client_id))
+        );
+        setSettings(sorted);
+      } catch (error) {
+        console.error(error);
+      }
+    };
     fetchSettings();
-  }, [searchClient]);
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -102,7 +114,7 @@ const AbandCallSetting = () => {
   };
 
   const filteredSettings = settings.filter((item) =>
-    item.client_id.toLowerCase().includes(searchClient.toLowerCase())
+    item.company_name.toLowerCase().includes(searchClient.toLowerCase())
   );
 
   const totalPages = Math.ceil(filteredSettings.length / rowsPerPage);
@@ -277,11 +289,17 @@ const AbandCallSetting = () => {
                 {currentRows.map((item, index) => (
                   <tr key={index}>
                     <td>{indexOfFirstRow + index + 1}</td>
-                    <td>{item.client_id}</td>
+                    <td>{item.company_name}</td>
                     <td>{item.start_time}</td>
                     <td>{item.end_time}</td>
                     <td>{item.aband_status} min</td>
-                    <td>{item.created_at}</td>
+                    <td>
+                      {new Date(item.created_at).toLocaleDateString("en-GB", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </td>
                     <td>
                       <button
                         className="btn btn-danger btn-sm d-flex align-items-center justify-content-center"
@@ -306,7 +324,7 @@ const AbandCallSetting = () => {
 
           <div className="d-flex justify-content-between align-items-center mt-2 flex-wrap">
             <button
-              className="btn btn-sm btn-outline-secondary mb-2"
+              className="btn btn-sm btn-outline-primary mb-2"
               onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
               disabled={currentPage === 1}
             >
@@ -318,7 +336,7 @@ const AbandCallSetting = () => {
               {filteredSettings.length}
             </span>
             <button
-              className="btn btn-sm btn-outline-secondary mb-2"
+              className="btn btn-sm btn-outline-primary mb-2"
               onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
               disabled={currentPage === totalPages}
             >

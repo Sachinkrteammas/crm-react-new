@@ -120,6 +120,8 @@ import AgentProductivity from "./pages/AgentProductivity";
 import SlaAgentsReports from "./pages/SlaAgentsReports";
 import CampaignsMapping from "./pages/CampaignsMapping";
 import DidClientCampaignsMapping from "./pages/DidClientCampaignsMapping";
+import SubMenuPage from "./pages/SubMenuPage";
+
 
 
 function App() {
@@ -231,7 +233,7 @@ function App() {
       <Route path="/auth-register" element={<AuthRegister  />} />
       <Route path="/forgot-password" element={<ForgotPassword  />} />
       <Route path="/logout" element={<Logout />} />
-      <Route path="/company_registration" element={<CompanyRegistration />} />
+      
 
       <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
@@ -347,6 +349,8 @@ function App() {
               <Route path="/sla_agents_reports" element={<SlaAgentsReports/>} />
               <Route path="/campaigns_mapping" element={<CampaignsMapping/>} />
               <Route path="/mappings" element={<DidClientCampaignsMapping/>} />
+              <Route path="/submenu/:id" element={<SubMenuPage />} />
+              <Route path="/company_registration" element={<CompanyRegistration />} />
               
           </Route>
       </Route>
