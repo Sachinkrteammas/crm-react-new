@@ -84,8 +84,8 @@ def get_templates(client_id: int = Query(..., description="Client ID")):
 #         SELECT 
 #             t.template_name,
 #             t.template_text,
-#             am.whatsapp_api_key,
-#             am.whatsapp_session_id
+#             am.WHATSAPP_API_KEY,
+#             am.WHATSAPP_SESSION_ID
 #         FROM templates t
 #         LEFT JOIN alert_mechanisms am 
 #             ON am.client_id = t.client_id 
@@ -98,15 +98,15 @@ def get_templates(client_id: int = Query(..., description="Client ID")):
 
 #         # Extract templates list
 #         templates = []
-#         whatsapp_api_key = None
-#         whatsapp_session_id = None
+#         WHATSAPP_API_KEY = None
+#         WHATSAPP_SESSION_ID = None
 
 #         for row in result:
 #             # capture WhatsApp details once
-#             if whatsapp_api_key is None and row["whatsapp_api_key"]:
-#                 whatsapp_api_key = row["whatsapp_api_key"]
-#             if whatsapp_session_id is None and row["whatsapp_session_id"]:
-#                 whatsapp_session_id = row["whatsapp_session_id"]
+#             if WHATSAPP_API_KEY is None and row["WHATSAPP_API_KEY"]:
+#                 WHATSAPP_API_KEY = row["WHATSAPP_API_KEY"]
+#             if WHATSAPP_SESSION_ID is None and row["WHATSAPP_SESSION_ID"]:
+#                 WHATSAPP_SESSION_ID = row["WHATSAPP_SESSION_ID"]
 
 #             templates.append({
 #                 "template_name": row["template_name"],
@@ -115,8 +115,8 @@ def get_templates(client_id: int = Query(..., description="Client ID")):
 
 #     return {
 #         "client_id": client_id,
-#         "whatsapp_api_key": whatsapp_api_key,
-#         "whatsapp_session_id": whatsapp_session_id,
+#         "WHATSAPP_API_KEY": WHATSAPP_API_KEY,
+#         "WHATSAPP_SESSION_ID": WHATSAPP_SESSION_ID,
 #         "templates": templates,
 #     }
 
@@ -127,8 +127,8 @@ class AlertMechanismCreate(BaseModel):
     alert_on: str
     template_name: str
     template_text: str
-    whatsapp_api_key: Optional[str] = None
-    whatsapp_session_id: Optional[str] = None
+    WHATSAPP_API_KEY: Optional[str] = None
+    WHATSAPP_SESSION_ID: Optional[str] = None
 
 
 class AlertMechanismResponse(BaseModel):
@@ -138,14 +138,14 @@ class AlertMechanismResponse(BaseModel):
     alert_on: str
     template_name: str
     template_text: str
-    whatsapp_api_key: Optional[str] = None
-    whatsapp_session_id: Optional[str] = None
+    WHATSAPP_API_KEY: Optional[str] = None
+    WHATSAPP_SESSION_ID: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 
 
 
-@router.get("/caller/alert-mechanism", response_model=List[AlertMechanismResponse])
+@router.get("/caller/alert-mechanism")
 def get_caller_alert_mechanisms(client_id: Optional[int] = None):
     try:
         with engine4.begin() as conn:
@@ -162,6 +162,7 @@ def get_caller_alert_mechanisms(client_id: Optional[int] = None):
                     WHERE alert_category = 'caller'
                     ORDER BY id DESC
                 """)
+                
                 result = conn.execute(query)
 
             rows = [dict(row._mapping) for row in result]
@@ -180,8 +181,8 @@ def create_alert_mechanism(payload: AlertMechanismCreate):
 
     insert_query = text("""
         INSERT INTO alert_mechanisms
-        (client_id, alert_category, alert_on, template_name, template_text, whatsapp_api_key, whatsapp_session_id, created_at)
-        VALUES (:client_id, :alert_category, :alert_on, :template_name, :template_text, :whatsapp_api_key, :whatsapp_session_id, NOW())
+        (client_id, alert_category, alert_on, template_name, template_text, WHATSAPP_API_KEY, WHATSAPP_SESSION_ID, created_at)
+        VALUES (:client_id, :alert_category, :alert_on, :template_name, :template_text, :WHATSAPP_API_KEY, :WHATSAPP_SESSION_ID, NOW())
     """)
 
     try:
@@ -192,8 +193,8 @@ def create_alert_mechanism(payload: AlertMechanismCreate):
                 "alert_on": payload.alert_on,
                 "template_name": payload.template_name,
                 "template_text": payload.template_text,
-                "whatsapp_api_key": payload.whatsapp_api_key,
-                "whatsapp_session_id": payload.whatsapp_session_id
+                "WHATSAPP_API_KEY": payload.WHATSAPP_API_KEY,
+                "WHATSAPP_SESSION_ID": payload.WHATSAPP_SESSION_ID
             })
 
         return {
@@ -211,8 +212,8 @@ class AlertMechanismUpdate(BaseModel):
     alert_on: Optional[str] = None
     template_name: Optional[str] = None
     template_text: Optional[str] = None
-    whatsapp_api_key: Optional[str] = None
-    whatsapp_session_id: Optional[str] = None
+    WHATSAPP_API_KEY: Optional[str] = None
+    WHATSAPP_SESSION_ID: Optional[str] = None
 
 
 @router.put("/caller/alert-mechanism/{alert_id}")
@@ -231,13 +232,13 @@ def update_caller_alert_mechanism(alert_id: int, payload: AlertMechanismUpdate):
             update_fields.append("template_text = :template_text")
             params["template_text"] = payload.template_text
 
-        if payload.whatsapp_api_key is not None:
-            update_fields.append("whatsapp_api_key = :whatsapp_api_key")
-            params["whatsapp_api_key"] = payload.whatsapp_api_key
+        if payload.WHATSAPP_API_KEY is not None:
+            update_fields.append("WHATSAPP_API_KEY = :WHATSAPP_API_KEY")
+            params["WHATSAPP_API_KEY"] = payload.WHATSAPP_API_KEY
 
-        if payload.whatsapp_session_id is not None:
-            update_fields.append("whatsapp_session_id = :whatsapp_session_id")
-            params["whatsapp_session_id"] = payload.whatsapp_session_id
+        if payload.WHATSAPP_SESSION_ID is not None:
+            update_fields.append("WHATSAPP_SESSION_ID = :WHATSAPP_SESSION_ID")
+            params["WHATSAPP_SESSION_ID"] = payload.WHATSAPP_SESSION_ID
     
 
         if not update_fields:
@@ -299,8 +300,8 @@ class InternalAlertMechanismCreate(BaseModel):
     person_name: str
     phone: str
     email: Optional[str] = None
-    whatsapp_api_key: Optional[str] = None
-    whatsapp_session_id: Optional[str] = None
+    WHATSAPP_API_KEY: Optional[str] = None
+    WHATSAPP_SESSION_ID: Optional[str] = None
 
 
 class InternalAlertMechanismResponse(BaseModel):
@@ -318,8 +319,8 @@ class InternalAlertMechanismResponse(BaseModel):
     person_name: str
     phone: str
     email: Optional[str] = None
-    whatsapp_api_key: Optional[str] = None
-    whatsapp_session_id: Optional[str] = None
+    WHATSAPP_API_KEY: Optional[str] = None
+    WHATSAPP_SESSION_ID: Optional[str] = None
 
 
 class InternalAlertMechanismUpdate(BaseModel):
@@ -334,12 +335,12 @@ class InternalAlertMechanismUpdate(BaseModel):
     person_name: Optional[str]
     phone: Optional[str]
     email: Optional[str]
-    whatsapp_api_key: Optional[str] = None
-    whatsapp_session_id: Optional[str] = None
+    WHATSAPP_API_KEY: Optional[str] = None  
+    WHATSAPP_SESSION_ID: Optional[str] = None   
 
 
 
-@router.get("/internal/alert-mechanism", response_model=List[InternalAlertMechanismResponse])
+@router.get("/internal/alert-mechanism")
 def get_internal_alert_mechanisms(client_id: Optional[int] = None):
     try:
         with engine4.begin() as conn:
@@ -377,13 +378,13 @@ def create_internal_alert_mechanism(payload: InternalAlertMechanismCreate):
         (
             client_id, alert_category, alert_on, template_name, template_text,
             scenario1, scenario2, scenario3, scenario4, scenario5,
-            person_name, phone, email, whatsapp_api_key, whatsapp_session_id, created_at
+            person_name, phone, email, WHATSAPP_API_KEY, WHATSAPP_SESSION_ID, created_at
         )
         VALUES
         (
             :client_id, :alert_category, :alert_on, :template_name, :template_text,
             :scenario1, :scenario2, :scenario3, :scenario4, :scenario5,
-            :person_name, :phone, :email, :whatsapp_api_key, :whatsapp_session_id, NOW()
+            :person_name, :phone, :email, :WHATSAPP_API_KEY, :WHATSAPP_SESSION_ID, NOW()
         )
     """)
 
@@ -403,8 +404,8 @@ def create_internal_alert_mechanism(payload: InternalAlertMechanismCreate):
                 "person_name": payload.person_name,
                 "phone": payload.phone,
                 "email": payload.email,
-                "whatsapp_api_key": payload.whatsapp_api_key,
-                "whatsapp_session_id": payload.whatsapp_session_id
+                "WHATSAPP_API_KEY": payload.WHATSAPP_API_KEY,
+                "WHATSAPP_SESSION_ID": payload.WHATSAPP_SESSION_ID
             })
 
         return {
@@ -484,8 +485,8 @@ class EscalationAlertMechanismCreate(BaseModel):
     phone: str
     email: Optional[str] = None
     tat: int
-    whatsapp_api_key: Optional[str] = None
-    whatsapp_session_id: Optional[str] = None
+    WHATSAPP_API_KEY: Optional[str] = None
+    WHATSAPP_SESSION_ID: Optional[str] = None
 
 
 class EscalationAlertMechanismUpdate(BaseModel):
@@ -501,8 +502,8 @@ class EscalationAlertMechanismUpdate(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     tat: Optional[int] = None
-    whatsapp_api_key: Optional[str] = None
-    whatsapp_session_id: Optional[str] = None
+    WHATSAPP_API_KEY: Optional[str] = None
+    WHATSAPP_SESSION_ID: Optional[str] = None
 
 
 @router.post("/escalation/alert-mechanism")
@@ -516,13 +517,13 @@ def create_escalation_alert_mechanism(payload: EscalationAlertMechanismCreate):
         (
             client_id, alert_category, alert_on, template_name, template_text,
             scenario1, scenario2, scenario3, scenario4, scenario5,
-            person_name, phone, email, tat, whatsapp_api_key, whatsapp_session_id, created_at
+            person_name, phone, email, tat, WHATSAPP_API_KEY, WHATSAPP_SESSION_ID, created_at
         )
         VALUES
         (
             :client_id, :alert_category, :alert_on, :template_name, :template_text,
             :scenario1, :scenario2, :scenario3, :scenario4, :scenario5,
-            :person_name, :phone, :email, :tat, :whatsapp_api_key, :whatsapp_session_id, NOW()
+            :person_name, :phone, :email, :tat, :WHATSAPP_API_KEY, :WHATSAPP_SESSION_ID, NOW()
         )
     """)
 
@@ -543,8 +544,8 @@ def create_escalation_alert_mechanism(payload: EscalationAlertMechanismCreate):
                 "phone": payload.phone,
                 "email": payload.email,
                 "tat": payload.tat,
-                "whatsapp_api_key": payload.whatsapp_api_key,
-                "whatsapp_session_id": payload.whatsapp_session_id
+                "WHATSAPP_API_KEY": payload.WHATSAPP_API_KEY,
+                "WHATSAPP_SESSION_ID": payload.WHATSAPP_SESSION_ID
             })
 
         return {

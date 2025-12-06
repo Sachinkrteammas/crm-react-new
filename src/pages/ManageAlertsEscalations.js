@@ -243,8 +243,8 @@ export default function ManageAlertsEscalations() {
         alert_on: callerAlertOn,
         template_name: selectedTemplate,
         template_text: callerTemplateText,
-        whatsapp_api_key: Whatsappkey,
-        whatsapp_session_id: SessionId,
+        WHATSAPP_API_KEY: Whatsappkey,
+        WHATSAPP_SESSION_ID: SessionId,
       };
 
       if (editingAlertId) {
@@ -269,8 +269,8 @@ export default function ManageAlertsEscalations() {
     setCallerAlertOn(alert.alert_on);
     setSelectedTemplate(alert.template_name);
     setCallerTemplateText(alert.template_text);
-    setWhatsappkey(alert.whatsapp_api_key || "");
-    setSessionId(alert.whatsapp_session_id || "");
+    setWhatsappkey(alert.WHATSAPP_API_KEY || "");
+    setSessionId(alert.WHATSAPP_SESSION_ID || "");
 
   };
 
@@ -341,8 +341,8 @@ export default function ManageAlertsEscalations() {
       person_name: personName,
       phone: personPhone,
       email: personEmail || null,
-      whatsapp_api_key: InternalWhatsappkey,
-      whatsapp_session_id: SessionId,
+      WHATSAPP_API_KEY: InternalWhatsappkey,
+      WHATSAPP_SESSION_ID: InternalSessionId,
     };
 
     try {
@@ -388,8 +388,8 @@ export default function ManageAlertsEscalations() {
     setIsEditing(true);
     setEditingInternalAlertId(alert.id);
     setInternalAlertOn(alert.alert_on);
-    InternalsetWhatsappkey(alert.whatsapp_api_key || "");
-    InternalsetSessionId(alert.whatsapp_session_id || "");
+    InternalsetWhatsappkey(alert.WHATSAPP_API_KEY  || "");
+    InternalsetSessionId(alert.WHATSAPP_SESSION_ID  || "");
 
 
     const s1 = alert.scenario1 ? String(alert.scenario1) : "";
@@ -510,8 +510,8 @@ export default function ManageAlertsEscalations() {
       phone: escalationPersonPhone,
       email: escalationPersonEmail || null,
       tat: escalationTAT,
-      whatsapp_api_key: escalationWhatsappkey,
-      whatsapp_session_id: SessionId,
+      WHATSAPP_API_KEY: escalationWhatsappkey,
+      WHATSAPP_SESSION_ID: escalationSessionId,
     };
 
     try {
@@ -544,8 +544,8 @@ export default function ManageAlertsEscalations() {
     setIsEditing(true);
     setEditingEscalationAlertId(alert.id);
     setEscalationAlertOn(alert.alert_on);
-    escalationsetWhatsappkey(alert.whatsapp_api_key || "");
-    escalationsetSessionId(alert.whatsapp_session_id || "");
+    escalationsetWhatsappkey(alert.WHATSAPP_API_KEY  || "");
+    escalationsetSessionId(alert.WHATSAPP_SESSION_ID  || "");
 
 
     const s1 = alert.scenario1 ? String(alert.scenario1) : "";
