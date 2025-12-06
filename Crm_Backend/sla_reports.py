@@ -13,12 +13,10 @@ from datetime import datetime
 from utils.email_manager import send_sla_report_email, EMAIL_RECEIVER
 
 
-
 router = APIRouter(prefix="/sla", tags=["SLA Reports"])
 
 
-
-# ---------------- Reusable Excel generator ----------------
+# ---------------- Reusable Excel generator for mail have sent----------------
 def generate_sla_excel_bytes(start_date: str, end_date: str, campaign_ids: list, db: Session):
     campaigns = [str(c).strip() for c in campaign_ids if str(c).strip()]
     if not campaigns:
@@ -292,6 +290,7 @@ def export_sla_excel(start_date: str, end_date: str, campaign_ids: str, db: Sess
     )
 
 
+# ---------------- Send Data in Email ----------------
 @router.get("/agents/email", tags=["SLA Reports"])
 def send_sla_report(
     start_date: str,

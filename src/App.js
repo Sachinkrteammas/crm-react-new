@@ -118,6 +118,8 @@ import ChannelUtilization from "./pages/ChannelUtilization";
 import DidLogsReports from "./pages/DidLogReports";
 import AgentProductivity from "./pages/AgentProductivity";
 import SlaAgentsReports from "./pages/SlaAgentsReports";
+import CampaignsMapping from "./pages/CampaignsMapping";
+import DidClientCampaignsMapping from "./pages/DidClientCampaignsMapping";
 
 
 function App() {
@@ -210,7 +212,8 @@ function App() {
         "/didlogs_reports" : "Did Logs Reports | DialDesk",
         "/agent_avr" : "Agents AVR Productivity Report | DialDesk",
         "/sla_agents_reports" : "SLA Agents Reports | DialDesk",
-
+        "/campaigns_mapping" : "Campaigns Mapping | DialDesk",
+        "/mappings" : "Did Client And Campaigns Mapping | DialDesk",
     };
 
     const location = useLocation();
@@ -342,6 +345,8 @@ function App() {
               <Route path="/didlogs_reports"  element={<DidLogsReports />} />
               <Route path="/agent_avr" element={<AgentProductivity/>} />
               <Route path="/sla_agents_reports" element={<SlaAgentsReports/>} />
+              <Route path="/campaigns_mapping" element={<CampaignsMapping/>} />
+              <Route path="/mappings" element={<DidClientCampaignsMapping/>} />
               
           </Route>
       </Route>

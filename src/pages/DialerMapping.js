@@ -1,55 +1,109 @@
-import React, { useState } from "react";
+
+// Dailer Mapping dynmaic..
+import React, { useState, useEffect } from "react";
+import api from "../api"; // axios instance
 
 const DialerMapping = () => {
+  const userType = localStorage.getItem("user_type");
+  const companyId = localStorage.getItem("company_id");
+
   const [selectedClient, setSelectedClient] = useState("");
+  const [clients, setClients] = useState([]);
+
   const [extension1, setExtension1] = useState("");
   const [extension2, setExtension2] = useState("");
-  const [mappings, setMappings] = useState([
-    {
-      id: 1,
-      extension1: "1001",
-      extension2: "2001",
-      createdAt: "2018-01-12 16:38:36",
-      updatedAt: "2018-01-12 18:38:36",
-    },
-    {
-      id: 2,
-      extension1: "1002",
-      extension2: "2002",
-      createdAt: "2025-10-08 16:38:36",
-      updatedAt: "2025-10-10 18:38:36",
-    },
-  ]);  
 
-  const handleClientChange = (e) => {
-    setSelectedClient(e.target.value);
+  const [mappings, setMappings] = useState([]);
 
+  // ================================
+  // FETCH CLIENTS
+  // ================================
+  useEffect(() => {
+    if (userType === "Super-Admin" || userType === "Admin") {
+      api
+        .get("/agents/clients-rights")
+        .then((res) => {
+          const list = res.data || [];
+          list.sort((a, b) =>
+            a.company_name?.localeCompare(b.company_name, "en", {
+              sensitivity: "base",
+            })
+          );
+          setClients(list);
+        })
+        .catch((err) => console.error("Error fetching clients:", err));
+    } else {
+      setSelectedClient(String(companyId));
+    }
+  }, [userType, companyId]);
+
+  // ================================
+  // Load mappings on client change
+  // ================================
+  useEffect(() => {
+    if (selectedClient) loadMappings(selectedClient);
+  }, [selectedClient]);
+
+  const loadMappings = async (clientId) => {
+    try {
+      const res = await api.get("/did-master/list", {
+        params: { ClientId: clientId },
+      });
+
+      const list = res.data || [];
+      setMappings(list);
+
+      // ===== AUTO-FILL LATEST RECORD =====
+      if (list.length > 0) {
+        const latest = list[list.length - 1];
+
+        setExtension1(latest.did_number || "");
+        setExtension2(latest.customer_care_number || "");
+      } else {
+        setExtension1("");
+        setExtension2("");
+      }
+    } catch (err) {
+      console.error("Mappings Load Error:", err);
+    }
   };
 
+  // ================================
+  // Create / Update DID
+  // ================================
   const handleUpdate = () => {
-    // You can handle submission here
-    alert(
-      `Updating dialer mapping for client: ${selectedClient}\nExtension 1: ${extension1}\nExtension 2: ${extension2}`
-    );
-
-  const newMapping = {
-      id: Date.now(),
-      extension1,
-      extension2,
-      createdAt: new Date().toISOString().replace("T", " ").split(".")[0],
-      updatedAt: new Date().toISOString().replace("T", " ").split(".")[0],
-    };
-
-    setMappings([...mappings, newMapping]);
-    setExtension1("");
-    setExtension2("");
- };
-
-
-  const handleDelete = (id) => {
-    if (window.confirm("Are you sure you want to delete this mapping?")) {
-      setMappings(mappings.filter((mapping) => mapping.id !== id));
+    if (
+      !selectedClient ||
+      !String(extension1).trim() ||
+      !String(extension2).trim()
+    ) {
+      alert("Please fill all fields");
+      return;
     }
+
+    const formData = new FormData();
+    formData.append("did_number", extension1);
+    formData.append("customer_care_number", extension2);
+    formData.append("client_id", selectedClient);
+
+    api
+      .post("/did-master/create", formData)
+      .then(() => {
+        loadMappings(selectedClient);
+      })
+      .catch((err) => console.error("Create DID Error:", err));
+  };
+
+  // ================================
+  // DELETE MAPPING
+  // ================================
+  const handleDelete = (id) => {
+    if (!window.confirm("Are you sure you want to delete this mapping?")) return;
+
+    api
+      .delete(`/did-master/delete/${id}`)
+      .then(() => loadMappings(selectedClient))
+      .catch((err) => console.error("Delete DID Error:", err));
   };
 
   return (
@@ -57,73 +111,65 @@ const DialerMapping = () => {
       <div className="col-12">
         <h4 className="mb-4">Dialer Mapping To Client</h4>
 
-        {/* Select Client Dropdown */}
-        <div style={{ marginBottom: "40px" }}>
-          <div className="card-body">
-            <div className="mb-3">
-              {/* <label htmlFor="clientSelect" className="form-label">
-                Select Client
-              </label> */}
-              <select
-                id="clientSelect"
-                className="form-select"
-                value={selectedClient}
-                onChange={handleClientChange}
-                style={{ width: "200px" }}
-              >
-                <option value="">-- Select Client --</option>
-                <option value="Client A">Client A</option>
-                <option value="Client B">Client B</option>
-                <option value="Client C">Client C</option>
-              </select>
-            </div>
-          </div>
-        </div>
+        {/* Client Dropdown */}
+        {(userType === "Super-Admin" || userType === "Admin") && (
+          <div className="mb-4">
+            <label className="form-label fw-semibold">Select Client</label>
+            <select
+              className="form-select"
+              value={selectedClient}
+              onChange={(e) => setSelectedClient(e.target.value)}
+              style={{ width: "300px" }}
+            >
+              <option value="">-- Select Client --</option>
 
-        {/* Dialer Extensions Inputs */}
-        <div className="card" style={{ marginBottom: "20px"}}>
+              {clients.map((c) => (
+                <option key={c.company_id} value={String(c.company_id)}>
+                  {c.company_name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Add Mapping */}
+        <div className="card mb-3">
           <div className="card-body">
-            <h5 className="mb-6">Dialer Mapping</h5>
+            <h5 className="mb-3">Dialer Mapping</h5>
+
             <div className="mb-3">
-              {/* <label htmlFor="extension1" className="form-label">
-                Dialer Extension 1
-              </label> */}
               <input
                 type="text"
-                id="extension1"
                 className="form-control"
+                placeholder="Dialer Extension"
                 value={extension1}
                 onChange={(e) => setExtension1(e.target.value)}
-                placeholder="Dialer Extension"
-                style={{ width: "200px", marginLeft: "50px"}}
-              />
-            </div>
-            <div className="mb-3">
-              {/* <label htmlFor="extension2" className="form-label">
-                Dialer Extension 2
-              </label> */}
-              <input
-                type="text"
-                id="extension2"
-                className="form-control"
-                value={extension2}
-                onChange={(e) => setExtension2(e.target.value)}
-                placeholder="Dialer Extension"
-                style={{ width: "200px", marginLeft: "50px" }}
+                style={{ width: "250px" }}
               />
             </div>
 
-            <button className="btn btn-primary" onClick={handleUpdate} style={{marginLeft: "50px" }}>
+            <div className="mb-3">
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Customer Care Number"
+                value={extension2}
+                onChange={(e) => setExtension2(e.target.value)}
+                style={{ width: "250px" }}
+              />
+            </div>
+
+            <button className="btn btn-primary" onClick={handleUpdate}>
               Update
             </button>
           </div>
         </div>
-        </div>
 
         {/* Mapping Table */}
-        <div className="card" style={{ marginBottom: "20px"}}>
+        <div className="card mb-3">
           <div className="card-body">
             <h5 className="mb-3">View Client Ext Mapping</h5>
+
             <div className="table-responsive">
               <table className="table table-striped table-bordered">
                 <thead className="table-light">
@@ -135,18 +181,19 @@ const DialerMapping = () => {
                     <th>Action</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {mappings.length > 0 ? (
-                    mappings.map((mapping) => (
-                      <tr key={mapping.id}>
-                        <td>{mapping.extension1}</td>
-                        <td>{mapping.extension2}</td>
-                        <td>{mapping.createdAt}</td>
-                        <td>{mapping.updatedAt}</td>
+                    mappings.map((m) => (
+                      <tr key={m.id}>
+                        <td>{m.did_number}</td>
+                        <td>{m.customer_care_number}</td>
+                        <td>{m.create_date}</td>
+                        <td>{m.update_date}</td>
                         <td>
                           <button
                             className="btn btn-danger btn-sm"
-                            onClick={() => handleDelete(mapping.id)}
+                            onClick={() => handleDelete(m.id)}
                           >
                             Delete
                           </button>
@@ -164,32 +211,13 @@ const DialerMapping = () => {
               </table>
             </div>
           </div>
-        </div>   
-
+        </div>
 
         {/* History Table */}
-        <div className="card" style={{ marginBottom: "20px"}}>
+        <div className="card mb-3">
           <div className="card-body">
-            <div className="d-flex justify-content-between align-items-center mb-3">
             <h5 className="mb-3">Client Dialer Extension History</h5>
-            <div>
-                <select className="form-select form-select-sm w-auto">
-                  <option value="10">10</option>
-                  <option value="25">25</option>
-                  <option value="50">50</option>
-                </select>
-              </div>
-            {/* Search Box */}
-            <input
-                type="text"
-                className="form-control"
-                placeholder="Search..."
-                style={{ width: "200px" }}
-                onChange={(e) => console.log(e.target.value)} // add your filter logic
-            />
-            </div>
 
-            {/* <h5 className="mb-3">Client Dialer Extension History</h5> */}
             <div className="table-responsive">
               <table className="table table-striped table-bordered">
                 <thead className="table-light">
@@ -200,41 +228,34 @@ const DialerMapping = () => {
                     <th>Update Date</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {mappings.length > 0 ? (
-                    mappings.map((mapping) => (
-                      <tr key={mapping.id}>
-                        <td>{mapping.extension1}</td>
-                        <td>{mapping.extension2}</td>
-                        <td>{mapping.createdAt}</td>
-                        <td>{mapping.updatedAt}</td>
+                    mappings.map((m) => (
+                      <tr key={`history-${m.id}`}>
+                        <td>{m.did_number}</td>
+                        <td>{m.customer_care_number}</td>
+                        <td>{m.create_date}</td>
+                        <td>{m.update_date}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="text-center">
-                        No mappings found
+                      <td colSpan="4" className="text-center">
+                        No history found
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
-              <div className="d-flex justify-content-between align-items-center">
-              <small>
-                Showing {mappings.length === 0 ? 0 : 1} to{" "}
-                {mappings.length} of {mappings.length} entries
-              </small>
-              <div>
-                <button className="btn btn-sm btn-light me-2">Previous</button>
-                <button className="btn btn-sm btn-light">Next</button>
-              </div>
-            </div>
             </div>
           </div>
-        </div>       
+        </div>
 
       </div>
+    </div>
   );
 };
 
 export default DialerMapping;
+
