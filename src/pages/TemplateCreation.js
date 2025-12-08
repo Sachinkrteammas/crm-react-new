@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { Editor } from "@tinymce/tinymce-react";
 import api from "../api";
 
 export default function TemplateCreation() {
@@ -207,13 +208,30 @@ export default function TemplateCreation() {
 
                       <div className="col-md-12">
                         <label className="form-label fw-semibold">Template Text</label>
-                        <textarea
-                          className="form-control shadow-sm rounded-2"
-                          rows="4"
+                        <Editor
+                          apiKey="ofd6e9qqhtme50qw3m5m9blembl5sv38ngr7dijtcet3e0sy"   // optional, TinyMCE works without it
                           value={templateText}
-                          onChange={handleManualTextChange}
-                          placeholder="Use :FieldName: or :Scenario: for dynamic fields"
-                        ></textarea>
+                          onEditorChange={(content) => {
+                            setManualText(content);
+                            setTemplateText(content);
+                          }}
+                          init={{
+                            height: 300,
+                            menubar: false,
+                            branding: false,
+                            promotion: false,
+                            plugins: [
+                              "advlist autolink lists link charmap preview anchor",
+                              "searchreplace visualblocks code fullscreen",
+                              "insertdatetime table paste help wordcount"
+                            ],
+                            toolbar:
+                              "undo redo | bold italic underline | " +
+                              "alignleft aligncenter alignright alignjustify | " +
+                              "bullist numlist outdent indent | " +
+                              "removeformat | code | preview",
+                          }}
+                        />
                       </div>
 
                       <div className="col-12 d-flex justify-content-center gap-3 mt-4">
