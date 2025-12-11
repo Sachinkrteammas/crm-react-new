@@ -12,11 +12,13 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 export default function OutCallDetails() {
   const userType = localStorage.getItem("user_type");
   const company_id = localStorage.getItem("company_id");
   const today = new Date().toISOString().split("T")[0];
+  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     campaignType: "",
@@ -647,6 +649,13 @@ export default function OutCallDetails() {
               >
                 Export
               </button>
+              <button
+                type="button"
+                className="btn btn-outline-primary rounded-3 me-2 px-4 py-2"
+                onClick={() => navigate(-1)}
+              >
+                ← Back
+              </button>
             </div>
           </div>
           {dateError && <p className="text-danger small">{dateError}</p>}
@@ -732,7 +741,7 @@ export default function OutCallDetails() {
                         <thead className="table-light">
                           <tr>
                             <th>View</th>
-                            <th>Recording</th>
+                            {/* <th>Recording</th> */}
                             <th>Out Call ID</th>
                             <th>Campaign Type</th>
                             <th>Campaign Name</th>
@@ -762,11 +771,11 @@ export default function OutCallDetails() {
                                     {/* 👈 Eye icon instead of text */}
                                   </button>
                                 </td>
-                                <td>
+                                {/* <td>
                                   <button className="btn btn-sm btn-outline-secondary">
                                     ⏬
                                   </button>
-                                </td>
+                                </td> */}
                                 <td>{row.id}</td>
                                 <td>{row.campaignType}</td>
                                 <td>{row.campaignName}</td>

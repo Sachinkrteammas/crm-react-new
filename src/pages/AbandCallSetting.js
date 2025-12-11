@@ -7,6 +7,7 @@ import {
 } from "../services/authService";
 import api from "../api";
 import { Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const AbandCallSetting = () => {
   const [form, setForm] = useState({
@@ -22,6 +23,7 @@ const AbandCallSetting = () => {
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [searchClient, setSearchClient] = useState("");
   const [message, setMessage] = useState({ text: "", type: "" });
+  const navigate = useNavigate();
 
   // Auto-hide message after 3 seconds
   useEffect(() => {
@@ -166,6 +168,9 @@ const AbandCallSetting = () => {
       {/* Form */}
       <div className="row g-3 align-items-end">
         <div className="col-md-3">
+          <label className="form-label">
+              Select Client
+          </label>
           <select
             className="form-select"
             name="client"
@@ -182,6 +187,9 @@ const AbandCallSetting = () => {
         </div>
 
         <div className="col-md-3">
+          <label className="form-label">
+              Start Time
+          </label>
           <select
             name="startTime"
             value={form.startTime}
@@ -198,6 +206,9 @@ const AbandCallSetting = () => {
         </div>
 
         <div className="col-md-3">
+          <label className="form-label">
+              End Time
+          </label>
           <select
             name="endTime"
             value={form.endTime}
@@ -214,6 +225,9 @@ const AbandCallSetting = () => {
         </div>
 
         <div className="col-md-3">
+          <label className="form-label">
+              Interval
+          </label>
           <select
             name="withinMinutes"
             value={form.withinMinutes}
@@ -231,6 +245,13 @@ const AbandCallSetting = () => {
       </div>
 
       <div className="mt-3">
+        <button
+          type="button"
+          className="btn btn-outline-primary rounded-3 me-2"
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
         <button className="btn btn-primary" onClick={handleAdd}>
           Submit
         </button>

@@ -252,8 +252,7 @@ def compute_ib_consumption(
                     call_pulse = int(ifmp_n)
             else:
                 call_pulse = int(ceil(duration / ibn_pulse_sec)) if ibn_pulse_sec > 0 else int(ceil(duration))
-            call_rate = Decimal(call_pulse) * ibn_pulse_rate
-            # call_rate = (Decimal(call_pulse) * ibn_pulse_rate).quantize(Decimal("0.0001"))
+            call_rate = (Decimal(call_pulse) * ibn_pulse_rate).quantize(Decimal("0.0001"))
             ibn_pulse += call_pulse
             ibn_secs += call_pulsesec    # PHP increments by call_pulsesec which is 0
             ibn_total += call_rate
@@ -267,7 +266,7 @@ def compute_ib_consumption(
                     call_pulse = int(ifmp)
             else:
                 call_pulse = int(ceil(duration / ib_pulse_sec)) if ib_pulse_sec > 0 else int(ceil(duration))
-            call_rate = Decimal(call_pulse) * ib_pulse_rate
+            call_rate = (Decimal(call_pulse) * ib_pulse_rate).quantize(Decimal("0.0001"))
             ib_pulse += call_pulse
             ib_secs += call_pulsesec    # PHP increments by call_pulsesec which is 0
             ib_total += call_rate

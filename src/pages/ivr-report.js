@@ -7,6 +7,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 const IVRReport = () => {
   const [startDate, setStartDate] = useState(null);
@@ -14,6 +15,7 @@ const IVRReport = () => {
   const [ivrData, setIVRData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showTable, setShowTable] = useState(false);
+  const navigate = useNavigate();
 
   // 🔹 User info
   const userType = localStorage.getItem("user_type");
@@ -59,6 +61,14 @@ const IVRReport = () => {
   
 
   const handleView = async () => {
+    if (!activeCompanyId || activeCompanyId === "null"){
+      alert("Client not Selected!.")
+      return;
+    }
+    if (!startDate || !endDate){
+      alert("Please Select Start and End Dates")
+      return;
+    }
     setLoading(true);
     try {
       const payload = {
@@ -179,7 +189,7 @@ const IVRReport = () => {
 
         <button className="btn btn-primary" onClick={handleView}>
           VIEW
-        </button>
+        </button>     
       </div>
     </div>
 
@@ -226,6 +236,15 @@ const IVRReport = () => {
             </tbody>
           </table>
         </div>
+        <div className="text-start mt-3">
+        <button
+            type="button"
+            className="btn btn-outline-primary px-4 py-2 rounded-3"
+            onClick={() => navigate(-1)}
+          >
+            ← Back
+          </button>
+      </div>
       </div>
       )}
     </div>

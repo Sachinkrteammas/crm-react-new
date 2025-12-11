@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Editor } from "@tinymce/tinymce-react";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 export default function TemplateCreation() {
 
@@ -16,6 +17,8 @@ export default function TemplateCreation() {
   const [selectedScenarios, setSelectedScenarios] = useState([]);
   const [manualText, setManualText] = useState("");
   const [templateText, setTemplateText] = useState("");
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -151,7 +154,7 @@ export default function TemplateCreation() {
                   <div className="card-body">
                     <h5 className="card-title mb-4 text-secondary">Template Management</h5>
                     <form className="row g-4">
-                      <div className="col-md-4">
+                      <div className="col-md-3">
                         <label className="form-label fw-semibold">Template Type</label>
                         <select
                           className="form-select shadow-sm rounded-2"
@@ -165,7 +168,7 @@ export default function TemplateCreation() {
                         </select>
                       </div>
 
-                      <div className="col-md-4">
+                      <div className="col-md-3">
                         <label className="form-label fw-semibold">Template Name</label>
                         <input
                           type="text"
@@ -176,7 +179,9 @@ export default function TemplateCreation() {
                         />
                       </div>
 
-                      <div className="col-md-6">
+                      <div className="w-100 d-none d-md-block"></div>
+
+                      <div className="col-md-3">
                         <label className="form-label fw-semibold">Select Scenario</label>
                         <select
                           className="form-select shadow-sm rounded-2"
@@ -190,7 +195,7 @@ export default function TemplateCreation() {
                         </select>
                       </div>
 
-                      <div className="col-md-6">
+                      <div className="col-md-3">
                         <label className="form-label fw-semibold">Select Fields</label>
                         <select
                           className="form-select shadow-sm rounded-2"
@@ -216,7 +221,7 @@ export default function TemplateCreation() {
                             setTemplateText(content);
                           }}
                           init={{
-                            height: 300,
+                            height: 250,
                             menubar: false,
                             branding: false,
                             promotion: false,
@@ -244,6 +249,13 @@ export default function TemplateCreation() {
                           onClick={handleReset}
                         >
                           RESET
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-outline-primary px-4 py-2 rounded-3"
+                          onClick={() => navigate(-1)}
+                        >
+                          ← Back
                         </button>
                       </div>
                     </form>

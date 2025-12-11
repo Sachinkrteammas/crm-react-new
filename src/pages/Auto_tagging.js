@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 
 function AutoTagging() {
@@ -15,6 +16,7 @@ function AutoTagging() {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [recordsPerPage] = useState(10);   // Change if needed
+  const navigate = useNavigate();
 
 
 
@@ -489,6 +491,13 @@ const [callAction, setCallAction] = useState("");
                 {/* Buttons */}
                 <div className="col-12">
                   <div className="d-flex justify-content-center mt-3">
+                    <button
+                      type="button"
+                      className="btn btn-outline-primary rounded-3 me-2 px-4 py-2"
+                      onClick={() => navigate(-1)}
+                    >
+                      ← Back
+                    </button>
                     <button
                       type="button"
                       className="btn btn-primary me-2 px-4 py-2"

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 const ManageCloseField = () => {
   const [fields, setFields] = useState([]);
@@ -14,6 +15,7 @@ const ManageCloseField = () => {
     fieldNumber: "",
     DropDownValues: [],
   });
+  const navigate = useNavigate();
 
   const [values, setValues] = useState({});
   const [valueForm, setValueForm] = useState({ FieldValueName: "" });
@@ -220,10 +222,21 @@ const ManageCloseField = () => {
         {selectedClient ? (
           <>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h3>Manage Close Fields</h3>
+              <div>
+                <h3>Manage Close Fields</h3>
+              </div>
+              <div>
+              <button
+                type="button"
+                className="btn btn-outline-primary rounded-3 me-2"
+                onClick={() => navigate(-1)}
+              >
+                ← Back
+              </button>
               <button className="btn btn-primary" onClick={() => { resetForm(); setShowModal(true); }}>
                 + Add Close Field
               </button>
+            </div>
             </div>
 
             <div className="table-responsive" style={{ maxHeight: 500, overflowY: "auto" }}>

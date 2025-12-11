@@ -521,6 +521,13 @@ const handleViewClick = async () => {
                   <div className="d-flex justify-content-center mt-3">
                     <button
                       type="button"
+                      className="btn btn-outline-primary rounded-3 me-2 px-4 py-2"
+                      onClick={() => navigate(-1)}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="button"
                       className="btn btn-primary me-2 px-4 py-2"
                       onClick={handleExportToExcel}
                     >
@@ -566,7 +573,7 @@ const handleViewClick = async () => {
                         <thead className="table-dark sticky-top">
                           <tr>
                             <th>View</th>
-                            <th>Recording</th>
+                            {/* <th>Recording</th> */}
                             {Object.keys(data[0]).map((col) => (
                               <th key={col}>{col}</th>
                             ))}
@@ -592,14 +599,14 @@ const handleViewClick = async () => {
                                 </td>
 
                                 {/* Recording Button */}
-                                <td className="text-center">
+                                {/* <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-outline-success"
                                     title="Recording"
                                   >
                                     <Mic size={16} />
                                   </button>
-                                </td>
+                                </td> */}
 
                                 {/* Dynamic Columns */}
                                 {Object.keys(data[0]).map((col) => (

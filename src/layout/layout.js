@@ -539,13 +539,13 @@ useEffect(() => {
                       <img
                         src={
                           user.userType === "Super-Admin"
-                            ? "/assets/img/avatars/1.png"
+                            ? "/assets/img/avatars/profile.png"
                             : user.userType === "Admin"
-                            ? "/assets/img/avatars/1.png"
-                            : "/assets/img/avatars/1.png"
+                            ? "/assets/img/avatars/profile.png"
+                            : "/assets/img/avatars/profile.png"
                         }
                         alt={user.userType}
-                        className="rounded-circle"
+                        className="rounded-square"
                       />
                     </div>
                   </a>
@@ -559,13 +559,13 @@ useEffect(() => {
                               <img
                                 src={
                                   user.userType === "Super-Admin"
-                                    ? "/assets/img/avatars/1.png"
+                                    ? "/assets/img/avatars/profile.png"
                                     : user.userType === "Admin"
-                                    ? "/assets/img/avatars/1.png"
-                                    : "/assets/img/avatars/1.png"
+                                    ? "/assets/img/avatars/profile.png"
+                                    : "/assets/img/avatars/profile.png"
                                 }
                                 alt={user.userType}
-                                className="rounded-circle"
+                                className="rounded-square"
                               />
                             </div>
                           </div>

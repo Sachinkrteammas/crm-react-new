@@ -77,8 +77,13 @@ const AuthLoginCover = () => {
   return (
     <div className="authentication-wrapper authentication-cover">
       <a href="#" className="app-brand auth-cover-brand">
-        <span className="app-brand-text demo text-heading fw-bold">
-          DialDesk
+        <span className="app-brand-text demo text-heading fw-bold flex items-center gap-2">
+          <img 
+            src="/assets/img/branding/logo.DialDesk.png" 
+            alt="DialDesk Logo" 
+            style={{ height: "50px", width: "auto" }}
+          />
+          {/* DialDesk */}
         </span>
       </a>
 

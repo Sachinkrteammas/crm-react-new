@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import '../styles/TaggingHistorySearchTabs.css';
 import DatePicker from "react-datepicker";
 import api from "../api";
+import { useNavigate } from 'react-router-dom';
 
 export default function CreateManualCall() {
   // const [form, setForm] = useState({
@@ -23,6 +24,7 @@ export default function CreateManualCall() {
 
   const [fields, setFields] = useState([]);
   const [form, setForm] = useState({});
+  const navigate = useNavigate();
 
   const [historyData, setHistoryData] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -712,6 +714,13 @@ useEffect(() => {
                         </div>
                       ))}
                     <div className="col-12">
+                      <button
+                        type="button"
+                        className="btn btn-outline-primary rounded-3 me-2"
+                        onClick={() => navigate(-1)}
+                      >
+                        ← Back
+                      </button>
                       <button
                         type="button"
                         className="btn btn-primary"

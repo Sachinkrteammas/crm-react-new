@@ -177,11 +177,13 @@
 // Updated Manage Campaigns for Out Call Management..
 import React, { useState, useEffect } from "react";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 const ManageCampaign = () => {
   // User info
   const userType = localStorage.getItem("user_type");
   const companyId = localStorage.getItem("company_id");
+  const navigate = useNavigate();
 
   // State
   const [clients, setClients] = useState([]);
@@ -478,6 +480,13 @@ const ManageCampaign = () => {
             </div>
 
             <div className="col-12 mt-3">
+              <button
+                type="button"
+                className="btn btn-outline-primary rounded-3 me-2"
+                onClick={() => navigate(-1)}
+              >
+                ← Back
+              </button>
               <button type="submit" className="btn btn-primary">
                 Submit
               </button>

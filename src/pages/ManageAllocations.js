@@ -2,11 +2,13 @@
 // ManageAllocations.js With Full Functionality..
 import React, { useState, useEffect, useMemo } from "react";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 const ManageAllocations = () => {
   // -------------------- User Info --------------------
   const userType = localStorage.getItem("user_type");
   const companyId = localStorage.getItem("company_id");
+  const navigate = useNavigate();
 
   // -------------------- State --------------------
   const [clients, setClients] = useState([]);
@@ -258,6 +260,13 @@ const ManageAllocations = () => {
             </div>
 
             <div className="col-12">
+              <button
+                type="button"
+                className="btn btn-outline-primary rounded-3 me-2 mt-2"
+                onClick={() => navigate(-1)}
+              >
+                ← Back
+              </button>
               <button className="btn btn-primary mt-2" type="submit">
                 Submit
               </button>

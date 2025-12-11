@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 const ManageFields = () => {
   const [fields, setFields] = useState([]);
@@ -14,6 +15,7 @@ const ManageFields = () => {
     fieldNumber: "",
     DropDownValues: [],
   });
+  const navigate = useNavigate();
 
   // Field Values
   const [values, setValues] = useState({});
@@ -258,10 +260,21 @@ const ManageFields = () => {
         {selectedClient ? (
           <>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h3>Manage Fields</h3>
+              <div>
+                <h3>Manage Fields</h3>
+              </div>
+              <div>
+              <button
+                type="button"
+                className="btn btn-outline-primary rounded-3 me-2"
+                onClick={() => navigate(-1)}
+              >
+                ← Back
+              </button>
               <button className="btn btn-primary" onClick={() => { resetForm(); setShowModal(true); }}>
                 + Add Field
               </button>
+              </div>
             </div>
 
             {/* Fields Table */}

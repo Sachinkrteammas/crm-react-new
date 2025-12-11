@@ -224,7 +224,7 @@ async def register_company(
             "auth_id": auth_id_path,
             "logo": logo_path,
             "other_docs": other_docs_combined,
-            "status": "active",
+            "status": "A",
             "ip": client_ip,  # optional IP, can be None
             "email_verify": email_verify
         }

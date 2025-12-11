@@ -46,6 +46,7 @@ from campaigns_mapping import router as campaigns_mapping_router
 from schedular import scheduled_sla_email  # Import only the function
 from daily_consume import router as daily_consume_router
 from logincreation_master import router as logincreation_master_router
+from corrective_report import router as corrective_report_router
 
 
 
@@ -97,6 +98,7 @@ app.include_router(did_mapping_router)
 app.include_router(campaigns_mapping_router)
 app.include_router(daily_consume_router, tags=["Daily Consume"])
 app.include_router(logincreation_master_router, tags=["Login Creation Master"])
+app.include_router(corrective_report_router, tags=["Corrective Report"])
 
 
 

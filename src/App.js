@@ -121,6 +121,7 @@ import SlaAgentsReports from "./pages/SlaAgentsReports";
 import CampaignsMapping from "./pages/CampaignsMapping";
 import DidClientCampaignsMapping from "./pages/DidClientCampaignsMapping";
 import SubMenuPage from "./pages/SubMenuPage";
+import CorrectiveReport from "./pages/Corrective_report";
 
 
 
@@ -233,6 +234,7 @@ function App() {
       <Route path="/auth-register" element={<AuthRegister  />} />
       <Route path="/forgot-password" element={<ForgotPassword  />} />
       <Route path="/logout" element={<Logout />} />
+      <Route path="/company_registration" element={<CompanyRegistration />} />
       
 
       <Route element={<ProtectedRoute />}>
@@ -350,7 +352,7 @@ function App() {
               <Route path="/campaigns_mapping" element={<CampaignsMapping/>} />
               <Route path="/mappings" element={<DidClientCampaignsMapping/>} />
               <Route path="/submenu/:id" element={<SubMenuPage />} />
-              <Route path="/company_registration" element={<CompanyRegistration />} />
+              <Route path="/CorrectiveReport/index" element={<CorrectiveReport />} />
               
           </Route>
       </Route>

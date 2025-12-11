@@ -8,23 +8,45 @@ const CreateAgent = () => {
   const [editingAgent, setEditingAgent] = useState(null);
   const [viewingAgent, setViewingAgent] = useState(null);
 
+  const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
+  const filteredAgents = agents.filter((a) =>
+    `${a.displayname} ${a.username} ${a.email}`
+      .toLowerCase()
+      .includes(search.toLowerCase())
+  );
+
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentAgents = filteredAgents.slice(indexOfFirst, indexOfLast);
+
+  const totalPages = Math.ceil(filteredAgents.length / itemsPerPage);
+
+  const goToPage = (page) => {
+    if (page < 1 || page > totalPages) return;
+    setCurrentPage(page);
+  };
+
   const [form, setForm] = useState({
     displayname: "",
     username: "",
     password: "",
     processname: "",
     workmode: "",
-    dateOfBirth: "",
+    dob: "",
     dateofjoining: "",
-    agentType: "",
+    dateofleaving: "",
+    agent_type: "",
     address: "",
     state: "",
     city: "",
-    gender: "",
-    versant: "",
+    Gender: "",
+    Versant: "",
     email: "",
-    contactNo: "",
-    languages: [],
+    phone_no: "",
+    LanguagesKnown: [],
     ClientRights: [],
   });
 
@@ -62,17 +84,18 @@ const CreateAgent = () => {
       password: "",
       processname: "",
       workmode: "",
-      dateOfBirth: "",
+      dob: "",
       dateofjoining: "",
-      agentType: "",
+      dateofleaving: "",
+      agent_type: "",
       address: "",
       state: "",
       city: "",
-      gender: "",
-      versant: "",
+      Gender: "",
+      Versant: "",
       email: "",
-      contactNo: "",
-      languages: [],
+      phone_no: "",
+      LanguagesKnown: [],
       ClientRights: [],
     });
     setEditingAgent(null);
@@ -86,10 +109,10 @@ const CreateAgent = () => {
   const handleCheckboxChange = (e) => {
     const { name, checked } = e.target;
     setForm((prev) => {
-      const languages = checked
-        ? [...prev.languages, name]
-        : prev.languages.filter((lang) => lang !== name);
-      return { ...prev, languages };
+      const LanguagesKnown = checked
+        ? [...prev.LanguagesKnown, name]
+        : prev.LanguagesKnown.filter((lang) => lang !== name);
+      return { ...prev, LanguagesKnown };
     });
   };
 
@@ -126,8 +149,10 @@ const CreateAgent = () => {
   const handleEdit = (agent) => {
     setForm({
       ...agent,
-      languages: agent.languages?.split(",") || [],
+      password: agent.password2 || "",
+      LanguagesKnown: agent.LanguagesKnown?.split(",") || [],
       ClientRights: agent.ClientRights?.split(",") || [],
+      dateofleaving: agent.dateofleaving || "",
     });
     setEditingAgent(agent);
     setShowModal(true);
@@ -150,19 +175,34 @@ const CreateAgent = () => {
         {/* Form Card */}
           <div className="d-flex justify-content-between align-items-center mb-3">
             <h3>Agents</h3>
-            <button
-              className="btn btn-primary"
-              onClick={() => {
-                resetForm();
-                setShowModal(true);
-              }}
-            >
-              + Add Agent
-            </button>
+
+            <div className="d-flex align-items-center">
+              {/* 🔍 Search Box */}
+              <input
+                type="text"
+                className="form-control"
+                style={{ width: "220px" }}
+                placeholder="Search by name, email or user ID"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+              <button
+                className="btn btn-primary ms-2" 
+                onClick={() => {
+                  resetForm();
+                  setShowModal(true);
+                }}
+              >
+                + Add Agent
+              </button>
+            </div>
           </div>
 
           {/* Agents Table */}
-          <div className="table-responsive" style={{ maxHeight: "600px", overflowY: "auto" }}>
+          <div className="table-responsive" style={{ maxHeight: "700px", overflowY: "auto" }}>
           <table className="table table-hover table-striped table-bordered align-middle shadow-sm">
             <thead className="table-dark sticky-top">
               <tr>
@@ -175,7 +215,7 @@ const CreateAgent = () => {
               </tr>
             </thead>
             <tbody>
-              {agents.map((agent) => (
+              {currentAgents.map((agent) => (
                 <tr key={agent.id}>
                   <td>{agent.displayname}</td>
                   <td>{agent.username}</td>
@@ -215,6 +255,28 @@ const CreateAgent = () => {
           </table>
           </div>
 
+          {/* Pagination */}
+          <div className="d-flex justify-content-center my-3">
+            <button
+              className="btn btn-outline-primary me-2"
+              disabled={currentPage === 1}
+              onClick={() => goToPage(currentPage - 1)}
+            >
+              ⬅ Prev
+            </button>
+
+            <span className="px-3 py-2 border rounded">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <button
+              className="btn btn-outline-primary ms-2"
+              disabled={currentPage === totalPages}
+              onClick={() => goToPage(currentPage + 1)}
+            >
+              Next ➡
+            </button>
+          </div>
           {/* View Modal */}
           {viewingAgent && (
           <div className="modal fade show" style={{ display: "block" }} tabIndex="-1">
@@ -240,12 +302,12 @@ const CreateAgent = () => {
                             <div className="col-md-4"><strong>Name:</strong> {viewingAgent.displayname}</div>
                             <div className="col-md-4"><strong>User ID:</strong> {viewingAgent.username}</div>
                             <div className="col-md-4"><strong>Email:</strong> {viewingAgent.email}</div>
-                            <div className="col-md-4"><strong>Contact:</strong> {viewingAgent.contactNo}</div>
-                            <div className="col-md-4"><strong>Gender:</strong> {viewingAgent.gender}</div>
-                            <div className="col-md-4"><strong>DOB:</strong> {viewingAgent.dateOfBirth}</div>
+                            <div className="col-md-4"><strong>Contact:</strong> {viewingAgent.phone_no}</div>
+                            <div className="col-md-4"><strong>Gender:</strong> {viewingAgent.Gender}</div>
+                            <div className="col-md-4"><strong>DOB:</strong> {viewingAgent.dob}</div>
                             <div className="col-md-4"><strong>DOJ:</strong> {viewingAgent.dateofjoining}</div>
-                            <div className="col-md-4"><strong>Agent Type:</strong> {viewingAgent.agentType}</div>
-                            <div className="col-md-4"><strong>Versant:</strong> {viewingAgent.versant}</div>
+                            <div className="col-md-4"><strong>Agent Type:</strong> {viewingAgent.agent_type}</div>
+                            <div className="col-md-4"><strong>Versant:</strong> {viewingAgent.Versant}</div>
                           </div>
                         </div>
                       </div>
@@ -282,9 +344,9 @@ const CreateAgent = () => {
                         <div className="card-body">
                           <h6 className="text-primary mb-3">Languages Known</h6>
                           <p className="mb-0">
-                            {Array.isArray(viewingAgent.languages)
-                              ? viewingAgent.languages.join(", ")
-                              : viewingAgent.languages}
+                            {Array.isArray(viewingAgent.LanguagesKnown)
+                              ? viewingAgent.LanguagesKnown.join(", ")
+                              : viewingAgent.LanguagesKnown}
                           </p>
                         </div>
                       </div>
@@ -425,9 +487,9 @@ const CreateAgent = () => {
                         <label className="form-label">Date of Birth *</label>
                         <input
                           type="date"
-                          name="dateOfBirth"
+                          name="dob"
                           className="form-control"
-                          value={form.dateOfBirth}
+                          value={form.dob}
                           onChange={handleChange}
                         />
                       </div>
@@ -444,12 +506,26 @@ const CreateAgent = () => {
                         />
                       </div>
 
+                      {/* Date of Leaving — only show when editing */}
+                      {editingAgent && (
+                        <div className="col-md-4">
+                          <label className="form-label">Date of Leaving</label>
+                          <input
+                            type="date"
+                            name="dateofleaving"
+                            className="form-control"
+                            value={form.dateofleaving}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      )}
+
                       <div className="col-md-4">
                         <label className="form-label">Agent Type *</label>
                         <select
-                          name="agentType"
+                          name="agent_type"
                           className="form-control"
-                          value={form.agentType}
+                          value={form.agent_type}
                           onChange={handleChange}
                         >
                           <option value="">Agent Type</option>
@@ -535,9 +611,9 @@ const CreateAgent = () => {
                       <div className="col-md-4">
                         <label className="form-label">Gender *</label>
                         <select
-                          name="gender"
+                          name="Gender"
                           className="form-control"
-                          value={form.gender}
+                          value={form.Gender}
                           onChange={handleChange}
                         >
                           <option value="">Select Gender</option>
@@ -551,9 +627,9 @@ const CreateAgent = () => {
                       <div className="col-md-4">
                         <label className="form-label">Versant *</label>
                         <select
-                          name="versant"
+                          name="Versant"
                           className="form-control"
-                          value={form.versant}
+                          value={form.Versant}
                           onChange={handleChange}
                         >
                           <option value="">Versant</option>
@@ -583,10 +659,10 @@ const CreateAgent = () => {
                         <label className="form-label">Contact No. *</label>
                         <input
                           type="tel"
-                          name="contactNo"
+                          name="phone_no"
                           className="form-control"
                           placeholder="Contact Number"
-                          value={form.contactNo}
+                          value={form.phone_no}
                           onChange={handleChange}
                         />
                       </div>
@@ -601,7 +677,7 @@ const CreateAgent = () => {
                             type="checkbox"
                             name="Avg English"
                             id="avgEnglish"
-                            checked={form.languages.includes("Avg English")}
+                            checked={form.LanguagesKnown.includes("Avg English")}
                             onChange={handleCheckboxChange}
                           />
                           <label className="form-check-label" htmlFor="avgEnglish">
@@ -615,7 +691,7 @@ const CreateAgent = () => {
                             type="checkbox"
                             name="English"
                             id="english"
-                            checked={form.languages.includes("English")}
+                            checked={form.LanguagesKnown.includes("English")}
                             onChange={handleCheckboxChange}
                           />
                           <label className="form-check-label" htmlFor="english">
@@ -629,7 +705,7 @@ const CreateAgent = () => {
                             type="checkbox"
                             name="Hindi"
                             id="hindi"
-                            checked={form.languages.includes("Hindi")}
+                            checked={form.LanguagesKnown.includes("Hindi")}
                             onChange={handleCheckboxChange}
                           />
                           <label className="form-check-label" htmlFor="hindi">

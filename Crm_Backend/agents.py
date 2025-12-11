@@ -6,8 +6,18 @@ from sqlalchemy import text
 from datetime import datetime, timedelta
 from database import get_db4
 from typing import Dict, Optional, Any, List
+from passlib.context import CryptContext
 
 router = APIRouter()
+
+
+# To encrypt password
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
 
 @router.get("/clients-rights")
 def get_all_clients_rights(db: Session = Depends(get_db4)):
@@ -507,20 +517,27 @@ def get_client_right(company_id: int, db: Session = Depends(get_db4)):
 @router.post("/save")
 def create_agent(agent: dict, db: Session = Depends(get_db4)):
     try:
+        raw_password = agent.get("password")
+
+        # Hash the password before saving
+        hashed_password = hash_password(agent.get("password"))
+
         query = text("""
             INSERT INTO agent_master
-            (displayname, username, password, processname, workmode, dateOfBirth, 
-             dateofjoining, agentType, address, state, city, gender, versant, 
-             email, contactNo, languages, ClientRights, createdate)
+            (displayname, username, password, password2, processname, workmode, dob, 
+             dateofjoining, agent_type, address, state, city, Gender, Versant, 
+             email, phone_no, LanguagesKnown, ClientRights, createdate, status)
             VALUES 
-            (:displayname, :username, :password, :processname, :workmode, :dateOfBirth,
-             :dateofjoining, :agentType, :address, :state, :city, :gender, :versant, 
-             :email, :contactNo, :languages, :ClientRights, :createdate)
+            (:displayname, :username, :password, :password2, :processname, :workmode, :dob,
+             :dateofjoining, :agent_type, :address, :state, :city, :Gender, :Versant, 
+             :email, :phone_no, :LanguagesKnown, :ClientRights, :createdate, 'A')
         """)
 
         db.execute(query, {
             **agent,
-            "languages": ",".join(agent.get("languages", [])),
+            "password": hashed_password,
+            "password2": raw_password,
+            "LanguagesKnown": ",".join(agent.get("LanguagesKnown", [])),
             "ClientRights": ",".join(agent.get("ClientRights", [])),
             "createdate": datetime.now()
         })
@@ -545,22 +562,40 @@ def list_agents(db: Session = Depends(get_db4)):
 @router.put("/{agent_id}")
 def update_agent(agent_id: int, agent: dict, db: Session = Depends(get_db4)):
     try:
+        # Prepare password fields if password is provided
+        if "password" in agent and agent["password"]:
+            raw_password = agent["password"]
+            hashed_password = hash_password(raw_password)
+            agent["password"] = hashed_password
+            agent["password2"] = raw_password
+        else:
+            # Remove password fields so they are not updated
+            agent.pop("password", None)
+            agent.pop("password2", None)
+
+        dateofleaving = agent.get("dateofleaving")
+        if dateofleaving in ("", None):
+            agent["dateofleaving"] = None
+
+        
         query = text("""
             UPDATE agent_master
-            SET displayname=:displayname, username=:username, password=:password,
-                processname=:processname, workmode=:workmode, dateOfBirth=:dateOfBirth,
-                dateofjoining=:dateofjoining, agentType=:agentType, address=:address,
-                state=:state, city=:city, gender=:gender, versant=:versant,
-                email=:email, contactNo=:contactNo,
-                languages=:languages, ClientRights=:ClientRights
+            SET displayname=:displayname, username=:username, password=:password, password2=:password2,
+                processname=:processname, workmode=:workmode, dob=:dob,
+                dateofjoining=:dateofjoining, dateofleaving=:dateofleaving, agent_type=:agent_type, address=:address,
+                state=:state, city=:city, Gender=:Gender, Versant=:Versant,
+                email=:email, phone_no=:phone_no,
+                LanguagesKnown=:LanguagesKnown, ClientRights=:ClientRights,
+                update_date=:update_date
             WHERE id=:id
         """)
 
         db.execute(query, {
             **agent,
             "id": agent_id,
-            "languages": ",".join(agent.get("languages", [])),
+            "LanguagesKnown": ",".join(agent.get("LanguagesKnown", [])),
             "ClientRights": ",".join(agent.get("ClientRights", [])),
+            "update_date": datetime.now()
         })
         db.commit()
         return {"status": "success", "agent_id": agent_id, "agent": agent}

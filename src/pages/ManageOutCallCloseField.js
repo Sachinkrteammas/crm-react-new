@@ -2,6 +2,7 @@
 // src/pages/ManageOutCallCloseField.jsx
 import { useState, useEffect } from "react";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 const ManageOutCallCloseField = () => {
   const [fields, setFields] = useState([]);
@@ -16,6 +17,7 @@ const ManageOutCallCloseField = () => {
     fieldNumber: "",
     DropDownValues: [],
   });
+  const navigate = useNavigate();
 
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState("");
@@ -455,7 +457,7 @@ const ManageOutCallCloseField = () => {
         {/* Client + Campaign Selector */}
         {(userType === "Super-Admin" || userType === "Admin") && (
           <div className="row mb-4">
-            <div className="col-md-6">
+            <div className="col-md-3">
               <label className="form-label fw-semibold">Select Client</label>
               <select
                 className="form-select"
@@ -477,7 +479,7 @@ const ManageOutCallCloseField = () => {
               </select>
             </div>
 
-            <div className="col-md-6">
+            <div className="col-md-3">
               <label className="form-label fw-semibold">Select Campaign</label>
               <select
                 className="form-select"
@@ -503,7 +505,7 @@ const ManageOutCallCloseField = () => {
         {/* Non-admin users → Only show Campaign dropdown (client users) */}
         {!(userType === "Super-Admin" || userType === "Admin") && (
           <div className="row mb-4">
-            <div className="col-md-6">
+            <div className="col-md-3">
               <label className="form-label fw-semibold">Select Campaign</label>
               <select
                 className="form-select"
@@ -526,7 +528,17 @@ const ManageOutCallCloseField = () => {
         {selectedClient && selectedCampaign ? (
           <>
             <div className="d-flex justify-content-between align-items-center mb-3">
-              <h3>Manage Close Fields</h3>
+              <div>
+                <h3>Manage Close Fields</h3>
+              </div>
+              <div>
+              <button
+                  type="button"
+                  className="btn btn-outline-primary rounded-3 me-2"
+                  onClick={() => navigate(-1)}
+                >
+                  ← Back
+              </button>
               <button
                 className="btn btn-primary"
                 onClick={() => {
@@ -536,6 +548,7 @@ const ManageOutCallCloseField = () => {
               >
                 + Add Close Field
               </button>
+            </div>
             </div>
 
             {/* TABLE */}

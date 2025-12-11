@@ -1,4 +1,5 @@
 import { useLocation, useParams, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const SubMenuPage = () => {
   const { id } = useParams();
@@ -6,8 +7,10 @@ const SubMenuPage = () => {
   const children = location.state?.children || [];
   const parentName = location.state?.parentName;
 
+  const navigate = useNavigate();
+
   return (
-    <div className="container px-0">
+    // <div className="container px-0">
       <div className="card p-4 mb-4 shadow-sm">
 
         {/* Title */}
@@ -25,7 +28,7 @@ const SubMenuPage = () => {
                   className="d-flex align-items-center gap-2"
                   style={{ cursor: "pointer", whiteSpace: "nowrap" }}
                 >
-                  <input type="radio" name="submenu" />
+                  <input type="radio" name="submenu" onClick={() => navigate(child.page_url ? `/${child.page_url}` : "#")}/>
                   <Link
                     to={child.page_url ? `/${child.page_url}` : "#"}
                     className="text-decoration-none text-dark fw-semibold"
@@ -40,7 +43,7 @@ const SubMenuPage = () => {
         )}
 
       </div>
-    </div>
+    // </div>
   );
 };
 

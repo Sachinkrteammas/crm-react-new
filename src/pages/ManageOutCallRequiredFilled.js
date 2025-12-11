@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import api from "../api";
 import { PlusCircle } from "lucide-react";
 import "../styles/loader.css";
+import { useNavigate } from "react-router-dom";
 
 export default function ManageOutCallRequiredFields() {
   const [clients, setClients] = useState([]);
@@ -13,6 +14,7 @@ export default function ManageOutCallRequiredFields() {
   const [selectedCampaign, setSelectedCampaign] = useState("");
 
   const [showModal, setShowModal] = useState(false);
+  const navigate = useNavigate();
 
   // field form used for Add/Edit (keeps similar shape to ManageFields)
   const [form, setForm] = useState({
@@ -395,7 +397,7 @@ export default function ManageOutCallRequiredFields() {
         {userType === "Super-Admin" || userType === "Admin" ? (
           <div className="row mb-4">
             {/* Select Client */}
-            <div className="col-md-6">
+            <div className="col-md-3">
               <label className="form-label fw-semibold">Select Client</label>
               <select
                 className="form-select"
@@ -416,7 +418,7 @@ export default function ManageOutCallRequiredFields() {
             </div>
 
             {/* Select Campaign */}
-            <div className="col-md-6">
+            <div className="col-md-3">
               <label className="form-label fw-semibold">Select Campaign</label>
               <select
                 className="form-select"
@@ -436,7 +438,7 @@ export default function ManageOutCallRequiredFields() {
         ) : (
           /* Non-admin users → Only show Campaign dropdown */
           <div className="row mb-4">
-            <div className="col-md-6">
+            <div className="col-md-3">
               <label className="form-label fw-semibold">Select Campaign</label>
               <select
                 className="form-select"
@@ -458,9 +460,18 @@ export default function ManageOutCallRequiredFields() {
         <div className="d-flex justify-content-between align-items-center mb-3">
           <h3 className="fw-semibold mb-0">Manage Required Fields</h3>
           {selectedClient && selectedCampaign && (
+            <div className="d-flex gap-2 mt-2">
+            <button
+                type="button"
+                className="btn btn-outline-primary rounded-3 me-2"
+                onClick={() => navigate(-1)}
+              >
+                ← Back
+              </button>
             <button className="btn btn-primary" onClick={openAddModal}>
               <PlusCircle size={18} className="me-2" /> Add Field
             </button>
+            </div>
           )}
         </div>
 
@@ -471,7 +482,7 @@ export default function ManageOutCallRequiredFields() {
           <table className="table table-hover table-striped table-bordered align-middle">
             <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 5 }}>
               <tr>
-                <th className="text-center">#</th>
+                <th className="text-center">S.N</th>
                 <th className="text-center">Field Name</th>
                 <th className="text-center">Type</th>
                 <th className="text-center">Validation</th>

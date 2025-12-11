@@ -51,6 +51,7 @@ def get_dashboard_report(
           SUM(IF(t2.user =  'VDCL',1,0))     AS Abandon,
           DATE(t2.call_date)                 AS gdate
         FROM asterisk.vicidial_closer_log t2
+        LEFT JOIN asterisk.vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid  AND t2.user=t3.user
         WHERE {date_cond}
           {camp_clause}
           AND t2.term_reason <> 'AFTERHOURS'
@@ -231,6 +232,7 @@ def get_call_analysis_report(
             SUM(IF(t2.user <> 'VDCL',1,0)) AS answered,
             SUM(IF(t2.user =  'VDCL',1,0)) AS abandon
         FROM asterisk.vicidial_closer_log t2
+        LEFT JOIN asterisk.vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid  AND t2.user=t3.user
         WHERE {date_cond}
           {camp_clause}
           AND t2.term_reason <> 'AFTERHOURS'
@@ -287,6 +289,7 @@ def get_call_distribution_report(
             SUM(IF(t2.user <> 'VDCL', 1, 0)) AS answered_calls,
             SUM(IF(t2.user = 'VDCL', 1, 0)) AS abandon_calls
         FROM asterisk.vicidial_closer_log t2
+        LEFT JOIN asterisk.call_log t1 ON t1.uniqueid=t2.uniqueid LEFT JOIN asterisk.vicidial_agent_log t3 ON t1.uniqueid=t3.uniqueid 
         WHERE {date_cond}
           AND t2.campaign_id IN :campaign_ids
           AND t2.term_reason != 'AFTERHOURS'

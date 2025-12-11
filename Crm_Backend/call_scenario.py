@@ -94,40 +94,21 @@ def send_call_summary(
 
         # 6️⃣ Hourly Call Summary (Your Provided Query)
         hourly_query = text("""
-            SELECT DATE(call_date) `Date`, 
-                HOUR(call_date) `Time Slot`,
-                COUNT(1) Total, 
-                SUM(IF(t2.user!='VDCL',1,0)) `Answered`,
+            SELECT DATE(call_date) `Date`, HOUR(call_date) `Time Slot`,COUNT(1) Total, SUM(IF(t2.user!='VDCL',1,0)) `Answered`,
 
-                IF(t2.user!='VDCL',
-                    COUNT(DISTINCT(t2.user))-1,
-                    COUNT(DISTINCT(t2.user))
-                ) `Manpower`,
+                IF(t2.user!='VDCL',COUNT(DISTINCT(t2.user))-1,COUNT(DISTINCT(t2.user))) `Manpower`,
 
-                ROUND(SUM(IF(t2.user!='VDCL',1,0)) / COUNT(1) * 100, 2) `AL %`,
-                ROUND(SUM(
-                    IF(t2.user!='VDCL' AND t2.queue_seconds<=20,1,0)
-                ) / COUNT(1) * 100, 2) `SL %`
+                ROUND(SUM(IF(t2.user!='VDCL',1,0))/COUNT(1)*100,2) `AL %`,ROUND(SUM(IF(t2.`user` !='VDCL' AND
 
-            FROM asterisk.vicidial_closer_log t2
-            INNER JOIN vicidial_users vu ON t2.user = vu.user
-            LEFT JOIN asterisk.vicidial_agent_log t1 
-                ON t1.uniqueid = t2.uniqueid 
-                AND t1.lead_id != '' 
-                AND t2.user = t1.user
+                t2.queue_seconds<=20,1,0))/COUNT(1)*100,2) `SL %` FROM asterisk.vicidial_closer_log t2
 
-            LEFT JOIN (
-                SELECT uniqueid, SUM(parked_sec) p 
-                FROM park_log 
-                WHERE STATUS = 'GRABBED' 
-                AND DATE(parked_time) = CURDATE() 
-                GROUP BY uniqueid
-            ) t3 ON t1.uniqueid = t3.uniqueid
+            LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid  AND t2.user=t3.user
 
-            WHERE DATE(t2.call_date) = CURDATE() 
-              AND t2.campaign_id IN('CrystalEyeCentr00000','Cryst000')
+            LEFT JOIN (SELECT uniqueid,SUM(parked_sec) p FROM park_log WHERE STATUS='GRABBED' AND DATE(parked_time) BETWEEN '$FromDate' AND '$ToDate' GROUP BY uniqueid)
 
-            GROUP BY HOUR(t2.call_date);
+            t6 ON t2.uniqueid=t6.uniqueid LEFT JOIN vicidial_users vc ON t2.user=vc.user
+
+            WHERE DATE(t2.call_date)=CURDATE() AND t2.campaign_id IN('CrystalEyeCentr00000','Cryst000') AND  t2.lead_id IS NOT NULL GROUP BY HOUR(t2.call_date);
         """)
 
         hourly_rows = db2.execute(hourly_query).mappings().all()
@@ -158,6 +139,44 @@ def send_call_summary(
             "SL %": total_sl
         })
 
+
+        # 7️⃣ Abandoned & Disconnection Callback Summary
+        callback_query = text("""
+            SELECT 
+                CASE 
+                    WHEN call_status = 'Answer' THEN 'Connected'
+                    WHEN call_status = '' OR call_status IS NULL THEN 'Not Connected'
+                    ELSE call_status
+                END AS status,
+                COUNT(*) AS Count
+            FROM aband_call_master
+            WHERE CompanyName = 'Crystal Eye Centre Private Limited'
+            AND DATE(CallDate) = CURDATE()
+            AND Callbackdate IS NOT NULL
+            GROUP BY status;
+        """)
+
+        callback_rows = db.execute(callback_query).mappings().all()
+        callback_data = [dict(r) for r in callback_rows]
+
+        # Ensure both rows exist even if empty
+        final_callback = [
+            {"Abandoned & Disconnection Callback": "Connected", "Count of Abandoned & Disconnection Callback": 0},
+            {"Abandoned & Disconnection Callback": "Not Connected", "Count of Abandoned & Disconnection Callback": 0},
+        ]
+
+        # Fill values
+        for row in callback_data:
+            if row["status"] == "Connected":
+                final_callback[0]["Count of Abandoned & Disconnection Callback"] = row["Count"]
+            elif row["status"] == "Not Connected":
+                final_callback[1]["Count of Abandoned & Disconnection Callback"] = row["Count"]
+
+        # Total
+        callback_total = (
+            final_callback[0]["Count of Abandoned & Disconnection Callback"] +
+            final_callback[1]["Count of Abandoned & Disconnection Callback"]
+        )
 
 
         # 🧱 Helper to build structured section data
@@ -266,6 +285,34 @@ def send_call_summary(
                 {rows}
             </table>
             """
+        
+
+        def make_callback_table(data, total):
+            rows = "".join(
+                f"""
+                <tr>
+                    <td style='text-align:center; width:70%;'>{row['Abandoned & Disconnection Callback']}</td>
+                    <td style='text-align:center; width:30%;'>{row['Count of Abandoned & Disconnection Callback']}</td>
+                </tr>
+                """
+                for row in data
+            )
+
+            return f"""
+            <h3>Abandoned & Disconnection Callback</h3>
+            <table border='1' cellspacing='0' cellpadding='6' 
+                style="border-collapse:collapse; font-family:Arial; font-size:14px; width:60%; text-align:center; margin-bottom:10px;">
+                <tr style="background:rgb(184, 204, 228); font-weight:bold;">
+                    <th>Abandoned & Disconnection Callback</th>
+                    <th>Count of Abandoned & Disconnection Callback</th>
+                </tr>
+                {rows}
+                <tr style="font-weight:bold; background:rgb(184, 204, 228);">
+                    <td>Grand Total</td>
+                    <td>{total}</td>
+                </tr>
+            </table>
+            """
 
 
         html_content = f"""
@@ -274,6 +321,7 @@ def send_call_summary(
         {''.join([make_html_table(sec['title'], sec['data'], sec['total']) for sec in sections])}
         {make_agent_table(agent_rows)}
         {make_hourly_table(hourly_data)}
+        {make_callback_table(final_callback, callback_total)}
 
         <p>Regards,</p>
         """
