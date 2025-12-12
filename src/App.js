@@ -122,6 +122,7 @@ import CampaignsMapping from "./pages/CampaignsMapping";
 import DidClientCampaignsMapping from "./pages/DidClientCampaignsMapping";
 import SubMenuPage from "./pages/SubMenuPage";
 import CorrectiveReport from "./pages/Corrective_report";
+import AllocationPlan from "./pages/AllocationPlan";
 
 
 
@@ -217,6 +218,7 @@ function App() {
         "/sla_agents_reports" : "SLA Agents Reports | DialDesk",
         "/campaigns_mapping" : "Campaigns Mapping | DialDesk",
         "/mappings" : "Did Client And Campaigns Mapping | DialDesk",
+        "/allocation_plan" : "Allocation Plan| DialDesk",
     };
 
     const location = useLocation();
@@ -353,6 +355,8 @@ function App() {
               <Route path="/mappings" element={<DidClientCampaignsMapping/>} />
               <Route path="/submenu/:id" element={<SubMenuPage />} />
               <Route path="/CorrectiveReport/index" element={<CorrectiveReport />} />
+              <Route path="/company_registration" element={<CompanyRegistration />} />
+              <Route path="/allocation_plan" element={<AllocationPlan />} />
               
           </Route>
       </Route>

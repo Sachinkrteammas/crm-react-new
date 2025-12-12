@@ -1,271 +1,305 @@
+// Allocate Plan...
 import { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
+import api from "../api";
 import "react-datepicker/dist/react-datepicker.css";
 
-
 const AllocatePlan = () => {
-  const [plans, setPlans] = useState([]);
-
-  // Example static data (Replace with API call)
-  useEffect(() => {
-    setPlans([
-        {
-        srn: 1,
-        client: "Harvest Gold- Dealer Validation",
-        campaign: "Anand_Hearing",
-        plan: "Ready Roti India Pvt. Ltd.",
-        startDate: "01-Apr-2021",
-        endDate: "31-Mar-2022",
-        setUpCost: "0",
-        rentalCost: "251000",
-        balance: "120000",
-        paymentTerms: "YEAR",
-        ibCall: "6.00",
-        ibCallNight: "0.00",
-        obCall: "6.50",
-        sms: "0.30",
-        email: "0.25",
-        missCall: "0.00",
-        vfo: "0.00",
-      },
-      {
-        srn: 2,
-        client: "Harvest Gold- Dealer Validation",
-        campaign: "Anand_Hearing",
-        plan: "Ready Roti India Pvt. Ltd.",
-        startDate: "01-Apr-2021",
-        endDate: "31-Mar-2022",
-        setUpCost: "0",
-        rentalCost: "251000",
-        balance: "120000",
-        paymentTerms: "YEAR",
-        ibCall: "6.00",
-        ibCallNight: "0.00",
-        obCall: "6.50",
-        sms: "0.30",
-        email: "0.25",
-        missCall: "0.00",
-        vfo: "0.00",
-      },
-      {
-        srn: 3,
-        client: "Harvest Gold- Dealer Validation",
-        campaign: "Anand_Hearing",
-        plan: "Ready Roti India Pvt. Ltd.",
-        startDate: "01-Apr-2021",
-        endDate: "31-Mar-2022",
-        setUpCost: "0",
-        rentalCost: "251000",
-        balance: "120000",
-        paymentTerms: "YEAR",
-        ibCall: "6.00",
-        ibCallNight: "0.00",
-        obCall: "6.50",
-        sms: "0.30",
-        email: "0.25",
-        missCall: "0.00",
-        vfo: "0.00",
-      },
-      {
-        srn: 4,
-        client: "Harvest Gold- Dealer Validation",
-        campaign: "Anand_Hearing",
-        plan: "Ready Roti India Pvt. Ltd.",
-        startDate: "01-Apr-2021",
-        endDate: "31-Mar-2022",
-        setUpCost: "0",
-        rentalCost: "251000",
-        balance: "120000",
-        paymentTerms: "YEAR",
-        ibCall: "6.00",
-        ibCallNight: "0.00",
-        obCall: "6.50",
-        sms: "0.30",
-        email: "0.25",
-        missCall: "0.00",
-        vfo: "0.00",
-      },
-      {
-        srn: 5,
-        client: "Harvest Gold- Dealer Validation",
-        campaign: "Anand_Hearing",
-        plan: "Ready Roti India Pvt. Ltd.",
-        startDate: "01-Apr-2021",
-        endDate: "31-Mar-2022",
-        setUpCost: "0",
-        rentalCost: "251000",
-        balance: "120000",
-        paymentTerms: "YEAR",
-        ibCall: "6.00",
-        ibCallNight: "0.00",
-        obCall: "6.50",
-        sms: "0.30",
-        email: "0.25",
-        missCall: "0.00",
-        vfo: "0.00",
-      },
-    ]);
-  }, []);
-
+  const [plans, setPlans] = useState([]); // all allocation rows for table
+  const [plansList, setPlansList] = useState([]); // master plans for dropdown
+  const [clients, setClients] = useState([]);
   const [form, setForm] = useState({
     selectPlan: "",
     selectClient: "",
-    startDate: "",
+    startDate: null,
   });
+
+  // Search + Pagination
+  const [searchText, setSearchText] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10); // default 10 rows per page
+
+  // ================================
+  // FETCH CLIENTS, PLANS LIST
+  // ================================
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [plansRes, clientsRes, masterPlansRes] = await Promise.all([
+          api.get("/allocate-plan/list"),
+          api.get("/allocate-plan/clients"),
+          api.get("/allocate-plan/plans"), // fetch real plan list
+        ]);
+
+        setPlans(plansRes.data);
+
+        setClients(
+          clientsRes.data.map((c) => ({
+            id: c.id,
+            name: c.client_name,
+          }))
+        );
+
+        setPlansList(masterPlansRes.data); // use for dropdown
+      } catch (err) {
+        console.error("Error fetching data:", err);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(form); // TODO: Hook up API call here
+
+    if (!form.selectPlan || !form.selectClient || !form.startDate) {
+      alert("Please select Plan, Client, and Start Date");
+      return;
+    }
+
+    const formattedDate = form.startDate.toISOString().split("T")[0]; // YYYY-MM-DD
+
+    try {
+      const res = await api.post("/allocate-plan/create", {
+        client_id: form.selectClient,
+        plan_id: form.selectPlan, // now sends PlanId
+        start_date: formattedDate,
+      });
+
+      alert("Plan allocated successfully!");
+      console.log(res.data);
+
+      // Refresh table after allocation
+      const updatedPlans = await api.get("/allocate-plan/list");
+      setPlans(updatedPlans.data);
+
+      // Reset form
+      setForm({ selectPlan: "", selectClient: "", startDate: null });
+    } catch (err) {
+      console.error(err);
+      alert("Allocation failed!");
+    }
   };
+
+  // ================================
+  // FILTER TABLE BASED ON SELECTED CLIENT + PLAN + SEARCH
+  // ================================
+  const filteredPlans = plans.filter((p) => {
+    const searchLower = searchText.toLowerCase();
+    return (
+      (form.selectClient === "" ||
+        p.client ===
+          clients.find((c) => c.id === Number(form.selectClient))?.name) &&
+      (form.selectPlan === "" ||
+        p.plan ===
+          plansList.find((pl) => pl.id === Number(form.selectPlan))
+            ?.plan_name) &&
+      Object.values(p).join(" ").toLowerCase().includes(searchLower)
+    );
+  });
+
+  // Pagination
+  const totalPages = Math.ceil(filteredPlans.length / rowsPerPage);
+  const displayedPlans = filteredPlans.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage
+  );
 
   return (
     <div className="row">
-    <div className="col-12">
-
-      {/* Form Card */}
-      <div className="card mb-4">
-        <h6 className="card-header">ALLOCATE PLAN</h6>
-        <div className="card-body">
-          <form className="row g-3" onSubmit={handleSubmit}>
-            <div className="col-md-4">
-              <label className="form-label">Plan</label>
-              <select
-                name="selectPlan"
-                className="form-select"
-                value={form.selectPlan}
-                onChange={handleChange}
-              >
-                <option>Select Plan</option>
-              </select>
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">Client</label>
-              <select
-                name="selectClient"
-                className="form-select"
-                value={form.selectClient}
-                onChange={handleChange}
-              >
-                <option>Select Client</option>
-              </select>
-            </div>
-
-            <div className="col-md-4">
-              <label className="form-label">Start Date</label>
-              <div className="w-100">
-              <DatePicker
-                selected={form.startDate}
-                onChange={(date) => setForm({ ...form, startDate: date })}
-                className="form-control w-100"
-                placeholderText="Plan Start Date"
-                dateFormat="dd-MM-yyyy"
-              />
+      <div className="col-12">
+        {/* Form Card */}
+        <div className="card mb-4">
+          <h6 className="card-header">ALLOCATE PLAN</h6>
+          <div className="card-body">
+            <form className="row g-3" onSubmit={handleSubmit}>
+              <div className="col-md-4">
+                <label className="form-label">Plan</label>
+                <select
+                  name="selectPlan"
+                  className="form-select"
+                  value={form.selectPlan}
+                  onChange={handleChange}
+                >
+                  <option value="">Select Plan</option>
+                  {plansList.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.plan_name}
+                    </option>
+                  ))}
+                </select>
               </div>
-            </div>
 
-            <div className="col-12">
-              <button type="submit" className="btn btn-primary">
-                ALLOCATE
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
+              <div className="col-md-4">
+                <label className="form-label">Client</label>
+                <select
+                  name="selectClient"
+                  className="form-select"
+                  value={form.selectClient}
+                  onChange={(e) => {
+                    handleChange(e);
+                    setCurrentPage(1);
+                  }}
+                >
+                  <option value="">Select Client</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-      <div className="card p-3">
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <div className="d-flex align-items-center gap-2">
-            <select className="form-select form-select-sm w-auto">
-              <option>10</option>
-              <option>25</option>
-              <option>50</option>
-            </select>
-            <input
-              type="search"
-              className="form-control form-control-sm w-auto"
-              placeholder="Search..."
-            />
+              <div className="col-md-4">
+                <label className="form-label d-block">Start Date</label>
+                <DatePicker
+                  selected={form.startDate}
+                  onChange={(date) => setForm({ ...form, startDate: date })}
+                  className="form-control w-100"
+                  placeholderText="Plan Start Date"
+                  dateFormat="dd-MM-yyyy"
+                />
+              </div>
+
+              <div className="col-12">
+                <button type="submit" className="btn btn-primary">
+                  ALLOCATE
+                </button>
+              </div>
+            </form>
           </div>
         </div>
 
-        <div className="table-responsive">
-          <table className="table table-bordered table-hover">
-            <thead className="table-light">
-              <tr>
-                <th>SRN.</th>
-                <th>CLIENT</th>
-                <th>CAMPAIGN</th>
-                <th>PLAN</th>
-                <th>START DATE</th>
-                <th>END DATE</th>
-                <th>SET-UP COST</th>
-                <th>RENTAL COST</th>
-                <th>BALANCE</th>
-                <th>PAYMENT TERMS</th>
-                <th>IB CALL</th>
-                <th>IB CALL NIGHT</th>
-                <th>OB CALL</th>
-                <th>SMS</th>
-                <th>EMAIL</th>
-                <th>MISS CALL</th>
-                <th>VFO</th>
-              </tr>
-            </thead>
-            <tbody>
-              {plans.map((plan) => (
-                <tr key={plan.srn}>
-                  <td>{plan.srn}</td>
-                  <td>{plan.client}</td>
-                  <td>{plan.campaign}</td>
-                  <td>{plan.plan}</td>
-                  <td>{plan.startDate}</td>
-                  <td>{plan.endDate}</td>
-                  <td>{plan.setUpCost}</td>
-                  <td>{plan.rentalCost}</td>
-                  <td>{plan.balance}</td>
-                  <td>{plan.paymentTerms}</td>
-                  <td>{plan.ibCall}</td>
-                  <td>{plan.ibCallNight}</td>
-                  <td>{plan.obCall}</td>
-                  <td>{plan.sms}</td>
-                  <td>{plan.email}</td>
-                  <td>{plan.missCall}</td>
-                  <td>{plan.vfo}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Search */}
+        <div className="row mb-3 align-items-center">
+          {/* Search Input */}
+          <div className="col-lg-2 mb-2 mb-lg-0">
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Search table..."
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+
+          {/* Rows per page select */}
+          <div className="col-lg-2 ms-auto">
+            <select
+              className="form-select"
+              value={rowsPerPage}
+              onChange={(e) => setRowsPerPage(Number(e.target.value))}
+            >
+              <option value={10}>10</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
         </div>
 
-        {/* Pagination (Mocked) */}
-        <div className="d-flex justify-content-between align-items-center mt-3">
-          <div>Showing 1 to 10 of 235 entries</div>
-          <nav>
-            <ul className="pagination pagination-sm mb-0">
-              <li className="page-item disabled">
-                <button className="page-link">Previous</button>
-              </li>
-              {[1, 2, 3, 4, 5].map((num) => (
+        {/* Table Card */}
+        <div className="card p-3">
+          <div className="table-responsive">
+            <table className="table table-bordered table-hover">
+              <thead className="table-light">
+                <tr>
+                  <th>SRN.</th>
+                  <th>CLIENT</th>
+                  <th>CAMPAIGN</th>
+                  <th>PLAN</th>
+                  <th>START DATE</th>
+                  <th>END DATE</th>
+                  <th>SET-UP COST</th>
+                  <th>RENTAL COST</th>
+                  <th>BALANCE</th>
+                  <th>PAYMENT TERMS</th>
+                  <th>IB CALL</th>
+                  <th>IB CALL NIGHT</th>
+                  <th>OB CALL</th>
+                  <th>SMS</th>
+                  <th>EMAIL</th>
+                  <th>MISS CALL</th>
+                  <th>VFO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayedPlans.map((plan) => (
+                  <tr key={plan.srn}>
+                    <td>{plan.srn}</td>
+                    <td>{plan.client}</td>
+                    <td>{plan.campaign}</td>
+                    <td>{plan.plan}</td>
+                    <td>{plan.start_date}</td>
+                    <td>{plan.end_date}</td>
+                    <td>{plan.setUpCost}</td>
+                    <td>{plan.rentalCost}</td>
+                    <td>{plan.balance}</td>
+                    <td>{plan.paymentTerms}</td>
+                    <td>{plan.ibCall}</td>
+                    <td>{plan.ibCallNight}</td>
+                    <td>{plan.obCall}</td>
+                    <td>{plan.sms}</td>
+                    <td>{plan.email}</td>
+                    <td>{plan.missCall}</td>
+                    <td>{plan.vfo}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="d-flex justify-content-center mt-3">
+              <ul className="pagination">
                 <li
-                  key={num}
-                  className={`page-item ${num === 1 ? "active" : ""}`}
+                  className={`page-item ${currentPage === 1 ? "disabled" : ""}`}
                 >
-                  <button className="page-link">{num}</button>
+                  <button
+                    className="page-link"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  >
+                    Previous
+                  </button>
                 </li>
-              ))}
-              <li className="page-item">
-                <button className="page-link">Next</button>
-              </li>
-            </ul>
-          </nav>
+                {[...Array(totalPages)].map((_, idx) => (
+                  <li
+                    key={idx}
+                    className={`page-item ${
+                      currentPage === idx + 1 ? "active" : ""
+                    }`}
+                  >
+                    <button
+                      className="page-link"
+                      onClick={() => setCurrentPage(idx + 1)}
+                    >
+                      {idx + 1}
+                    </button>
+                  </li>
+                ))}
+                <li
+                  className={`page-item ${
+                    currentPage === totalPages ? "disabled" : ""
+                  }`}
+                >
+                  <button
+                    className="page-link"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  >
+                    Next
+                  </button>
+                </li>
+              </ul>
+            </div>
+          )}
         </div>
-      </div>
       </div>
     </div>
   );

@@ -25,7 +25,8 @@ def get_db():
 
 
 
-SQL_DB_URL2 = "mysql+pymysql://root:vicidialnow@192.168.11.242/asterisk?charset=utf8mb4"
+SQL_DB_URL2 = "mysql+pymysql://root:vicidialnow@192.168.10.242/asterisk?charset=utf8mb4"
+# SQL_DB_URL2 = "mysql+pymysql://root:vicidialnow@192.168.10.5/asterisk?charset=utf8mb4"
 engine2 = create_engine(SQL_DB_URL2)
 SessionLocal2 = sessionmaker(bind=engine2)
 
@@ -51,6 +52,7 @@ def get_db3():
 
 
 SQL_DB_URL4 = "mysql+pymysql://root:vicidialnow@192.168.11.236/db_dialdesk?charset=utf8mb4"
+# SQL_DB_URL4 = "mysql+pymysql://root:dial%40mas123@192.168.10.12/db_dialdesk?charset=utf8mb4"
 
 engine4 = create_engine(SQL_DB_URL4)
 SessionLocal4 = sessionmaker(bind=engine4)
