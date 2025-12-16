@@ -81,7 +81,7 @@ def get_client_invoice_details(
             SUM(ob_total) AS total_ob_value,
             SUM(email_pulse) AS total_email_pulse,
             SUM(email_total) AS total_email_value
-        FROM billing_consume_daily
+        FROM billing_consume_daily_new
         WHERE client_id = :client_id
         AND DATE(cm_date) BETWEEN :start_date AND :end_date
     """)
@@ -343,7 +343,7 @@ def get_client_invoice_details(
 #             SUM(ibn_total) AS total_ob_value,
 #             SUM(email_pulse) AS total_email_pulse,
 #             SUM(email_total) AS total_email_value
-#         FROM billing_consume_daily
+#         FROM billing_consume_daily_new
 #         WHERE client_id = :client_id
 #         AND DATE(cm_date) BETWEEN :start_date AND :end_date
 #     """)

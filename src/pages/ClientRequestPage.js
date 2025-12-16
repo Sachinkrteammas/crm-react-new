@@ -4,6 +4,7 @@ import axios from "axios";
 import WizardForm from "./company-registration"; // make sure the path is correct
 import "../styles/stepper.css";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 export default function ClientRequestPage() {
   const [companies, setCompanies] = useState([]);
@@ -16,6 +17,7 @@ export default function ClientRequestPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filtered, setFiltered] = useState([]);
   const [filterType, setFilterType] = useState("company_name");
+  const navigate = useNavigate();
 
   // Fetch all companies
   useEffect(() => {
@@ -159,6 +161,13 @@ const handleEdit = async (companyId) => {
                   </option>
                 ))}
               </select>{" "}
+              <button
+                type="button"
+                className="btn btn-outline-primary rounded-3 mb-1"
+                onClick={() => navigate(-1)}
+              >
+                ← Back
+              </button>
             </div>
             <div className="d-flex">
               <select

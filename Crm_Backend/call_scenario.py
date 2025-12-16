@@ -84,6 +84,7 @@ def send_call_summary(
             WHERE DATE(v.event_time) = CURDATE()
               AND v.campaign_id IN ('Cryst002')
               AND v.lead_id IS NOT NULL
+              AND length(v.status)>0 
             GROUP BY v.user
         """)
 
@@ -92,51 +93,89 @@ def send_call_summary(
 
 
 
-        # 6️⃣ Hourly Call Summary (Your Provided Query)
-        hourly_query = text("""
-            SELECT DATE(call_date) `Date`, HOUR(call_date) `Time Slot`,COUNT(1) Total, SUM(IF(t2.user!='VDCL',1,0)) `Answered`,
+        # 6️⃣ Hourly Call Summary (Updated Query)
+        campaign_ids = ["CrystalEyeCentr00000", "Cryst000"]
+        client_ids = [str(client_id)]
 
-                IF(t2.user!='VDCL',COUNT(DISTINCT(t2.user))-1,COUNT(DISTINCT(t2.user))) `Manpower`,
-
-                ROUND(SUM(IF(t2.user!='VDCL',1,0))/COUNT(1)*100,2) `AL %`,ROUND(SUM(IF(t2.`user` !='VDCL' AND
-
-                t2.queue_seconds<=20,1,0))/COUNT(1)*100,2) `SL %` FROM asterisk.vicidial_closer_log t2
-
-            LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid  AND t2.user=t3.user
-
-            LEFT JOIN (SELECT uniqueid,SUM(parked_sec) p FROM park_log WHERE STATUS='GRABBED' AND DATE(parked_time) BETWEEN '$FromDate' AND '$ToDate' GROUP BY uniqueid)
-
-            t6 ON t2.uniqueid=t6.uniqueid LEFT JOIN vicidial_users vc ON t2.user=vc.user
-
-            WHERE DATE(t2.call_date)=CURDATE() AND t2.campaign_id IN('CrystalEyeCentr00000','Cryst000') AND  t2.lead_id IS NOT NULL GROUP BY HOUR(t2.call_date);
+        # 6️⃣ Hourly Call Summary
+        hourly_query = text(f"""
+            SELECT
+                DATE(t2.call_date) AS `Date`,
+                HOUR(t2.call_date) AS `Time Slot`,
+                COUNT(*) AS Total,
+                SUM(IF(t2.user!='VDCL',1,0)) AS Answered,
+                COUNT(DISTINCT IF(t2.user!='VDCL', t2.user, NULL)) AS Manpower,
+                ROUND(SUM(IF(t2.user!='VDCL',1,0))/COUNT(*)*100,2) AS `AL %`,
+                ROUND(SUM(IF(t2.user!='VDCL' AND t2.queue_seconds <= 20,1,0))/SUM(IF(t2.user!='VDCL',1,0))*100,2) AS `SL %`
+            FROM asterisk.vicidial_closer_log t2
+            LEFT JOIN vicidial_agent_log t1 ON t1.uniqueid = t2.uniqueid AND t1.user = t2.user
+            WHERE DATE(t2.call_date) = '{report_date}'
+              AND t2.campaign_id IN ({','.join([f"'{c}'" for c in campaign_ids])})
+              AND t2.lead_id IS NOT NULL
+            GROUP BY HOUR(t2.call_date);
         """)
 
         hourly_rows = db2.execute(hourly_query).mappings().all()
         hourly_data = [dict(r) for r in hourly_rows]
 
+        # Fetch RL counts separately from db (aband_call_master)
+        rl_query = text(f"""
+            SELECT 
+                HOUR(calldate) AS hour_slot,
+                COUNT(*) AS RL
+            FROM aband_call_master
+            WHERE ClientId IN ({','.join([f"'{c}'" for c in client_ids])})
+            AND call_status='answer'
+            AND DATE(calldate) = '{report_date}'
+            GROUP BY HOUR(calldate)
+        """)
+
+        rl_result = db.execute(rl_query).mappings().all()
+
+        # RL_total must be SUM of all hourly RLs
+        RL_total = sum(r["RL"] for r in rl_result)
+
+        # Convert to {hour: RL_count}
+        rl_map = {r["hour_slot"]: r["RL"] for r in rl_result}
+
+        # Compute per-hour RL % and add to each row
+        for row in hourly_data:
+            hour = row["Time Slot"]
+            Total = row["Total"] or 0
+            Answered = row["Answered"] or 0
+
+            # Get RL for this hour
+            RL_hour = rl_map.get(hour, 0)
+
+            # RL = Answered + Abandoned (from aband_call_master)
+            RL_count = Answered + RL_hour
+
+            # Save RL count
+            row["RL"] = RL_count
+
+            # RL %
+            row["RL %"] = round((RL_count / Total) * 100, 2) if Total else 0
+
 
         # Compute totals
         total_total = sum(row["Total"] for row in hourly_data)
         total_answered = sum(row["Answered"] for row in hourly_data)
-
-        # AL% Total = (sum answered / sum total) * 100
+ 
         total_al = round((total_answered / total_total) * 100, 2) if total_total else 0
+        weighted_sl_num = sum((row["SL %"] * row["Answered"]) for row in hourly_data)
+        total_sl = round(weighted_sl_num / total_answered, 2) if total_answered else 0
+        total_rl = round((RL_total + total_answered) / total_total * 100, 2) if total_total else 0
 
-        # SL% Total = Weighted average
-        weighted_sl_num = sum(
-            (row["SL %"] * row["Total"]) for row in hourly_data
-        )
-        total_sl = round(weighted_sl_num / total_total, 2) if total_total else 0
-
-        # Add bottom total row exactly like your screenshot
+        # Add bottom total row
         hourly_data.append({
             "Date": "Total",
             "Time Slot": "",
             "Total": total_total,
             "Answered": total_answered,
-            "Manpower": "",    # No total for manpower
+            "Manpower": "",
             "AL %": total_al,
-            "SL %": total_sl
+            "SL %": total_sl,
+            "RL %": total_rl
         })
 
 
@@ -159,6 +198,19 @@ def send_call_summary(
         callback_rows = db.execute(callback_query).mappings().all()
         callback_data = [dict(r) for r in callback_rows]
 
+        vicidial_query = text("""
+            SELECT 
+                SUM(IF(`user`='VDAD',1,0)) AS Notconnected,
+                SUM(IF(`user`!='VDAD',1,0)) AS Connected
+            FROM vicidial_log
+            WHERE campaign_id='Cryst000'
+            AND DATE(call_date) = CURDATE();
+        """)
+
+        vicidial_row = db2.execute(vicidial_query).mappings().first()
+        vic_connected = vicidial_row.get("Connected", 0) or 0
+        vic_notconnected = vicidial_row.get("Notconnected", 0) or 0
+
         # Ensure both rows exist even if empty
         final_callback = [
             {"Abandoned & Disconnection Callback": "Connected", "Count of Abandoned & Disconnection Callback": 0},
@@ -171,6 +223,10 @@ def send_call_summary(
                 final_callback[0]["Count of Abandoned & Disconnection Callback"] = row["Count"]
             elif row["status"] == "Not Connected":
                 final_callback[1]["Count of Abandoned & Disconnection Callback"] = row["Count"]
+
+        # ✅ Add Vicidial Counts
+        final_callback[0]["Count of Abandoned & Disconnection Callback"] += vic_connected
+        final_callback[1]["Count of Abandoned & Disconnection Callback"] += vic_notconnected
 
         # Total
         callback_total = (
@@ -267,6 +323,7 @@ def send_call_summary(
                     <td>{row['Manpower']}</td>
                     <td>{row['AL %']}</td>
                     <td>{row['SL %']}</td>
+                    <td>{row.get('RL %', '')}</td>
                 </tr>
                 """
 
@@ -281,6 +338,7 @@ def send_call_summary(
                     <th>Manpower</th>
                     <th>AL %</th>
                     <th>SL %</th>
+                    <th>RL %</th>
                 </tr>
                 {rows}
             </table>
@@ -331,29 +389,29 @@ def send_call_summary(
         if not recipient:
             raise HTTPException(status_code=500, detail="EMAIL_RECEIVER not set in .env")
         
-        # # Split multiple emails by comma and strip spaces
-        # recipient_list = [email.strip() for email in recipients.split(",") if email.strip()]
+        # Split multiple emails by comma and strip spaces
+        recipient_list = [email.strip() for email in recipient.split(",") if email.strip()]
 
-        # for recipient in recipient_list:
-        #     send_email(
-        #         to_email=recipient,
-        #         subject=f"Call Summary Report - {report_date}, For Client-ID: {client_id}",
-        #         html_content=html_content
-        #     )
+        for recipient in recipient_list:
+            send_email(
+                to_email=recipient,
+                subject=f"Call Summary Report - {report_date}, For Client-ID: {client_id}",
+                html_content=html_content
+            )
 
-        send_email(
-            to_email=recipient,
-            subject=f"Call Summary Report - {report_date}, For Client-ID: {client_id}",
-            html_content=html_content
-        )
+        # send_email(
+        #     to_email=recipient,
+        #     subject=f"Call Summary Report - {report_date}, For Client-ID: {client_id}",
+        #     html_content=html_content
+        # )
 
-        # # Sends message for multiple emails.
-        # return {
-        #     "message": f"Email sent successfully to {', '.join(recipient_list)}",
-        #     "client_id": client_id,
-        #     "report_date": str(report_date),
-        #     "sections": sections
-        # }
+        # Sends message for multiple emails.
+        return {
+            "message": f"Email sent successfully to {', '.join(recipient_list)}",
+            "client_id": client_id,
+            "report_date": str(report_date),
+            "sections": sections
+        }
 
 
         # ✅ Return preview response also

@@ -1,12 +1,14 @@
 // Manage Out Call Scenarios..//
 import React, { useState, useEffect } from "react";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 export default function OutManageCallScenarios() {
   const [clients, setClients] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [clientId, setClientId] = useState("");
   const [campaignId, setCampaignId] = useState("");
+  const navigate = useNavigate();
 
   const [tree, setTree] = useState([]);
   const [categories, setCategories] = useState({
@@ -215,6 +217,7 @@ export default function OutManageCallScenarios() {
 
   return (
     <div className="row">
+    <div className="row align-items-end mb-3">
    {/* Show only if NOT client login */}
     {userType !== "Client" && (
       <div className="col-md-3">
@@ -249,6 +252,18 @@ export default function OutManageCallScenarios() {
             </option>
           ))}
         </select>
+      </div>
+
+      {/* Back Button */}
+      <div className="col-md-7 d-flex justify-content-end">
+        <button
+          type="button"
+          className="btn btn-outline-primary rounded-3"
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
+      </div>
       </div>
 
       {/* Main Panel */}

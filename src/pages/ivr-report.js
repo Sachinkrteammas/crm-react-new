@@ -190,6 +190,13 @@ const IVRReport = () => {
         <button className="btn btn-primary" onClick={handleView}>
           VIEW
         </button>     
+        <button
+            type="button"
+            className="btn btn-outline-primary rounded-3"
+            onClick={() => navigate(-1)}
+          >
+            ← Back
+          </button>
       </div>
     </div>
 
@@ -236,15 +243,6 @@ const IVRReport = () => {
             </tbody>
           </table>
         </div>
-        <div className="text-start mt-3">
-        <button
-            type="button"
-            className="btn btn-outline-primary px-4 py-2 rounded-3"
-            onClick={() => navigate(-1)}
-          >
-            ← Back
-          </button>
-      </div>
       </div>
       )}
     </div>

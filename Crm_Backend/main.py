@@ -49,7 +49,7 @@ from logincreation_master import router as logincreation_master_router
 from corrective_report import router as corrective_report_router
 from allocate_plan import router as allocate_plan_router
 from reallocate_plan import router as reallocate_plan_router
-
+from forgot_password import router as forgot_password_router
 
 
 
@@ -104,7 +104,7 @@ app.include_router(logincreation_master_router, tags=["Login Creation Master"])
 app.include_router(corrective_report_router, tags=["Corrective Report"])
 app.include_router(allocate_plan_router, tags=["Allocate Plan"])
 app.include_router(reallocate_plan_router, tags=["Re Allocate Plan"])
-
+app.include_router(forgot_password_router, tags=["Forgot Password"])
 
 
 

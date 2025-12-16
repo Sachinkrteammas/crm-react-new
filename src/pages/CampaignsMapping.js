@@ -106,16 +106,18 @@ const CampaignsMapping = () => {
   return (
     <div className="row">
       <div className="col-12">
+        <div className="d-flex justify-content-between align-items-center mb-4">
         <h4 className="mb-4">Campaign Mapping</h4>
 
         {/* Client Dropdown */}
         {(userType === "Super-Admin" || userType === "Admin") && (
-          <div className="mb-4 col-md-4 col-lg-3">
-            <label className="form-label fw-semibold">Select Client</label>
+          <div>
+            <label className="form-label fw-semibold me-2 mb-0">Select Client</label>
             <select
               className="form-select"
               value={selectedClient}
               onChange={(e) => setSelectedClient(e.target.value)}
+              style={{ width: "250px" }}
             >
               <option value="">-- Select Client --</option>
               {clients.map((c) => (
@@ -126,6 +128,7 @@ const CampaignsMapping = () => {
             </select>
           </div>
         )}
+        </div>
 
         {/* Form */}
         <div className="card mb-3">

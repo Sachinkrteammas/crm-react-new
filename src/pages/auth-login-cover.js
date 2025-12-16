@@ -116,15 +116,15 @@ const AuthLoginCover = () => {
               {/* Email */}
               <div className="mb-6">
                 <label htmlFor="email" className="form-label">
-                  Email or Username
+                  Email
                 </label>
                 <input
-                  type="text"
+                  type="email"
                   id="email"
                   className="form-control"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Enter your email or username"
+                  placeholder="Enter your email"
                   required
                 />
               </div>
@@ -187,6 +187,15 @@ const AuthLoginCover = () => {
               <button type="submit" className="btn btn-primary d-grid w-100">
                 Sign in
               </button>
+              <div className="text-center mt-4">
+              <span>Don't have an account? </span>
+              <Link
+                to="/company_registration"
+                className="btn btn-outline-primary btn-sm"
+              >
+                Sign Up
+              </Link>
+            </div>
             </form>
           </div>
         </div>

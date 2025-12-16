@@ -183,7 +183,7 @@ def get_active_services(
         plan_name=pm["PlanName"],
         period_type=pm["PeriodType"],
         credit_value=pm["CreditValue"],
-        subscription_value=pm["RentalAmount"],       # or compute per your logic
+        subscription_value=pm["CreditValue"],       # or compute per your logic
         inbound_call_day_charge=pm["inbound_day"],
         inbound_call_night_charge=pm["inbound_night"],
         outbound_call_charge=pm["outbound"],

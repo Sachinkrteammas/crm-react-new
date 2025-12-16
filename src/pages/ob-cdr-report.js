@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 
 const OBCDRReport = () => {
@@ -21,6 +22,7 @@ const OBCDRReport = () => {
   const [loading, setLoading] = useState(false);
   const [showTable, setShowTable] = useState(false);
   const [clientName, setClientName] = useState("");
+  const navigate = useNavigate();
 
   const handleView = async () => {
       setLoading(true);
@@ -205,6 +207,13 @@ const OBCDRReport = () => {
           </button>
           <button className="btn btn-primary" onClick={handleView}>
             VIEW
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-primary rounded-3"
+            onClick={() => navigate(-1)}
+          >
+            ← Back
           </button>
         </div>
       </div>

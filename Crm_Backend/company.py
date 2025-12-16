@@ -1,12 +1,17 @@
 
 
-
+from passlib.context import CryptContext
 from fastapi import APIRouter, Form, File, UploadFile, HTTPException, Request
 from typing import Optional, List
 import os, shutil
 from database import get_engine4
 
 router = APIRouter()
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(password: str):
+    return pwd_context.hash(password)
 
 # # ---------------- OTP Storage ----------------
 # otp_store: Dict[str, str] = {}  # stores OTPs temporarily
@@ -157,10 +162,11 @@ async def register_company(
                     detail="Company already exists with this GST, Mobile, or Email."
                 )
 
+        hashed = hash_password(password)
 
     # ---------------- Capture client IP and set default for email_verify ----------------
         client_ip = request.client.host if request.client else "0.0.0.0"
-        email_verify = "YES"  # default value since frontend does not provide
+        email_verify = "yes"  # default value since frontend does not provide
 
         # ✅ Insert new record
         sql = """
@@ -199,7 +205,7 @@ async def register_company(
             "designation": designation,
             "phone": mobile,
             "email": email,
-            "password": password,
+            "password": hashed,
             "comm1": commAddress1 or "",
             "comm2": commAddress2 or "",
             "comm_city": commCity or "",

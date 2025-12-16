@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
 import api from "../api";
+import { useNavigate } from "react-router-dom";
 
 
 const CDRReport = () => {
@@ -23,6 +24,7 @@ const CDRReport = () => {
 
   const [sampleData, setSampleData] = useState([]);
   const [clientName, setClientName] = useState("");
+  const navigate = useNavigate();
 
 
 
@@ -231,6 +233,13 @@ const handleEndDateChange = (date) => {
           <button className="btn btn-primary" onClick={handleViewClick}>
           VIEW
         </button>
+        <button
+            type="button"
+            className="btn btn-outline-primary rounded-3"
+            onClick={() => navigate(-1)}
+          >
+            ← Back
+          </button>
         </div>
       </div>
 

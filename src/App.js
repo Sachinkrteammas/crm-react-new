@@ -122,7 +122,8 @@ import CampaignsMapping from "./pages/CampaignsMapping";
 import DidClientCampaignsMapping from "./pages/DidClientCampaignsMapping";
 import SubMenuPage from "./pages/SubMenuPage";
 import CorrectiveReport from "./pages/Corrective_report";
-import AllocationPlan from "./pages/AllocationPlan";
+// import AllocationPlan from "./pages/AllocationPlan";
+import ResetPassword from "./pages/Reset_password";
 
 
 
@@ -235,6 +236,7 @@ function App() {
       <Route path="/" element={<AuthLoginCover />} />
       <Route path="/auth-register" element={<AuthRegister  />} />
       <Route path="/forgot-password" element={<ForgotPassword  />} />
+      <Route path="/reset-password" element={<ResetPassword  />} />
       <Route path="/logout" element={<Logout />} />
       <Route path="/company_registration" element={<CompanyRegistration />} />
       
@@ -356,7 +358,7 @@ function App() {
               <Route path="/submenu/:id" element={<SubMenuPage />} />
               <Route path="/CorrectiveReport/index" element={<CorrectiveReport />} />
               <Route path="/company_registration" element={<CompanyRegistration />} />
-              <Route path="/allocation_plan" element={<AllocationPlan />} />
+              {/* <Route path="/allocation_plan" element={<AllocationPlan />} /> */}
               
           </Route>
       </Route>

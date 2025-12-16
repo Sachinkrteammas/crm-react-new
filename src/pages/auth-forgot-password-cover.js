@@ -1,7 +1,49 @@
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import React from 'react';
+import api from "../api";
 
 const ForgotPassword = () => {
+
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
+
+  // ---------------------------
+  // 🔐 FORGOT PASSWORD API
+  // ---------------------------
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!email) {
+      setErrorMsg("Please enter your email.");
+      return;
+    }
+
+    setLoading(true);
+    setSuccessMsg("");
+    setErrorMsg("");
+
+    try {
+      const response = await api.post(
+        `/forgot-password`,
+        null,
+        {
+          params: { email }
+        }
+      );
+
+      setSuccessMsg(response.data.message);
+    } catch (err) {
+      console.error("Forgot password error:", err);
+      setErrorMsg(
+        err.response?.data?.detail || "Failed to send reset link."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
     return (
 
@@ -9,7 +51,7 @@ const ForgotPassword = () => {
           <a href="#" className="app-brand auth-cover-brand">
             <span className="app-brand-logo demo">
               <span className="text-primary">
-                <svg width="32" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* <svg width="32" height="22" viewBox="0 0 32 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
                     fill-rule="evenodd"
                     clip-rule="evenodd"
@@ -32,10 +74,15 @@ const ForgotPassword = () => {
                     clip-rule="evenodd"
                     d="M7.77295 16.3566L23.6563 0H32V6.88383C32 6.88383 31.8262 9.17836 30.6591 10.4057L19.7824 22H13.6938L7.77295 16.3566Z"
                     fill="currentColor" />
-                </svg>
+                </svg> */}
+                <img 
+                  src="/assets/img/branding/logo.DialDesk.png" 
+                  alt="DialDesk Logo" 
+                  style={{ height: "50px", width: "auto" }}
+                />
               </span>
             </span>
-            <span className="app-brand-text demo text-heading fw-bold">DialDesk</span>
+            {/* <span className="app-brand-text demo text-heading fw-bold">DialDesk</span> */}
           </a>
           {/* /Logo */}
           <div className="authentication-inner row m-0">
@@ -48,12 +95,12 @@ const ForgotPassword = () => {
                   className="my-5 auth-illustration d-lg-block d-none"
                   data-app-light-img="illustrations/auth-login-illustration-light2.png"
                   data-app-dark-img="illustrations/auth-forgot-password-illustration-dark.png" />
-                <img
+                {/* <img
                   src="/assets/img/illustrations/bg-shape-image-light.png"
                   alt="auth-forgot-password-cover"
                   className="platform-bg"
                   data-app-light-img="illustrations/bg-shape-image-light.png"
-                  data-app-dark-img="illustrations/bg-shape-image-dark.png" />
+                  data-app-dark-img="illustrations/bg-shape-image-dark.png" /> */}
               </div>
             </div>
             {/* /Left Text */}
@@ -63,18 +110,36 @@ const ForgotPassword = () => {
               <div className="w-px-400 mx-auto mt-12 mt-5">
                 <h4 className="mb-1">Forgot Password? 🔒</h4>
                 <p className="mb-6">Enter your email and we'll send you instructions to reset your password</p>
-                <form id="formAuthentication" className="mb-6">
+                <form id="formAuthentication" className="mb-6" onSubmit={handleSubmit}>
                   <div className="mb-6 form-control-validation">
                     <label for="email" className="form-label">Email</label>
                     <input
-                      type="text"
-                      className="form-control"
+                      type="email"
                       id="email"
-                      name="email"
+                      className="form-control"                      
                       placeholder="Enter your email"
-                      autofocus />
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autofocus 
+                      required
+                      />
                   </div>
-                  <button className="btn btn-primary d-grid w-100">Send Reset Link</button>
+
+                  {successMsg && (
+                    <div className="alert alert-success">{successMsg}</div>
+                  )}
+
+                  {errorMsg && (
+                    <div className="alert alert-danger">{errorMsg}</div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="btn btn-primary d-grid w-100"
+                    disabled={loading}
+                  >
+                    {loading ? "Sending..." : "Send Reset Link"}
+                  </button>
                 </form>
                 <div className="text-center">
                   <a className="d-flex justify-content-center">
@@ -88,6 +153,16 @@ const ForgotPassword = () => {
             </div>
             {/* /Forgot Password */}
           </div>
+          {/* Loader Overlay (same UX pattern) */}
+          {loading && (
+            <div className="loader-overlay">
+              <div className="bar"></div>
+              <div className="bar"></div>
+              <div className="bar"></div>
+              <div className="bar"></div>
+              <div className="bar"></div>
+            </div>
+          )}
         </div>
 
     );
