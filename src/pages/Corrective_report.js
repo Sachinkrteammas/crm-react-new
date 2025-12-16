@@ -238,7 +238,7 @@ const CorrectiveReport = () => {
               <DatePicker
                 selected={startDate}
                 onChange={setStartDate}
-                dateFormat="yyyy-MM-dd"
+                dateFormat="dd-MM-yyyy"
                 placeholderText="Start Date"
                 className="form-control"
               />
@@ -249,7 +249,7 @@ const CorrectiveReport = () => {
               <DatePicker
                 selected={endDate}
                 onChange={setEndDate}
-                dateFormat="yyyy-MM-dd"
+                dateFormat="dd-MM-yyyy"
                 placeholderText="End Date"
                 className="form-control"
               />

@@ -169,6 +169,7 @@ const IVRReport = () => {
             onChange={(date) => setStartDate(date)}
             placeholderText="Start Date"
             className="form-control"
+            dateFormat="dd-MM-yyyy"
           />
         </div>
 
@@ -179,6 +180,7 @@ const IVRReport = () => {
             onChange={(date) => setEndDate(date)}
             placeholderText="End Date"
             className="form-control"
+            dateFormat="dd-MM-yyyy"
           />
         </div>
 

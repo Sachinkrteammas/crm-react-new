@@ -104,6 +104,40 @@ export default function PlanManagement() {
     const { name, value } = e.target;
     let newErrors = { ...errors };
 
+    const decimalFields = [
+      "inboundChargeDay",
+      "ratePerPulseDay",
+      "ratePerPulseNight",
+      "ratePerPulse",
+      "inboundChargeNight",
+    ];
+
+    if (decimalFields.includes(name)) {
+      const regex = /^\d*\.?\d{0,2}$/;
+
+      // ✅ Valid input → update value & CLEAR error
+      if (value === "" || regex.test(value)) {
+        setForm({ ...form, [name]: value });
+
+        if (newErrors[name]) {
+          delete newErrors[name];
+          setErrors(newErrors);
+        }
+
+        return;
+      }
+
+      // ❌ Invalid input → show error ONLY ONCE
+      if (!newErrors[name]) {
+        setErrors({
+          ...newErrors,
+          [name]: "Only up to 2 decimal places allowed",
+        });
+      }
+
+      return;
+    }
+
     // ✅ Only validate these two percentage fields
     if (name === "CreditPointPercent" || name === "TalktimePercent") {
     const numericValue = parseFloat(value);
@@ -355,6 +389,7 @@ export default function PlanManagement() {
           onClick={() => {
             setForm(initialFormState);
             setEditingPlanId(null);
+            setErrors({}); 
             setShowModal(true);
           }}
         >
@@ -482,7 +517,7 @@ export default function PlanManagement() {
           <button
             type="button"
             className="btn-close"
-            onClick={() => setShowViewModal(false)}
+            onClick={() => {setShowViewModal(false);  setErrors({});}}
           ></button>
         </div>
         <div className="modal-body">
@@ -532,6 +567,7 @@ export default function PlanManagement() {
                   onClick={() => {
                     setModalMessage(""); // reset message
                     setShowModal(false);
+                    setErrors({});
                   }}
                 ></button>
               </div>

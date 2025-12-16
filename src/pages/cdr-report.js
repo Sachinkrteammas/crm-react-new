@@ -221,6 +221,7 @@ const handleEndDateChange = (date) => {
           onChange={handleStartDateChange}
           placeholderText="Start Date"
           className="form-control"
+          dateFormat="dd-MM-yyyy"
         />
 
         <DatePicker
@@ -228,6 +229,7 @@ const handleEndDateChange = (date) => {
           onChange={handleEndDateChange}
           placeholderText="End Date"
           className="form-control"
+          dateFormat="dd-MM-yyyy"
         />
           <button className="btn btn-primary" onClick={handleExport}>EXPORT</button>
           <button className="btn btn-primary" onClick={handleViewClick}>

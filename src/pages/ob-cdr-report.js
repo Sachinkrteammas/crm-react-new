@@ -195,12 +195,14 @@ const OBCDRReport = () => {
             onChange={setStartDate}
             placeholderText="Start Date"
             className="form-control"
+            dateFormat="dd-MM-yyyy"
           />
           <DatePicker
             selected={endDate}
             onChange={setEndDate}
             placeholderText="End Date"
             className="form-control"
+            dateFormat="dd-MM-yyyy"
           />
           <button className="btn btn-primary" onClick={handleExport}>
             EXPORT

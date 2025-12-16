@@ -978,12 +978,14 @@ export default function WizardForm({
                           <i class="icon-base ti tabler-arrow-left icon-xs me-sm-2 me-0"></i>
                           Previous
                         </button>
-                        <Link
-                          to="/"
-                          className="btn btn-outline-primary btn-sm"
-                        >
-                          Back to Login
-                        </Link>
+                        {!isEdit && (
+                          <Link
+                            to="/"
+                            className="btn btn-outline-primary btn-sm"
+                          >
+                            Back to Login
+                          </Link>
+                        )}
                         <button
                           type="button"
                           className="btn btn-primary btn-next"
@@ -1198,12 +1200,14 @@ export default function WizardForm({
                           <i className="icon-base ti tabler-arrow-left icon-xs me-sm-2 me-0"></i>
                           Previous
                         </button>
-                        <Link
-                          to="/"
-                          className="btn btn-outline-primary btn-sm"
-                        >
-                          Back to Login
-                        </Link>
+                        {!isEdit && (
+                          <Link
+                            to="/"
+                            className="btn btn-outline-primary btn-sm"
+                          >
+                            Back to Login
+                          </Link>
+                        )}
                         <button
                           type="button"
                           className="btn btn-primary btn-next"
@@ -1339,12 +1343,14 @@ export default function WizardForm({
                           <i className="icon-base ti tabler-arrow-left icon-xs me-sm-2 me-0"></i>{" "}
                           Previous
                         </button>
-                        <Link
-                          to="/"
-                          className="btn btn-outline-primary btn-sm"
-                        >
-                          Back to Login
-                        </Link>
+                        {!isEdit && (
+                          <Link
+                            to="/"
+                            className="btn btn-outline-primary btn-sm"
+                          >
+                            Back to Login
+                          </Link>
+                        )}
                         <button
                           type="submit" // use submit to trigger form behavior
                           className="btn btn-success btn-submit"
