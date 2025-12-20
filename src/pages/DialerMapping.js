@@ -204,7 +204,7 @@ const DialerMapping = () => {
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Customer Care Number"
+                  placeholder="Dialer Extension"
                   value={extension2}
                   onChange={(e) => setExtension2(e.target.value)}
                 />
@@ -227,7 +227,7 @@ const DialerMapping = () => {
                 <thead className="table-light">
                   <tr>
                     <th>Dialer Extension</th>
-                    <th>Customer Care Number</th>
+                    <th>Dialer Extension</th>
                     <th>Create Date</th>
                     <th>Update Date</th>
                     <th>Action</th>
@@ -240,8 +240,8 @@ const DialerMapping = () => {
                       <tr key={m.id}>
                         <td>{m.did_number}</td>
                         <td>{m.customer_care_number}</td>
-                        <td>{m.create_date}</td>
-                        <td>{m.update_date}</td>
+                        <td>{m.create_date?.replace("T", " ")}</td>
+                        <td>{m.update_date?.replace("T", " ")}</td>
                         <td>
                           <button
                             className="btn btn-danger btn-sm"
@@ -275,7 +275,7 @@ const DialerMapping = () => {
                 <thead className="table-light">
                   <tr>
                     <th>Dialer Extension</th>
-                    <th>Customer Care Number</th>
+                    <th>Dialer Extension</th>
                     <th>Create Date</th>
                     <th>Update Date</th>
                   </tr>
@@ -287,8 +287,8 @@ const DialerMapping = () => {
                       <tr key={`history-${m.id}`}>
                         <td>{m.did_number}</td>
                         <td>{m.customer_care_number}</td>
-                        <td>{m.create_date}</td>
-                        <td>{m.update_date}</td>
+                        <td>{m.create_date?.replace("T", " ")}</td>
+                        <td>{m.update_date?.replace("T", " ")}</td>
                       </tr>
                     ))
                   ) : (

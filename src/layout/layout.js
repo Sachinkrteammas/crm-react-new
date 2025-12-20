@@ -143,7 +143,7 @@ useEffect(() => {
                 className="menu-link menu-toggle"
                 onClick={(e) => {
                   e.preventDefault();
-                  toggleMenu(item.id);
+                  toggleMenu(item.id, items);
 
                   // Only top-level updates selectedParent
                   if (level === 1) {
@@ -205,8 +205,19 @@ useEffect(() => {
   //     });
   // };
 
-  const toggleMenu = (id) => {
-    setOpenMenus((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleMenu = (id, siblings) => {
+    setOpenMenus((prev) => {
+      const updated = {...prev};
+
+      siblings.forEach((s) => {
+        if (s.id !== id) {
+        updated[s.id] = false;
+      }
+      });
+
+      updated[id] = !prev[id];
+      return updated;
+    });
   };
 
   const toggleSidebar = () => {

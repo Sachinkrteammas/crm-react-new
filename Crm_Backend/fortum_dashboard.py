@@ -75,8 +75,8 @@ def get_client_invoice_details(
     # Predefine pulse query
     pulse_range_query = text("""
         SELECT 
-            SUM(ib_pulse) AS total_ib_pulse, 
-            SUM(ib_total) AS total_ib_value,
+            SUM(ib_pulse + ibn_pulse) AS total_ib_pulse, 
+            SUM(ib_total + ibn_total) AS total_ib_value,
             SUM(ob_pulse) AS total_ob_pulse,
             SUM(ob_total) AS total_ob_value,
             SUM(email_pulse) AS total_email_pulse,
@@ -121,7 +121,7 @@ def get_client_invoice_details(
                 "invoiceDate": month_start.strftime("%Y-%m-%d"),
                 # "periodEnd": month_end.strftime("%Y-%m-%d"),
                 "category": "NA",
-                "total": 0,
+                "Amount_Received": 0,
                 "remaining_balance": remaining_balance,
                 "total_ib_pulse": total_ib_pulse,
                 "total_ib_value": total_ib_value,
@@ -189,7 +189,7 @@ def get_client_invoice_details(
                 if inv:
                     category = inv.category
                     total = float(inv.total)
-                    if category == "Talk Time":
+                    if category in ("Talk Time", "Talktime"):
                         total *= (TalktimePercent / 100)
                     elif category == "Subscription":
                         total *= (CreditPointPercent / 100)
@@ -203,7 +203,7 @@ def get_client_invoice_details(
                     "invoiceDate": sub_start.strftime("%Y-%m-%d"),
                     # "periodEnd": sub_end.strftime("%Y-%m-%d"),
                     "category": category,
-                    "total": total,
+                    "Amount_Received": total,
                     "remaining_balance": remaining_balance,
                     "total_ib_pulse": total_ib_pulse,
                     "total_ib_value": total_ib_value,
@@ -221,7 +221,7 @@ def get_client_invoice_details(
         current_date = month_end + timedelta(days=1)
 
     # Totals
-    total_sum = sum(i["total"] for i in result)
+    total_sum = sum(i["Amount_Received"] for i in result)
     value_sum = sum(i["value"] for i in result)
     total_ib_pulse_sum = sum(i["total_ib_pulse"] for i in result)
     total_ib_value_sum = sum(i["total_ib_value"] for i in result)
@@ -237,7 +237,7 @@ def get_client_invoice_details(
         "CreditPointPercent": CreditPointPercent,
         "TalktimePercent": TalktimePercent,
         "totals": {
-            "total_sum": round(total_sum, 2),
+            "Amount_Received": round(total_sum, 2),
             "remaining_balance_sum": round(remaining_balance_sum, 2),
             "total_ib_pulse_sum": round(total_ib_pulse_sum, 2),
             "total_ib_value_sum": round(total_ib_value_sum, 2),
@@ -503,11 +503,11 @@ def download_client_invoice_details_excel(
         date_str = item.get("invoiceDate")
         if date_str:
             month = datetime.strptime(date_str, "%Y-%m-%d").month
-            if 1 <= month <= 3:
+            if 4 <= month <= 6:
                 quarter = "Q1"
-            elif 4 <= month <= 6:
-                quarter = "Q2"
             elif 7 <= month <= 9:
+                quarter = "Q2"
+            elif 10 <= month <= 12:
                 quarter = "Q3"
             else:
                 quarter = "Q4"
@@ -521,7 +521,7 @@ def download_client_invoice_details_excel(
         "invoiceDate": "Total",
         "category": "",
         "Quarter": "",
-        "total": totals.get("total_sum", 0),
+        "Amount_Received": totals.get("Amount_Received", 0),
         "remaining_balance": totals.get("remaining_balance_sum", 0),
         "total_ib_pulse": totals.get("total_ib_pulse_sum", 0),
         "total_ib_value": totals.get("total_ib_value_sum", 0),

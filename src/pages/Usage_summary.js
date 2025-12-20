@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import api from "../api";
 import axios from "axios";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
-const FortumDashboard = () => {
+const UsageSummary = () => {
   const companyId = localStorage.getItem("company_id");
   const userType = localStorage.getItem("user_type");
 
@@ -59,7 +61,7 @@ const FortumDashboard = () => {
     try {
       setLoading(true);
       setHasFetched(true); // ✅ mark that fetch was triggered manually
-      const res = await api.get("/client-invoice-details", {
+      const res = await api.get("/client-invoice-usage", {
         params: { client_id: selectedClient, start_date: startDate, end_date: endDate },
       });
       const invoices = Array.isArray(res.data.invoices)
@@ -104,7 +106,7 @@ useEffect(() => {
     try {
       setLoading(true);
 
-      const res = await api.get(`/client-invoice-details`, {
+      const res = await api.get(`/client-invoice-usage`, {
         params: {
           client_id: clientId,
           start_date: startDate,
@@ -132,49 +134,89 @@ useEffect(() => {
 
 
 
-const handleDownloadExcel = async () => {
-  try {
+const handleDownloadExcel = () => {
+  if (!telecomData || telecomData.length === 0) return;
 
-    const url = `/client-invoice-details/download?client_id=${selectedClient}&start_date=${startDate}&end_date=${endDate}`;
+  // 🔹 Prepare rows exactly like table
+  const rows = telecomData.map((row, index) => {
+    const quarter = (() => {
+      if (!row.invoiceDate) return "-";
+      const month = new Date(row.invoiceDate).getMonth() + 1;
+      if (month >= 4 && month <= 6) return "Q1";
+      if (month >= 7 && month <= 9) return "Q2";
+      if (month >= 10 && month <= 12) return "Q3";
+      return "Q4";
+    })();
 
-    const response = await api.get(url, {
-      responseType: "blob", // 👈 IMPORTANT — tells Axios this is binary data
+    const formattedInvoiceDate = row.invoiceDate
+      ? new Date(row.invoiceDate).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "numeric",
+          year: "2-digit",
+        })
+      : "-";
+
+    return {
+      "S.No.": index + 1,
+      "Date": formattedInvoiceDate,
+      "Category": row.category || "NA",
+      "Credit Released": row.credit_release || 0,
+      "Opening Balance": row.opening_balance || 0,
+      "Quarter": quarter,
+      "Credit Consumption": row.credit_consumption || 0,
+      "Closing Balance": row.closing_balance || 0,
+      "Invoice No.": row.invoice_no || "-",
+      "Amount": row.Amount || 0,
+      "Value": row.value || 0,
+    };
+  });
+
+  // 🔹 Add totals row (same as UI)
+  if (totals) {
+    rows.push({
+      "S.No.": "",
+      "Date": "",
+      "Category": "TOTAL",
+      "Credit Released": totals.credit_release || 0,
+      "Opening Balance": totals.opening_balance || 0,
+      "Quarter": "",
+      "Credit Consumption": totals.credit_consumption || 0,
+      "Closing Balance": totals.closing_balance || 0,
+      "Invoice No.": "",
+      "Amount": totals.Amount || 0,
+      "Value": totals.value || 0,
     });
-
-    // ✅ Extract filename from headers
-    const contentDisposition = response.headers["content-disposition"];
-    let filename = "client_invoice_details.xlsx";
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="?([^"]+)"?/);
-      if (match) filename = match[1];
-    }
-
-    // ✅ Create blob and trigger download
-    const blob = new Blob([response.data], {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-    const blobUrl = window.URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = blobUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    // ✅ Clean up
-    window.URL.revokeObjectURL(blobUrl);
-  } catch (error) {
-    console.error("❌ Excel download failed:", error);
-    alert("⚠️ Failed to download Excel file. Check console for details.");
   }
+
+  // 🔹 Create worksheet & workbook
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Usage Summary");
+
+  // 🔹 Auto column width
+  worksheet["!cols"] = Object.keys(rows[0]).map(() => ({ wch: 18 }));
+
+  // 🔹 Generate file
+  const excelBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+  });
+
+  const fileData = new Blob(
+    [excelBuffer],
+    { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+  );
+
+  const fileName = `Usage_Summary_${startDate}_to_${endDate}.xlsx`;
+  saveAs(fileData, fileName);
 };
+
 
 
 
   return (
     <div className="mt-4">
-      <h3>Billing & Usage Table</h3>
+      <h3>Usage Summary</h3>
 
       <div className="d-flex justify-content-between align-items-end flex-wrap mb-4">
         {/* ✅ Left side — Client section */}
@@ -217,7 +259,7 @@ const handleDownloadExcel = async () => {
 
       {/* ✅ Date Range Filters */}
       {/* Right side — Date Range & Button */}
-    <div className="d-flex align-items-end gap-3 mt-3 mt-md-0">
+      <div className="d-flex align-items-end gap-3 mt-3 mt-md-0">
         <div>
           <label className="form-label mb-1 fw-semibold">Start Date</label>
           <input
@@ -260,8 +302,8 @@ const handleDownloadExcel = async () => {
         </button>
 
       </div>
-      </div>
-{/* )} */}
+    </div>
+
 
 
   {/* ✅ Loader or Data Table */}
@@ -278,18 +320,14 @@ const handleDownloadExcel = async () => {
           <th className="text-center">S.No.</th>
           <th className="text-center">Date</th>
           <th className="text-center">category</th>
-          <th className="text-center">Amount Received</th>
-          <th className="text-center">Balance</th>
+          <th className="text-center">Credit Released</th>
+          <th className="text-center">Opening Balance</th>
           <th className="text-center">Quarter</th>
-          <th className="text-center">IB Calls</th>
-          <th className="text-center">IB Pulses</th>
-          <th className="text-center">IB Value</th>
-          <th className="text-center">OB Calls</th>
-          <th className="text-center">OB Pulses</th>
-          <th className="text-center">OB Value</th>
-          <th className="text-center">Email Pulse</th>
-          <th className="text-center">Email Value</th>
-          <th className="text-center">Total Value</th>
+          <th className="text-center">Credit Consumption</th>
+          <th className="text-center">Closing Balance</th>
+          <th className="text-center">Invoice No.</th>
+          <th className="text-center">Amount</th>
+          <th className="text-center">Value</th>
         </tr>
       </thead>
       <tbody>
@@ -301,13 +339,9 @@ const handleDownloadExcel = async () => {
             if (month >= 7 && month <= 9) return "Q2";
             if (month >= 10 && month <= 12) return "Q3";
             return "Q4";
-            // if (month >= 1 && month <= 3) return "Q1";
-            // if (month >= 4 && month <= 6) return "Q2";
-            // if (month >= 7 && month <= 9) return "Q3";
-            // return "Q4";
           })();
 
-           // ✅ Format invoice date as "DD MMM YYYY"
+          // ✅ Format invoice date as "DD MMM YYYY"
           const formattedInvoiceDate = row.invoiceDate
             ? new Date(row.invoiceDate).toLocaleDateString("en-GB", {
                 day: "numeric",
@@ -322,37 +356,39 @@ const handleDownloadExcel = async () => {
               <td className="text-center">{formattedInvoiceDate}</td>
               <td className="text-center">{row.category || "NA"}</td>
 
-              {/* Amount Received (total) */}
               <td className="text-center text-success">
-                ₹{row.Amount_Received?.toLocaleString() || "0"}
+                ₹{row.credit_release?.toLocaleString() || "0"}
               </td>
 
-              {/* Balance */}
               <td
                 className={`text-center ${
-                  row.remaining_balance < 0 ? "text-danger" : "text-success"
+                  row.opening_balance < 0 ? "text-danger" : "text-success"
                 }`}
               >
-                ₹{row.remaining_balance?.toLocaleString() || "0"}
+                ₹{row.opening_balance?.toLocaleString() || "0"}
               </td>
 
               <td className="text-center">{quarter}</td>
 
-              {/* Inbound (total_ib_pulse/value) */}
-              <td className="text-center">{"0"}</td>
-              <td className="text-center">{row.total_ib_pulse || "-"}</td>
-              <td className="text-center">{row.total_ib_value || "-"}</td>
+              <td className="text-center">{row.credit_consumption?.toLocaleString() || "0"}</td>
 
-              {/* Outbound (total_ob_pulse/value) */}
-              <td className="text-center">{"0"}</td>
-              <td className="text-center">{row.total_ob_pulse || "-"}</td>
-              <td className="text-center">{row.total_ob_value || "-"}</td>
+              <td
+                className={`text-center ${
+                  row.closing_balance < 0 ? "text-danger" : "text-success"
+                }`}
+              >
+                ₹{row.closing_balance?.toLocaleString() || "0"}
+              </td>
 
-              {/* SMS (total_email_pulse/value) */}
-              <td className="text-center">{row.total_email_pulse || "-"}</td>
-              <td className="text-center">{row.total_email_value || "-"}</td>
+              <td className="text-center">{row.invoice_no || "-"}</td>
+              <td
+                className={`text-center fw-bold ${
+                  row.Amount < 0 ? "text-danger" : "text-success"
+                }`}
+              >
+                ₹{row.Amount?.toLocaleString() || "0"}
+              </td>
 
-              {/* Total Value */}
               <td
                 className={`text-center fw-bold ${
                   row.value < 0 ? "text-danger" : "text-success"
@@ -371,21 +407,22 @@ const handleDownloadExcel = async () => {
                      Total
                   </td>
                   <td className="text-center text-success">
-                    ₹{totals.Amount_Received?.toLocaleString() || "0"}
+                    ₹{totals.credit_release?.toLocaleString() || "0"}
                   </td>
                   <td className="text-center">
-                    ₹{totals.remaining_balance_sum?.toLocaleString() || "0"}
+                    ₹{totals.opening_balance?.toLocaleString() || "0"}
                   </td>
-                  <td colSpan="2"></td>
-                  <td className="text-center">{totals.total_ib_pulse_sum || "-"}</td>
-                  <td className="text-center">{totals.total_ib_value_sum || "-"}</td>
                   <td colSpan="1"></td>
-                  <td className="text-center">{totals.total_ob_pulse_sum || "-"}</td>
-                  <td className="text-center">{totals.total_ob_value_sum || "-"}</td>
-                  <td className="text-center">{totals.total_email_pulse_sum || "-"}</td>
-                  <td className="text-center">{totals.total_email_value_sum || "-"}</td>
+                
+                  
+                  <td className="text-center">₹{totals.credit_consumption || "-"}</td>
+                  <td className="text-center">₹{totals.closing_balance || "-"}</td>
+                  <td colSpan="1"></td>
                   <td className="text-center text-success">
-                    ₹{totals.value_sum?.toLocaleString() || "0"}
+                    ₹{totals.Amount?.toLocaleString() || "0"}
+                    </td>
+                  <td className="text-center text-success">
+                    ₹{totals.value?.toLocaleString() || "0"}
                   </td>
                 </tr>
               )}
@@ -406,17 +443,7 @@ const handleDownloadExcel = async () => {
   );
 };
 
-export default FortumDashboard;
-
-
-
-
-
-
-
-
-
-
+export default UsageSummary;
 
 
 

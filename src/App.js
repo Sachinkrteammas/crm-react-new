@@ -124,6 +124,8 @@ import SubMenuPage from "./pages/SubMenuPage";
 import CorrectiveReport from "./pages/Corrective_report";
 // import AllocationPlan from "./pages/AllocationPlan";
 import ResetPassword from "./pages/Reset_password";
+import UsageSummary from "./pages/Usage_summary";
+import StatementSummary from "./pages/statement_summary";
 
 
 
@@ -359,6 +361,8 @@ function App() {
               <Route path="/CorrectiveReport/index" element={<CorrectiveReport />} />
               <Route path="/company_registration" element={<CompanyRegistration />} />
               {/* <Route path="/allocation_plan" element={<AllocationPlan />} /> */}
+              <Route path="/usage_summary" element={<UsageSummary />} />
+              <Route path="/statement_summary" element={<StatementSummary />} />
               
           </Route>
       </Route>

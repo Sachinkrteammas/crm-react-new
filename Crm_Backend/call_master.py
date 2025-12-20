@@ -789,7 +789,7 @@ def download_excel_raw(
     total_rate6 = 0.0
 
     total_pulse7 = 0
-    total_rate7 = 0.0
+    total_rate7 = Decimal(0)
 
     # Step 3: Build HTML for Excel
     html = f"""
@@ -1260,7 +1260,7 @@ def download_excel_raw(
     rate_abcb = plan_result.AbandCallRate if plan_result and hasattr(plan_result, "AbandCallRate") else 0.5
     rate_sms = plan_result.SMSRate if plan_result and hasattr(plan_result, "SMSRate") else 0.2
     rate_email = plan_result.EmailRate if plan_result and hasattr(plan_result, "EmailRate") else 0.25
-    rate_rx = plan_result.RXRate if plan_result and hasattr(plan_result, "RXRate") else 0.2
+    rate_rx = plan_result.IVR_Charge if plan_result and hasattr(plan_result, "IVR_Charge") else 0.2
 
     # === 2️⃣ Recalculate final amounts ===
     amount_icb = total_pulse * rate_icb
@@ -1269,7 +1269,7 @@ def download_excel_raw(
     amount_abcb = total_pulse4 * rate_abcb
     amount_sms = total_pulse5 * rate_sms
     amount_email = total_pulse6 * rate_email
-    amount_rx = total_pulse7 * rate_rx
+    amount_rx = total_pulse7 * ivr_charge
 
     # grand_total = ib_total + ibn_total + ob_total + ab_total + amount_sms + amount_email + amount_rx
     grand_total = (

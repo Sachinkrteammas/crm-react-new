@@ -8,6 +8,19 @@ from database import get_db4
 router = APIRouter(prefix="/campaign-mapping", tags=["Campaign Mapping"])
 
 
+def clean_value(val):
+        if not val or val == "''":
+            return ""
+        return val.replace("'", "").replace(" ", "")
+
+
+def to_db_format(value: str):
+    if not value:
+        return "''"
+    return ",".join([f"'{v.strip()}'" for v in value.split(",") if v.strip()])
+
+
+
 # LIST by company_id
 @router.get("/list/{company_id}")
 def list_campaigns(company_id: int, db: Session = Depends(get_db4)):
@@ -23,7 +36,17 @@ def list_campaigns(company_id: int, db: Session = Depends(get_db4)):
         ORDER BY company_id DESC
     """
     rows = db.execute(text(query), {"company_id": company_id}).mappings().all()
-    return rows
+
+    response = []
+    for row in rows:
+        response.append({
+            "company_id": row["id"],
+            "campaignid": clean_value(row["campaignid"]),
+            "GroupId": clean_value(row["GroupId"]),
+            "multilang_ivrs": clean_value(row["multilang_ivrs"]),
+            "agent_skills": clean_value(row["agent_skills"]),
+        })
+    return response
 
 
 # VIEW single by company_id
@@ -42,7 +65,14 @@ def view_campaign(company_id: int, db: Session = Depends(get_db4)):
     row = db.execute(query, {"company_id": company_id}).mappings().first()
     if not row:
         return {"error": f"Campaign ID {company_id} not found"}
-    return row
+    
+    return {
+        "company_id": row["id"],
+        "campaignid": clean_value(row["campaignid"]),
+        "GroupId": clean_value(row["GroupId"]),
+        "multilang_ivrs": clean_value(row["multilang_ivrs"]),
+        "agent_skills": clean_value(row["agent_skills"]),
+    }
 
 
 # CREATE (attach to company_id)
@@ -63,10 +93,10 @@ def create_campaign(
     """)
     db.execute(query, {
         "company_id": company_id,
-        "campaignid": campaignid,
-        "GroupId": GroupId,
-        "multilang_ivrs": multilang_ivrs,
-        "agent_skills": agent_skills
+        "campaignid": to_db_format(campaignid),
+        "GroupId": to_db_format(GroupId),
+        "multilang_ivrs": to_db_format(multilang_ivrs),
+        "agent_skills": to_db_format(agent_skills),
     })
     db.commit()
     return {"message": "Campaign Mapping created successfully."}
@@ -100,11 +130,11 @@ def update_campaign(
         WHERE company_id = :company_id
     """)
     db.execute(query, {
-        "campaignid": campaignid,
-        "GroupId": GroupId,
-        "multilang_ivrs": multilang_ivrs,
-        "agent_skills": agent_skills,
-        "company_id": company_id
+        "company_id": company_id,
+        "campaignid": to_db_format(campaignid),
+        "GroupId": to_db_format(GroupId),
+        "multilang_ivrs": to_db_format(multilang_ivrs),
+        "agent_skills": to_db_format(agent_skills),
     })
     db.commit()
     return {"message": f"Campaign ID {company_id} updated successfully."}

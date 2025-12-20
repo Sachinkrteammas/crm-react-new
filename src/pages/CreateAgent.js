@@ -11,6 +11,7 @@ const CreateAgent = () => {
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [loading, setLoading] = useState(false);
 
   const filteredAgents = agents.filter((a) =>
     `${a.displayname} ${a.username} ${a.email}`
@@ -66,11 +67,14 @@ const CreateAgent = () => {
   // fetch agents
   useEffect(() => {
     const fetchAgents = async () => {
+      setLoading(true);
       try {
         const res = await api.get("/agents/list");
         setAgents(res.data);
       } catch (err) {
         console.error("Error fetching agents:", err);
+      } finally{
+        setLoading(false);
       }
     };
     fetchAgents();
@@ -169,6 +173,18 @@ const CreateAgent = () => {
   };
 
   return (
+    <>
+      {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+
+      <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
     <div className="row">
       <div className="col-12">
 
@@ -758,6 +774,8 @@ const CreateAgent = () => {
           {viewingAgent && <div className="modal-backdrop fade show"></div>}
       </div>
     </div>
+    </div>
+    </>
   );
 };
 
