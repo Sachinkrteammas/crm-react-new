@@ -146,14 +146,31 @@ def get_all_clients_rights_is_dial(
                 continue
 
             bill_query = text("""
-                SELECT total, Category
-                FROM bill_pay_particulars bpp
-                INNER JOIN tbl_invoice ti
-                    ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
-                    AND bpp.financial_year = ti.finance_year
-                    AND bpp.branch_name = ti.branch_name
-                WHERE ti.cost_center = :cost_center
-                AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+                SELECT
+                ti.bill_no,
+                ti.Category,
+                CASE
+                    WHEN bpp.status = 'part payment'
+                        THEN
+                            SUM(bpp.net_amount)
+                            - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
+                    ELSE
+                        SUM(ti.total)
+                END AS total
+            FROM bill_pay_particulars bpp
+            INNER JOIN tbl_invoice ti
+                ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                AND bpp.financial_year = ti.finance_year
+                AND bpp.branch_name = ti.branch_name
+            WHERE ti.cost_center = :cost_center
+            AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+            GROUP BY
+                ti.bill_no,
+             
+                ti.status,
+                ti.igst,
+                ti.cgst,
+                ti.sgst;
             """)
             bill_rows = db.execute(bill_query, {
                 "cost_center": cost_center,
@@ -389,7 +406,17 @@ def get_clients_rights_search(
             continue
 
         bill_query = text("""
-            SELECT total, Category
+            SELECT
+                ti.bill_no,
+                ti.Category,
+                CASE
+                    WHEN bpp.status = 'part payment'
+                        THEN
+                            SUM(bpp.net_amount)
+                            - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
+                    ELSE
+                        SUM(ti.total)
+                END AS total
             FROM bill_pay_particulars bpp
             INNER JOIN tbl_invoice ti
                 ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
@@ -397,6 +424,13 @@ def get_clients_rights_search(
                 AND bpp.branch_name = ti.branch_name
             WHERE ti.cost_center = :cost_center
             AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+            GROUP BY
+                ti.bill_no,
+             
+                ti.status,
+                ti.igst,
+                ti.cgst,
+                ti.sgst;
         """)
         bill_rows = db.execute(bill_query, {
             "cost_center": cost_center,
