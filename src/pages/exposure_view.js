@@ -18,6 +18,7 @@ const ExposureView = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
+  const [minDate, setMinDate] = useState("2025-09-01");
 
 
  useEffect(() => {
@@ -156,6 +157,30 @@ const handleExport = async () => {
     }
 };
 
+const handleEffectiveMonth = async (clientId) => {
+  setStartDate("");
+
+  // All Clients or no selection
+  if (clientId === "999" || clientId === "") {
+    setMinDate("2025-09-01");
+    return;
+  }
+
+  try {
+    const res = await api.get("/agents/clients-effective-month", {
+      params: {
+        client_id: clientId,
+      },
+    });
+
+    setMinDate(res.data.effective_month);
+  } catch (err) {
+    console.error("EffectiveMonth error:", err);
+    setMinDate("2025-09-01"); // fallback
+  }
+};
+
+
 
 
 const handleClientChange = (e) => {
@@ -164,6 +189,8 @@ const handleClientChange = (e) => {
 
   const clientObj = clients.find((c) => c.company_id === Number(clientId));
   setSelectedClient(clientObj ? clientObj.company_name : "");
+
+  handleEffectiveMonth(clientId);
 };
 
  {/* Main Table */}
@@ -316,6 +343,7 @@ const handleSearch = async () => {
         type="date"
         value={startDate}
         onChange={(e) => setStartDate(e.target.value)}
+        min={minDate}
         className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
       />
 

@@ -75,25 +75,59 @@ def get_all_clients_rights_is_dial(
 
         # Compute all releases before the chosen start_date
         release_query = text("""
-            SELECT
-                    COALESCE(SUM(ti.total), 0) AS release_sum
-                FROM bill_pay_particulars bpp
-                INNER JOIN tbl_invoice ti
-                    ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
-                    AND bpp.financial_year = ti.finance_year
-                    AND bpp.branch_name = ti.branch_name
-                WHERE ti.cost_center IN (
-                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
-                )
-                AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date) - INTERVAL 1 DAY  AND Category IN ('talktime','subscription');
-        """)
+                        SELECT ti.bill_no,
+                        ti.Category,
+                        CASE
+                            WHEN bpp.status = 'part payment'
+                                THEN
+                                    SUM(bpp.net_amount)
+                                    - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
+                            ELSE
+                                SUM(ti.total)
+                        END AS release_sum
+                    FROM bill_pay_particulars bpp
+                    INNER JOIN tbl_invoice ti
+                        ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                        AND bpp.financial_year = ti.finance_year
+                        AND bpp.branch_name = ti.branch_name
+                    WHERE ti.cost_center IN (
+                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
+                    AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date)
+                    GROUP BY
+                        ti.bill_no,
 
-        release_before = db.execute(release_query, {
-            "client_id": client_id,
-            "month_opening_date": month_opening_date,
-            "start_date": start_date
-        }).fetchone()
-        release_before_value = float(release_before.release_sum or 0)
+                        ti.status,
+                        ti.igst,
+                        ti.cgst,
+                        ti.sgst;
+
+                    """)
+
+        release_rows = db.execute(
+            release_query,
+            {
+                "client_id": client_id,
+                "month_opening_date": month_opening_date,
+                "start_date": start_date,
+            }
+        ).mappings().fetchall()  # 👈 mappings() is important
+
+        total_talktime1 = 0.0
+        total_subscription1 = 0.0
+
+        for b in release_rows:
+            category = (b["Category"] or "").strip().lower()
+            total = float(b["release_sum"] or 0)
+
+            if "talktime" in category:
+                total_talktime1 += total
+            elif category == "subscription":
+                total_subscription1 += total
+
+        # total release before (all categories)
+        release_before_value = total_talktime1 + total_subscription1
+
+        print(release_before_value, "release_before_value===")
 
         # Compute all consumption before the chosen start_date
         consume_before_query = text("""
@@ -110,7 +144,6 @@ def get_all_clients_rights_is_dial(
         consume_before_value = float(consume_before.consume_sum or 0)
 
         # Calculate effective opening as on selected start_date
-        effective_opening = base_opening + release_before_value - consume_before_value
 
         plan_query = text("""
             SELECT
@@ -240,6 +273,17 @@ def get_all_clients_rights_is_dial(
 
         consume_value = float(consume_row.consume or 0)
 
+        talktime_release_pct = total_talktime1 * (talktime_percent / 100)
+        subscription_release_pct = total_subscription1 * (credit_percent / 100)
+
+        release_after_percentage = round(
+            talktime_release_pct + subscription_release_pct,
+            2
+        )
+
+        effective_opening = base_opening + release_after_percentage - consume_before_value
+        print(effective_opening, "effective_opening===")
+
         Release_billing = round(
             (total_talktime_value * (talktime_percent / 100)) +
             (total_subscription_value * (credit_percent / 100)),
@@ -313,26 +357,62 @@ def get_clients_rights_search(
 
     # Compute all releases before the chosen start_date
     release_query = text("""
-                SELECT
-                    COALESCE(SUM(ti.total), 0) AS release_sum
-                FROM bill_pay_particulars bpp
-                INNER JOIN tbl_invoice ti
-                    ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
-                    AND bpp.financial_year = ti.finance_year
-                    AND bpp.branch_name = ti.branch_name
-                WHERE ti.cost_center IN (
-                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
-                )
-                AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date) - INTERVAL 1 DAY  AND Category IN ('talktime','subscription');
+                SELECT ti.bill_no,
+                ti.Category,
+                CASE
+                    WHEN bpp.status = 'part payment'
+                        THEN
+                            SUM(bpp.net_amount)
+                            - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
+                    ELSE
+                        SUM(ti.total)
+                END AS release_sum
+            FROM bill_pay_particulars bpp
+            INNER JOIN tbl_invoice ti
+                ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                AND bpp.financial_year = ti.finance_year
+                AND bpp.branch_name = ti.branch_name
+            WHERE ti.cost_center IN (
+                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
+            AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date)
+            GROUP BY
+                ti.bill_no,
+             
+                ti.status,
+                ti.igst,
+                ti.cgst,
+                ti.sgst;
+
             """)
 
-    release_before = db.execute(release_query, {
-        "client_id": client_id,
-        "month_opening_date": month_opening_date,
-        "start_date": start_date
-    }).fetchone()
-    release_before_value = float(release_before.release_sum or 0)
-    print(release_before_value,"release_before_value===")
+    release_rows = db.execute(
+        release_query,
+        {
+            "client_id": client_id,
+            "month_opening_date": month_opening_date,
+            "start_date": start_date,
+        }
+    ).mappings().fetchall()  # 👈 mappings() is important
+
+    total_talktime1 = 0.0
+    total_subscription1 = 0.0
+
+    for b in release_rows:
+        category = (b["Category"] or "").strip().lower()
+        total = float(b["release_sum"] or 0)
+
+        if "talktime" in category:
+            total_talktime1 += total
+        elif category == "subscription":
+            total_subscription1 += total
+
+    # total release before (all categories)
+    release_before_value = total_talktime1 + total_subscription1
+
+    print(release_before_value, "release_before_value===")
+
+
+
 
     # Compute all consumption before the chosen start_date
     consume_before_query = text("""
@@ -351,8 +431,7 @@ def get_clients_rights_search(
     print(consume_before_value,"consume_before_value====")
 
     # Calculate effective opening as on selected start_date
-    effective_opening = base_opening + release_before_value - consume_before_value
-    print(effective_opening,"effective_opening===")
+
 
     opening_query = text("""
         SELECT eoc.Opening
@@ -498,6 +577,17 @@ def get_clients_rights_search(
     print(fresh_release,"fresh_release==")
     print(consume_value,"consume_value==")
 
+    talktime_release_pct = total_talktime1 * (talktime_percent / 100)
+    subscription_release_pct = total_subscription1 * (credit_percent / 100)
+
+    release_after_percentage = round(
+        talktime_release_pct + subscription_release_pct,
+        2
+    )
+
+    effective_opening = base_opening + release_after_percentage - consume_before_value
+    print(effective_opening, "effective_opening===")
+
     balance = round((effective_opening + fresh_release - consume_value), 2)
 
     Release_billing = round(
@@ -505,6 +595,8 @@ def get_clients_rights_search(
             (total_subscription_value * (credit_percent / 100)),
             2
         )
+
+
 
     return {
         "company_id": client_id,
@@ -529,6 +621,43 @@ def get_clients_rights_search(
         ),
         "Exposure_billing_vr": round(effective_opening + Release_billing - consume_value, 2)
     }
+
+################### clients-effective-month get start #################
+
+@router.get("/clients-effective-month")
+def get_effective_month(
+    client_id: int = Query(..., description="Client ID"),
+    db: Session = Depends(get_db4),
+):
+    """
+    Fetch EffectiveMonth for a given client_id
+    """
+
+    query = text("""
+        SELECT EffectiveMonth
+        FROM exp_opening_client
+        WHERE ClientId = :client_id
+        LIMIT 1
+    """)
+
+    result = db.execute(query, {"client_id": client_id}).fetchone()
+
+    if not result or not result.EffectiveMonth:
+        raise HTTPException(
+            status_code=404,
+            detail="EffectiveMonth not found for this client"
+        )
+
+    return {
+        "client_id": client_id,
+        "effective_month": result.EffectiveMonth
+    }
+
+
+################### clients-effective-month get End  #################
+
+
+
 
 
 
