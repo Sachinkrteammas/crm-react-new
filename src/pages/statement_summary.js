@@ -76,6 +76,15 @@ const handleSubmit = async () => {
       return;
     }
 
+    // 🔹 Determine company name for filename
+    let companyName = clientName || "Client";
+    if (userType === "Super-Admin" || userType === "Admin") {
+      const selected = clients.find(c => String(c.company_id) === finalClientId);
+      companyName = selected ? selected.company_name : finalClientId;
+    }
+
+    // 🔹 Limit to first 6 characters
+    companyName = companyName.substring(0, 6);
 
   setLoading(true);
 
@@ -96,7 +105,7 @@ const handleSubmit = async () => {
     const downloadUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = downloadUrl;
-    link.download = `report_${finalClientId}_${formattedStart}_to_${formattedEnd}.xls`;
+    link.download = `${companyName}_Statement_Summary_${formattedStart}_to_${formattedEnd}.xls`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

@@ -54,6 +54,24 @@ const OBCDRReport = () => {
         return;
       }
 
+      // ✅ Decide company name (NO return here)
+      let companyName = "Company";
+
+      if (userType === "Client") {
+        companyName = clientName || "Company";
+      } else {
+        const selected = clients.find(
+          (c) => String(c.company_id) === String(selectedClient)
+        );
+        companyName = selected?.company_name || "Company";
+      }
+      // ✅ Format dates for filename
+      const formatDateForFile = (date) =>
+        date ? date.toLocaleDateString("en-CA") : "NA";
+
+      const from = formatDateForFile(startDate);
+      const to = formatDateForFile(endDate);
+
       // Create a worksheet
       const worksheet = XLSX.utils.json_to_sheet(obCdrData);
 
@@ -71,7 +89,13 @@ const OBCDRReport = () => {
       const file = new Blob([excelBuffer], {
         type: "application/octet-stream",
       });
-      saveAs(file, "ob_cdr_report.xlsx");
+      
+      // ✅ Safe filename
+      const safeCompanyName = companyName.substring(0, 6);
+
+      const fileName = `${safeCompanyName}_Ob_cdr_report_${from}_to_${to}.xlsx`;
+
+      saveAs(file, fileName);
   };
 
 

@@ -44,6 +44,71 @@ def get_client_invoice_details(
         return {"error": f"No cost center found for client_id {client_id}"}
     cost_center = cost_center_result[0]
 
+    # ===============================================================
+    # 🔴🔴🔴 STEP 0 (NEW): OPENING BALANCE CALCULATION 🔴🔴🔴
+    # ===============================================================
+
+    additional_invoice_query = text("""
+        SELECT EffectiveMonth, OpeningAmt, ReceiveAmt 
+        FROM `exp_opening_client` 
+        WHERE ClientId = :client_id
+    """)
+
+    additional_invoice_result = db.execute(additional_invoice_query, {"client_id": client_id}).fetchone()
+
+    opening_add = float(additional_invoice_result.OpeningAmt or 0)
+    amount_received = float(additional_invoice_result.ReceiveAmt or 0)
+    print(opening_add, amount_received)
+    
+
+    # ---- A. Credits before start_date
+    opening_invoice_query = text("""
+        SELECT category, SUM(total) AS total_amount
+        FROM bill_pay_particulars bpp
+        INNER JOIN tbl_invoice ti
+            ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+            AND bpp.financial_year = ti.finance_year
+            AND bpp.branch_name = ti.branch_name
+        WHERE ti.cost_center = :cost_center
+        AND DATE(ti.invoiceDate) >= '2025-04-01'
+        AND DATE(ti.invoiceDate) < :start_date
+        GROUP BY category
+    """)
+    invoice_rows = db.execute(opening_invoice_query, {
+        "cost_center": cost_center,
+        "start_date": start_date
+    }).fetchall()
+
+    opening_credit = opening_add
+    for row in invoice_rows:
+        amt = float(row.total_amount or 0)
+
+        if row.category in ("Talk Time", "Talktime"):
+            amt *= (TalktimePercent / 100)
+        elif row.category == "Subscription":
+            amt *= (CreditPointPercent / 100)
+
+        opening_credit += amt
+
+    # ---- B. Usage before start_date
+    opening_usage_query = text("""
+        SELECT 
+            SUM(ib_total + ibn_total + ob_total + email_total) AS total_usage
+        FROM billing_consume_daily_new
+        WHERE client_id = :client_id
+        AND DATE(cm_date) >= '2025-04-01'
+        AND DATE(cm_date) < :start_date
+    """)
+    usage_row = db.execute(opening_usage_query, {
+        "client_id": client_id,
+        "start_date": start_date
+    }).fetchone()
+
+    opening_usage = float(usage_row.total_usage or 0)
+
+    # ---- C. Opening balance
+    opening_balance = round(opening_credit - opening_usage + amount_received, 2)
+
     # Step 3: Fetch all invoices sorted by date
     invoice_query = text("""
         SELECT DATE(ti.invoiceDate) AS invoiceDate, category, total
@@ -68,7 +133,8 @@ def get_client_invoice_details(
 
     # Step 4: Build monthly result
     result = []
-    remaining_balance = 0
+    # remaining_balance = 0
+    remaining_balance = opening_balance
     current_date = datetime.strptime(start_date, "%Y-%m-%d")
     end_dt = datetime.strptime(end_date, "%Y-%m-%d")
 
@@ -561,7 +627,7 @@ def download_client_invoice_details_excel(
 
     output.seek(0)
 
-    filename = f"Client_{client_id}_Invoice_Details_{start_date}_to_{end_date}.xlsx"
+    filename = f"Billing_and Usage_{start_date}_to_{end_date}.xlsx"
 
     return StreamingResponse(
         output,

@@ -99,6 +99,18 @@ const handleEndDateChange = (date) => {
         return;
       }
 
+      // ✅ Decide company name (NO return here)
+      let companyName = "Company";
+
+      if (userType === "Client") {
+        companyName = clientName || "Company";
+      } else {
+        const selected = clients.find(
+          (c) => String(c.company_id) === String(selectedClient)
+        );
+        companyName = selected?.company_name || "Company";
+      }
+
       // Create a worksheet
       const worksheet = XLSX.utils.json_to_sheet(sampleData);
 
@@ -116,7 +128,15 @@ const handleEndDateChange = (date) => {
       const file = new Blob([excelBuffer], {
         type: "application/octet-stream",
       });
-      saveAs(file, "cdr_report.xlsx");
+
+      // ✅ Safe filename
+      const safeCompanyName = companyName.substring(0, 6);
+      const from = startDate || "from";
+      const to = endDate || "to";
+
+      const fileName = `${safeCompanyName}_CDR_Report_${from}_to_${to}.xlsx`;
+
+      saveAs(file, fileName);
   };
 
   // ✅ Fetch clients (Super-Admin/Admin only)

@@ -308,6 +308,7 @@ class DashboardReq(BaseModel):
 
 class DashboardDay(BaseModel):
     Total:    int
+    Unique:   int
     Answered: int
     Abandon:  int
     gdate:    str

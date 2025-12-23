@@ -43,7 +43,7 @@ def get_client_invoice_usage(
 
     # 3️⃣ Invoice data
     invoice_query = text("""
-        SELECT DISTINCT
+        SELECT
                DATE(ti.invoiceDate) AS invoiceDate,
                ti.bill_no,
                category,

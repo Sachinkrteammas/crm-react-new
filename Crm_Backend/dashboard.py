@@ -47,6 +47,7 @@ def get_dashboard_report(
     day_sql = f"""
         SELECT
           COUNT(*)                           AS Total,
+          COUNT(DISTINCT(t2.phone_number))   AS `Unique`,
           SUM(IF(t2.user <> 'VDCL',1,0))     AS Answered,
           SUM(IF(t2.user =  'VDCL',1,0))     AS Abandon,
           DATE(t2.call_date)                 AS gdate
@@ -74,6 +75,7 @@ def get_dashboard_report(
             g = g.isoformat()
         days.append(DashboardDay(
             Total=r["Total"] or 0,
+            Unique=r["Unique"] or 0,
             Answered=r["Answered"] or 0,
             Abandon=r["Abandon"] or 0,
             gdate=g

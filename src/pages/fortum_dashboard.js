@@ -173,6 +173,19 @@ const handleDownloadExcel = async () => {
 
 
   return (
+    <>
+      {/* Full-screen loader */}
+      {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+
+      <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
     <div className="mt-4">
       <h3>Billing & Usage Table</h3>
 
@@ -403,6 +416,8 @@ const handleDownloadExcel = async () => {
 )}
 
     </div>
+    </div>
+    </>
   );
 };
 

@@ -137,6 +137,27 @@ useEffect(() => {
 const handleDownloadExcel = () => {
   if (!telecomData || telecomData.length === 0) return;
 
+  const finalClientId =
+      userType === "Super-Admin" || userType === "Admin"
+        ? selectedClient
+        : companyId;
+
+
+    if (!finalClientId) {
+      alert("Please select a client first.");
+      return;
+  }
+  
+  // 🔹 Determine company name for filename
+  let companyName = clientName || "Client";
+  if (userType === "Super-Admin" || userType === "Admin") {
+    const selected = clients.find(c => String(c.company_id) === finalClientId);
+    companyName = selected ? selected.company_name : finalClientId;
+  }
+
+  // 🔹 Limit to first 6 characters
+  companyName = companyName.substring(0, 6);  
+
   // 🔹 Prepare rows exactly like table
   const rows = telecomData.map((row, index) => {
     const quarter = (() => {
@@ -207,7 +228,7 @@ const handleDownloadExcel = () => {
     { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
   );
 
-  const fileName = `Usage_Summary_${startDate}_to_${endDate}.xlsx`;
+  const fileName = `${companyName}_Usage_Summary_${startDate}_to_${endDate}.xlsx`;
   saveAs(fileData, fileName);
 };
 
@@ -215,6 +236,19 @@ const handleDownloadExcel = () => {
 
 
   return (
+    <>
+      {/* Full-screen loader */}
+      {loading && (
+        <div className="loader-overlay">
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
+        </div>
+      )}
+
+      <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
     <div className="mt-4">
       <h3>Usage Summary</h3>
 
@@ -440,6 +474,8 @@ const handleDownloadExcel = () => {
 )}
 
     </div>
+    </div>
+    </>
   );
 };
 

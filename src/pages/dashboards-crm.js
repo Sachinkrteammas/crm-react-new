@@ -31,6 +31,8 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(false);
 
   const [dashboardData, setDashboardData] = useState({
+    total: 0,
+    unique: 0,
     answered: 0,
     abandon: 0,
     tagged: 0,
@@ -169,8 +171,12 @@ const Dashboard = () => {
 
       const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
       const abandon = days.reduce((sum, d) => sum + (d.Abandon ?? 0), 0);
+      const total = days.reduce((sum, d) => sum + (d.Total ?? 0), 0);
+      const unique = days.reduce((sum, d) => sum + (d.Unique ?? 0), 0);
 
       setDashboardData({
+        total,
+        unique,
         answered,
         abandon,
         tagged: total_tagged,
@@ -378,9 +384,44 @@ const Dashboard = () => {
           )}
           <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
             <div className="row gy-4 gx-3">
+              <div className="row gy-4 gx-3 mx-0">
               {/* Sales last year */}
 
-              <div className="col-xxl-2 col-md-3 col-6">
+              <div className="col">
+                <div className="card h-100">
+                  <div className="card-body d-flex flex-column justify-content-between">
+                    <div className="d-flex align-items-center justify-content-between mb-3">
+                      <div className="badge p-2 bg-label-success rounded">
+                        <i className="icon-base ti tabler-phone icon-28px"></i>
+                      </div>
+                      <small className="text-success fw-medium">+1.6%</small>
+                    </div>
+                    <h5 className="card-title mb-1">Offered Calls</h5>
+                    <h4 className="mb-0">
+                      {dashboardData.total.toLocaleString()}
+                    </h4>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col">
+                <div className="card h-100">
+                  <div className="card-body d-flex flex-column justify-content-between">
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <div className="badge p-2 bg-label-success rounded">
+                        <i className="icon-base ti tabler-user icon-28px"></i>
+                      </div>
+                      <small className="text-success fw-medium">+20.6%</small>
+                    </div>
+                    <h5 className="card-title mb-1">Unique Calls</h5>
+                    <h4 className="mb-0">
+                      {dashboardData.unique.toLocaleString()}
+                    </h4>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col">
                 <div className="card h-100">
                   <div className="card-body d-flex flex-column justify-content-between">
                     <div className="d-flex align-items-center justify-content-between mb-3">
@@ -389,7 +430,7 @@ const Dashboard = () => {
                       </div>
                       <small className="text-success fw-medium">+12.6%</small>
                     </div>
-                    <h5 className="card-title mb-1">Total Answered Calls</h5>
+                    <h5 className="card-title mb-1">Answered Calls</h5>
                     <h4 className="mb-0">
                       {dashboardData.answered.toLocaleString()}
                     </h4>
@@ -398,7 +439,7 @@ const Dashboard = () => {
               </div>
 
               {/* Sessions Last month */}
-              <div className="col-xxl-2 col-md-3 col-6">
+              <div className="col">
                 <div className="card h-100">
                   <div className="card-body d-flex flex-column justify-content-between">
                     <div className="d-flex align-items-center justify-content-between mb-3">
@@ -407,7 +448,7 @@ const Dashboard = () => {
                       </div>
                       <small className="text-danger fw-medium">-16.2%</small>
                     </div>
-                    <h5 className="card-title mb-1">Total Abandon Calls</h5>
+                    <h5 className="card-title mb-1">Abandon Calls</h5>
                     <h4 className="mb-0">
                       {dashboardData.abandon.toLocaleString()}
                     </h4>
@@ -416,7 +457,7 @@ const Dashboard = () => {
               </div>
 
               {/* Total Profit */}
-              <div className="col-xxl-2 col-md-3 col-6">
+              <div className="col">
                 <div className="card h-100">
                   <div className="card-body d-flex flex-column justify-content-between">
                     <div className="d-flex align-items-center justify-content-between mb-3">
@@ -425,7 +466,7 @@ const Dashboard = () => {
                       </div>
                       <small className="text-danger fw-medium">-12.2%</small>
                     </div>
-                    <h5 className="card-title mb-1">Total Tagged Calls</h5>
+                    <h5 className="card-title mb-1">Tagged Calls</h5>
                     <h4 className="mb-0">
                       {dashboardData.tagged.toLocaleString()}
                     </h4>
@@ -434,7 +475,7 @@ const Dashboard = () => {
               </div>
 
               {/* Total Sales */}
-              <div className="col-xxl-2 col-md-3 col-6">
+              <div className="col">
                 <div className="card h-100">
                   <div className="card-body d-flex flex-column justify-content-between">
                     <div className="d-flex align-items-center justify-content-between mb-3">
@@ -443,7 +484,7 @@ const Dashboard = () => {
                       </div>
                       <small className="text-success fw-medium">+24.5%</small>
                     </div>
-                    <h5 className="card-title mb-1">Total Abandon Call Back</h5>
+                    <h5 className="card-title mb-1">Abandon Call Back</h5>
                     <h4 className="mb-0">
                       {dashboardData.abandon_callback.toLocaleString()}
                     </h4>
@@ -538,6 +579,7 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </form>
+              </div>
               </div>
 
               {/* Earning Reports Tabs*/}

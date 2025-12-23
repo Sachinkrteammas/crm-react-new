@@ -60,6 +60,25 @@ const OBSharedCDRReport = () => {
         return;
       }
 
+      
+      // ✅ Decide company name (NO return here)
+      let companyName = "Company";
+
+      if (userType === "Client") {
+        companyName = clientName || "Company";
+      } else {
+        const selected = clients.find(
+          (c) => String(c.company_id) === String(selectedClient)
+        );
+        companyName = selected?.company_name || "Company";
+      }
+      // ✅ Format dates for filename
+      const formatDateForFile = (date) =>
+        date ? date.toLocaleDateString("en-CA") : "NA";
+
+      const from = formatDateForFile(startDate);
+      const to = formatDateForFile(endDate);
+
       // Create a worksheet
       const worksheet = XLSX.utils.json_to_sheet(cdrData);
 
@@ -77,7 +96,13 @@ const OBSharedCDRReport = () => {
       const file = new Blob([excelBuffer], {
         type: "application/octet-stream",
       });
-      saveAs(file, "ob_shared_cdr_report.xlsx");
+
+      // ✅ Safe filename
+      const safeCompanyName = companyName.substring(0, 6);
+
+      const fileName = `${safeCompanyName}_Ob_shared_cdr_report_${from}_to_${to}.xlsx`;
+
+      saveAs(file, fileName);
   };
 
   // ✅ Fetch clients (Super-Admin/Admin only)
@@ -243,8 +268,8 @@ const OBSharedCDRReport = () => {
               cdrData.map((row, idx) => (
                 <tr key={idx}>
                   <td>{row.CallDate || "-"}</td>
-                  <td>{row.StartTime || "-"}</td>
-                  <td>{row.Endtime || "-"}</td>
+                  <td>{row.StartTime?.replace("T", " ") || "-"}</td>
+                  <td>{row.Endtime?.replace("T", " ") || "-"}</td>
                   <td>{row.CustomerNumber || "-"}</td>
                   <td>{row.AgentID || "-"}</td>
                   <td>{row.AgentName || "-"}</td>

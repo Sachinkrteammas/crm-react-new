@@ -87,11 +87,27 @@ const IVRReport = () => {
     }
   };
 
+  const formatDateForFile = (date) =>
+  date ? format(date, "yyyy-MM-dd") : "NA";
+
+
   const handleExport = async () => {
     if (ivrData.length === 0) {
       alert("No data to export.");
       return;
     }
+    // ✅ Decide company name (NO return here)
+      let companyName = "Company";
+
+      if (userType === "Client") {
+      const storedUserData = JSON.parse(localStorage.getItem("userData"));
+      companyName = storedUserData?.auth_person || "Company";
+    } else {
+        const selected = clients.find(
+          (c) => String(c.company_id) === String(selectedClient)
+        );
+        companyName = selected?.company_name || "Company";
+      }
 
     setLoading(true);
 
@@ -116,7 +132,15 @@ const IVRReport = () => {
       const file = new Blob([excelBuffer], {
         type: "application/octet-stream",
       });
-      saveAs(file, "ivr_report.xlsx");
+
+      // ✅ Safe filename
+      const safeCompanyName = companyName.substring(0, 6);
+      const from = formatDateForFile(startDate);
+      const to = formatDateForFile(endDate);
+
+      const fileName = `${safeCompanyName}_Ivr_Report_${from}_to_${to}.xlsx`;
+
+      saveAs(file, fileName);      
     } catch (error) {
       console.error("Error exporting IVR report:", error);
     } finally {

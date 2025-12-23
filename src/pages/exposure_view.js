@@ -353,7 +353,7 @@ const handleSearch = async () => {
               <th>CONSUMED</th>
               <th>BALANCE</th>
               <th>RELEASE FROM BILLING</th>
-              <th>EXPOSURE BILLING REQUIRED VR</th>
+              <th>EXPOSURE BILLING REQUIRED</th>
 
               <th>STATUS</th>
 
