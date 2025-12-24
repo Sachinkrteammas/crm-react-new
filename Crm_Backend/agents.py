@@ -313,7 +313,8 @@ def get_all_clients_rights_is_dial(
                 2
             ),
 
-            "Exposure_billing_vr": round(effective_opening + Release_billing - consume_value, 2)
+            "Exposure_billing_vr": round(effective_opening + Release_billing - consume_value, 2),
+            "to_be_billed" : round(((effective_opening + Release_billing - consume_value) * 100)/talktime_percent,2)
         })
 
     return output
@@ -619,7 +620,8 @@ def get_clients_rights_search(
             (total_subscription_value * (credit_percent / 100)),
             2
         ),
-        "Exposure_billing_vr": round(effective_opening + Release_billing - consume_value, 2)
+        "Exposure_billing_vr": round(effective_opening + Release_billing - consume_value, 2),
+        "to_be_billed" : round(((effective_opening + Release_billing - consume_value) * 100)/talktime_percent,2)
     }
 
 ################### clients-effective-month get start #################

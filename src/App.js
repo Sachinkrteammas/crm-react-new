@@ -126,6 +126,7 @@ import CorrectiveReport from "./pages/Corrective_report";
 import ResetPassword from "./pages/Reset_password";
 import UsageSummary from "./pages/Usage_summary";
 import StatementSummary from "./pages/statement_summary";
+import CreateInvoice from "./pages/Invoice";
 
 
 
@@ -363,6 +364,7 @@ function App() {
               {/* <Route path="/allocation_plan" element={<AllocationPlan />} /> */}
               <Route path="/usage_summary" element={<UsageSummary />} />
               <Route path="/statement_summary" element={<StatementSummary />} />
+              <Route path="/InitialInvoices" element={<CreateInvoice />} />
               
           </Route>
       </Route>

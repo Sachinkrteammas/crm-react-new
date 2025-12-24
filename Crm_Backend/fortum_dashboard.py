@@ -255,10 +255,13 @@ def get_client_invoice_details(
                 if inv:
                     category = inv.category
                     total = float(inv.total)
+                    print("####",total)
                     if category in ("Talk Time", "Talktime"):
                         total *= (TalktimePercent / 100)
+                        total = round(total,0)
                     elif category == "Subscription":
                         total *= (CreditPointPercent / 100)
+                        total = round(total,0)
                 else:
                     category = "NA"
                     total = 0

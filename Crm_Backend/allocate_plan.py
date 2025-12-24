@@ -71,7 +71,9 @@ def get_plan_list(db: Session = Depends(get_db4)):
             pm.SMSCharge AS sms,
             pm.EmailCharge AS email,
             pm.MissCallCharge AS missCall,
-            pm.VFOCallCharge AS vfo
+            pm.VFOCallCharge AS vfo,
+            pm.TalktimePercent AS talktime,
+            pm.CreditPointPercent AS subscription
         FROM balance_master bm
         INNER JOIN plan_master pm ON bm.PlanId = pm.Id
         INNER JOIN registration_master rm ON bm.ClientId = rm.company_id

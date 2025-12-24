@@ -4,6 +4,7 @@ import api from "../api";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
+import { useNavigate } from "react-router-dom";
 
 const ExposureView = () => {
 
@@ -19,6 +20,7 @@ const ExposureView = () => {
   const [endDate, setEndDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [minDate, setMinDate] = useState("2025-09-01");
+  const navigate = useNavigate();
 
 
  useEffect(() => {
@@ -56,9 +58,9 @@ const ExposureView = () => {
               cpConsumed: client.consume,
               cpBalance: client.balance,
               status: "Testing",
-              exposure: 0,
-              toBeBilled: 0,
-              action: "0.00",
+              exposure: client.talktime_percent,
+              toBeBilled: client.to_be_billed,
+              action: "Credit",
               payment: "Send SMS",
               color: index % 2 === 0 ? "green" : "red",
             }));
@@ -114,6 +116,7 @@ const handleExport = async () => {
 
     const totalBilled = clients.reduce((sum, c) => sum + (c.Release_billing || 0), 0);
     const totalCollected = clients.reduce((sum, c) => sum + (c.Exposure_billing_vr || 0), 0);
+    const totaltobebilled = clients.reduce((sum, c) => sum + (c.to_be_billed || 0), 0);
 
     // 🔹 Format export data
     const exportData = clients.map((client, index) => ({
@@ -125,6 +128,8 @@ const handleExport = async () => {
       "Balance": (client.balance ?? 0).toFixed(2),
       "Release Billing": (client.Release_billing ?? 0).toFixed(2),          // 🔹 Added
       "Exposure Billing VR": (client.Exposure_billing_vr ?? 0).toFixed(2),
+      "% TO BE BILLED": (client.talktime_percent ?? 0).toFixed(2),
+      "TO BE BILLED": (client.to_be_billed ?? 0).toFixed(2),
     }));
 
     // 🔹 Add total row
@@ -137,6 +142,7 @@ const handleExport = async () => {
       "Balance": totalBalance.toFixed(2),
       "Release Billing": totalBilled.toFixed(2),
       "Exposure Billing VR": totalCollected.toFixed(2),
+      "TO BE BILLED": totaltobebilled.toFixed(2),
     });
 
     // 🔹 Create Excel file
@@ -144,7 +150,7 @@ const handleExport = async () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Clients Rights");
 
-    const fileName = `clients-rights-${new Date().toISOString().split("T")[0]}.xlsx`;
+    const fileName = `Exposure-${new Date().toISOString().split("T")[0]}.xlsx`;
     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
     saveAs(blob, fileName);
@@ -158,7 +164,7 @@ const handleExport = async () => {
 };
 
 const handleEffectiveMonth = async (clientId) => {
-  setStartDate("");
+  // setStartDate("");
 
   // All Clients or no selection
   if (clientId === "999" || clientId === "") {
@@ -229,9 +235,9 @@ const handleSearch = async () => {
         cpConsumed: client.consume ?? 0,
         cpBalance: client.balance ?? 0,
         status: "Active",
-        exposure: 0,
-        toBeBilled: 0,
-        action: "0.00",
+        exposure: client.talktime_percent,
+        toBeBilled: client.to_be_billed,
+        action: "Credit",
         payment: "Send SMS",
         color: index % 2 === 0 ? "green" : "red",
       }));
@@ -261,9 +267,9 @@ const handleSearch = async () => {
         cpConsumed: client.consume ?? 0,
         cpBalance: client.balance ?? 0,
         status: "Active",
-        exposure: 0,
-        toBeBilled: 0,
-        action: "0.00",
+        exposure: client.talktime_percent,
+        toBeBilled: client.to_be_billed,
+        action: "Credit",
         payment: "Send SMS",
         color: index % 2 === 0 ? "green" : "red",
       }));
@@ -276,6 +282,18 @@ const handleSearch = async () => {
     setLoading(false); // ✅ Loader stops in ALL cases
   }
 };
+
+  const handleCreditClick = (row) => {
+    if (row.toBeBilled >= 0) return;
+
+    navigate("/InitialInvoices", {
+      state: {
+        clientName: row.client,
+        toBeBilled: row.toBeBilled,
+        exposure: row.exposure,
+      },
+    });
+  };
 
 
   return (
@@ -385,10 +403,10 @@ const handleSearch = async () => {
 
               <th>STATUS</th>
 
-              <th>EXPOSURE</th>
+              <th>% TO BE BILLED</th>
               <th>TO BE BILLED</th>
               <th>ACTION</th>
-              <th>PAYMENT</th>
+              {/* <th>PAYMENT</th> */}
             </tr>
           </thead>
           <tbody>
@@ -416,12 +434,24 @@ const handleSearch = async () => {
                 <td>{row.collected.toFixed(2)}</td>
 
                 <td>{row.status}</td>
-                <td>{row.exposure.toFixed(2)}</td>
+                <td>{row.exposure.toFixed(2)} %</td>
                 <td>{row.toBeBilled.toFixed(2)}</td>
-                <td>{row.action}</td>
                 <td>
-                  <button className="btn-sms">{row.payment}</button>
+                  <button
+                    className="btn-sms"
+                    disabled={row.toBeBilled >= 0}
+                    onClick={() => handleCreditClick(row)}
+                    style={{
+                      cursor: row.toBeBilled < 0 ? "pointer" : "not-allowed",
+                      opacity: row.toBeBilled < 0 ? 1 : 0.5,
+                    }}
+                  >
+                    {row.action}
+                  </button>
                 </td>
+                {/* <td>
+                  <button className="btn-sms">{row.payment}</button>
+                </td> */}
               </tr>
             ))}
 
@@ -445,10 +475,11 @@ const handleSearch = async () => {
       <td>{data.reduce((acc, r) => acc + r.billed, 0).toFixed(2)}</td>
       <td>{data.reduce((acc, r) => acc + r.collected, 0).toFixed(2)}</td>
       <td></td>
-      <td>{data.reduce((acc, r) => acc + r.exposure, 0).toFixed(2)}</td>
+      <td></td>
+      {/* <td>{data.reduce((acc, r) => acc + r.exposure, 0).toFixed(2)}</td> */}
       <td>{data.reduce((acc, r) => acc + r.toBeBilled, 0).toFixed(2)}</td>
       <td></td>
-      <td></td>
+      {/* <td></td> */}
     </tr>
   )}
 

@@ -227,6 +227,8 @@ const AllocatePlan = () => {
                   <th>EMAIL</th>
                   <th>MISS CALL</th>
                   <th>VFO</th>
+                  <th>Talk Time%</th>
+                  <th>Subscription%</th>
                 </tr>
               </thead>
               <tbody>
@@ -249,6 +251,8 @@ const AllocatePlan = () => {
                     <td>{plan.email}</td>
                     <td>{plan.missCall}</td>
                     <td>{plan.vfo}</td>
+                    <td>{plan.talktime}</td>
+                    <td>{plan.subscription}</td>
                   </tr>
                 ))}
               </tbody>
