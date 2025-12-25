@@ -78,7 +78,7 @@ def send_call_summary(
         query5 = text("""
             SELECT 
                 u.full_name AS `Agent Name`,
-                COUNT(v.user) AS `Calls taken in OB+IB`
+                COUNT(v.user) AS `Total Calls Taken - IB`
             FROM vicidial_agent_log v
             JOIN vicidial_users u ON v.user = u.user
             WHERE DATE(v.event_time) = CURDATE()
@@ -173,9 +173,9 @@ def send_call_summary(
             "Total": total_total,
             "Answered": total_answered,
             "Manpower": "",
-            "AL %": total_al,
-            "SL %": total_sl,
-            "RL %": total_rl
+            "AL %": f"{total_al} %",
+            "SL %": f"{total_sl} %",
+            "RL %": f"{total_rl} %"
         })
 
 
@@ -292,7 +292,7 @@ def send_call_summary(
                 f"""
                 <tr>
                     <td style='text-align:center;'>{html.escape(row['Agent Name'])}</td>
-                    <td style='text-align:center;'>{row['Calls taken in OB+IB']}</td>
+                    <td style='text-align:center;'>{row['Total Calls Taken - IB']}</td>
                 </tr>
                 """
                 for row in agent_data
@@ -303,7 +303,7 @@ def send_call_summary(
              <table border='1' cellspacing='0' cellpadding='6' style="border-collapse:collapse; font-family:Arial; font-size:14px; width:60%; table-layout:fixed; text-align:center; margin-bottom:10px;">
                 <tr style="background:rgb(184, 204, 228); font-weight:bold;">
                     <th style="width:70%;">Agent Name</th>
-                    <th style="width:30%;">Calls taken in OB+IB</th>
+                    <th style="width:30%;">Total Calls Taken - IB</th>
                 </tr>
                 {rows}
             </table>
