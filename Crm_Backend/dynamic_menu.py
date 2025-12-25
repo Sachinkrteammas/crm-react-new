@@ -62,7 +62,7 @@ def get_dynamic_menu(company_id: int, name: Optional[str] = Query(None, descript
 
     # ✅ Case 2: Client (companyId > 0)
     rights_query = text("""
-        SELECT user_right FROM logincreation_master WHERE create_id = :company_id AND name = :name
+        SELECT user_right_new FROM logincreation_master WHERE create_id = :company_id AND name = :name
     """)
     rights_row = db.execute(rights_query, {"company_id": company_id, "name": name}).mappings().first()
 
@@ -72,13 +72,13 @@ def get_dynamic_menu(company_id: int, name: Optional[str] = Query(None, descript
             detail=f"No menu rights found for name '{name}' under company_id {company_id}"
         )
 
-    if not rights_row["user_right"]:
-        raise HTTPException(status_code=404, detail="No user_rights defined for this user")
+    if not rights_row["user_right_new"]:
+        raise HTTPException(status_code=404, detail="No user_right_news defined for this user")
 
-    # if not rights_row or not rights_row["user_right"]:
+    # if not rights_row or not rights_row["user_right_new"]:
     #     raise HTTPException(status_code=404, detail="No menu rights found for this company")
 
-    allowed_ids = [int(x) for x in rights_row["user_right"].split(",") if x.strip().isdigit()]
+    allowed_ids = [int(x) for x in rights_row["user_right_new"].split(",") if x.strip().isdigit()]
     if not allowed_ids:
         raise HTTPException(status_code=403, detail="No valid page access")
 
@@ -145,14 +145,14 @@ def get_dynamic_menu(company_id: int, name: Optional[str] = Query(None, descript
 
 #     # ✅ Case 2: Client (companyId > 0)
 #     rights_query = text("""
-#         SELECT user_right FROM logincreation_master WHERE create_id = :company_id
+#         SELECT user_right_new FROM logincreation_master WHERE create_id = :company_id
 #     """)
 #     rights_row = db.execute(rights_query, {"company_id": company_id}).mappings().first()
 
-#     if not rights_row or not rights_row["user_right"]:
+#     if not rights_row or not rights_row["user_right_new"]:
 #         raise HTTPException(status_code=404, detail="No menu rights found for this company")
 
-#     allowed_ids = [int(x) for x in rights_row["user_right"].split(",") if x.strip().isdigit()]
+#     allowed_ids = [int(x) for x in rights_row["user_right_new"].split(",") if x.strip().isdigit()]
 #     if not allowed_ids:
 #         raise HTTPException(status_code=403, detail="No valid page access")
 

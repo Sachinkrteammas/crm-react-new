@@ -85,8 +85,10 @@ def get_client_invoice_details(
 
         if row.category in ("Talk Time", "Talktime"):
             amt *= (TalktimePercent / 100)
+            amt = round(amt,0)
         elif row.category == "Subscription":
             amt *= (CreditPointPercent / 100)
+            amt = round(amt,0)
 
         opening_credit += amt
 

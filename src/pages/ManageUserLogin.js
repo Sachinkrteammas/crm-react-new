@@ -136,7 +136,7 @@ const ManageUserLogin = () => {
         designation: form.designation,
         password: form.password,
         confirm_password: form.confirmPassword,
-        user_rights: selectedRights.join(","),
+        user_rights_new: selectedRights.join(","),
       };
 
       const { data } = await api.post(
@@ -306,7 +306,7 @@ const ManageUserLogin = () => {
         designation: data.designation || "",
       });
       setEditRights(
-        data.user_right ? data.user_right.split(",").map(Number) : []
+        data.user_right_new ? data.user_right_new.split(",").map(Number) : []
       );
       setShowModal(true);
     } catch (err) {
@@ -344,7 +344,7 @@ const ManageUserLogin = () => {
         designation: editForm.designation,
         password: editForm.password,
         confirm_password: editForm.confirmPassword,
-        user_rights: editRights.join(","),
+        user_rights_new: editRights.join(","),
       };
 
       const { data } = await api.put(`/login_users/${editUserId}`, payload);

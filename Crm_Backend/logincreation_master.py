@@ -17,7 +17,7 @@ class CreateLoginBody(BaseModel):
     designation: str
     password: str
     confirm_password: str
-    user_rights: str   # comma-separated like "1,2,3"
+    user_rights_new: str   # comma-separated like "1,2,3"
 
 
 class UpdateLoginBody(BaseModel):
@@ -25,7 +25,7 @@ class UpdateLoginBody(BaseModel):
     email: EmailStr | None = None
     phone: int | None = None
     designation: str | None = None
-    user_rights: str | None = None
+    user_rights_new: str | None = None
     password: str | None = None
     confirm_password: str | None = None
 
@@ -52,8 +52,8 @@ def create_login_user(
     if body.password != body.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
-    # 2. Validate user_rights format
-    if not all(x.isdigit() for x in body.user_rights.split(",")):
+    # 2. Validate user_rights_new format
+    if not all(x.isdigit() for x in body.user_rights_new.split(",")):
         raise HTTPException(status_code=400, detail="Select proper User Rights")
 
     # 3. Check if email already exists
@@ -71,9 +71,9 @@ def create_login_user(
     # 5. Insert new user
     insert_query = text("""
         INSERT INTO logincreation_master 
-        (create_id, name, phone, username, designation, user_right, password, password2) 
+        (create_id, name, phone, username, designation, user_right_new, password, password2) 
         VALUES 
-        (:create_id, :name, :phone, :username, :designation, :user_right, :password, :password2)
+        (:create_id, :name, :phone, :username, :designation, :user_right_new, :password, :password2)
     """)
 
     db.execute(insert_query, {
@@ -82,7 +82,7 @@ def create_login_user(
         "phone": body.phone,
         "username": body.email,
         "designation": body.designation,
-        "user_right": body.user_rights,
+        "user_right_new": body.user_rights_new,
         "password": hashed_password,             # ← hashed
         "password2": body.confirm_password       # ← plain (entered text)
     })
@@ -98,7 +98,7 @@ def create_login_user(
             "email": body.email,
             "phone": body.phone,
             "designation": body.designation,
-            "user_rights": body.user_rights
+            "user_rights_new": body.user_rights_new
         }
     }
 
@@ -157,18 +157,18 @@ def update_login_user(
             raise HTTPException(status_code=400, detail="Passwords do not match")
 
     # Validate user rights
-    if body.user_rights:
-        if not all(x.isdigit() for x in body.user_rights.split(",")):
+    if body.user_rights_new:
+        if not all(x.isdigit() for x in body.user_rights_new.split(",")):
             raise HTTPException(status_code=400, detail="Select proper User Rights")
 
     # Build dynamic update query
     updates = []
     params = {"id": user_id}
 
-    for field in ["name", "email", "phone", "designation", "user_rights"]:
+    for field in ["name", "email", "phone", "designation", "user_rights_new"]:
         value = getattr(body, field)
         if value is not None:
-            column = "username" if field == "email" else ("user_right" if field == "user_rights" else field)
+            column = "username" if field == "email" else ("user_right_new" if field == "user_rights_new" else field)
             updates.append(f"{column} = :{column}")
             params[column] = value
 
