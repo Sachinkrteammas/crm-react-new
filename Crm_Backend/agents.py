@@ -93,6 +93,7 @@ def get_all_clients_rights_is_dial(
                     WHERE ti.cost_center IN (
                             SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
                     AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date)
+                    AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)
                     GROUP BY
                         ti.bill_no,
 
@@ -197,6 +198,7 @@ def get_all_clients_rights_is_dial(
                 AND bpp.branch_name = ti.branch_name
             WHERE ti.cost_center = :cost_center
             AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+            AND DATE(bpp.pay_dates) BETWEEN :start_date AND :end_date
             GROUP BY
                 ti.bill_no,
              
@@ -281,7 +283,10 @@ def get_all_clients_rights_is_dial(
             2
         )
 
-        effective_opening = base_opening + release_after_percentage - consume_before_value
+        if start_date == "2025-09-01":
+            effective_opening = base_opening
+        else:
+            effective_opening = base_opening + release_after_percentage - consume_before_value
         print(effective_opening, "effective_opening===")
 
         Release_billing = round(
@@ -376,6 +381,7 @@ def get_clients_rights_search(
             WHERE ti.cost_center IN (
                     SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
             AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date)
+            AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)
             GROUP BY
                 ti.bill_no,
              
@@ -504,6 +510,7 @@ def get_clients_rights_search(
                 AND bpp.branch_name = ti.branch_name
             WHERE ti.cost_center = :cost_center
             AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+            AND DATE(bpp.pay_dates) BETWEEN :start_date AND :end_date
             GROUP BY
                 ti.bill_no,
              
@@ -586,7 +593,11 @@ def get_clients_rights_search(
         2
     )
 
-    effective_opening = base_opening + release_after_percentage - consume_before_value
+    if start_date=="2025-09-01":
+        effective_opening = base_opening
+    else:
+        effective_opening = base_opening + release_after_percentage - consume_before_value
+
     print(effective_opening, "effective_opening===")
 
     balance = round((effective_opening + fresh_release - consume_value), 2)
