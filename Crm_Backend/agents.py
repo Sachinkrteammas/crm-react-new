@@ -92,7 +92,7 @@ def get_all_clients_rights_is_dial(
                         AND bpp.branch_name = ti.branch_name
                     WHERE ti.cost_center IN (
                             SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
-                    AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date)
+                    AND DATE(ti.invoiceDate) >='2025-09-01'
                     AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)
                     GROUP BY
                         ti.bill_no,
@@ -129,6 +129,43 @@ def get_all_clients_rights_is_dial(
         release_before_value = total_talktime1 + total_subscription1
 
         print(release_before_value, "release_before_value===")
+
+        #################################################################################
+
+        release_query_billing = text("""select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
+            ti WHERE ti.cost_center IN (
+                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = '301'
+                        )
+                        AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND 
+                        DATE(:start_date)  AND Category IN ('talktime','subscription') group by Category""")
+
+        release_rows_billing = db.execute(
+            release_query_billing,
+            {
+                "client_id": client_id,
+                "month_opening_date": month_opening_date,
+                "start_date": start_date,
+            }
+        ).mappings().fetchall()  # 👈 mappings() is important
+
+        total_talktime_billing = 0.0
+        total_subscription_billing = 0.0
+
+        for b in release_rows_billing:
+            category_billing = (b["Category"] or "").strip().lower()
+            total_billing = float(b["release_billing"] or 0)
+
+            if "talktime" in category_billing:
+                total_talktime_billing += total_billing
+            elif category_billing == "subscription":
+                total_subscription_billing += total_billing
+
+        # total release before (all categories)
+        release_before_billing = total_talktime_billing + total_subscription_billing
+
+        print(release_before_billing, "release_before_billing===")
+
+        ############################   End################################################################
 
         # Compute all consumption before the chosen start_date
         consume_before_query = text("""
@@ -173,50 +210,74 @@ def get_all_clients_rights_is_dial(
 
         total_talktime = 0.0
         total_subscription = 0.0
+        total_talktime_billing1 = 0.0
+        total_subscription_billing1 = 0.0
 
         for cc_row in cost_centers:
             cost_center = cc_row.cost_center.strip() if cc_row.cost_center else None
             if not cost_center:
                 continue
 
+            ############################  Krishna ####################################################
+            bill_query_billing = text(""" select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
+            ti WHERE ti.cost_center IN (
+                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = '301'
+                        )
+                        AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date  
+                        AND Category IN ('talktime','subscription') group by Category""")
+            bill_rows_billing = db.execute(bill_query_billing, {
+                "cost_center": cost_center,
+                "start_date": start_date,
+                "end_date": end_date
+            }).fetchall()
+
+            for b in bill_rows_billing:
+                category_billing1 = (b.Category or "").strip().lower()
+                release_billing = float(b.release_billing or 0)
+                if "talktime" in category_billing1:
+                    total_talktime_billing1 += release_billing
+                elif category_billing1 == "subscription":
+                    total_subscription_billing1 += release_billing
+
+            ####################### End ####################################################################
+
             bill_query = text("""
-                SELECT
-                ti.bill_no,
-                ti.Category,
-                CASE
-                    WHEN bpp.status = 'part payment'
-                        THEN
-                            SUM(bpp.net_amount)
-                            - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
-                    ELSE
-                        SUM(ti.total)
-                END AS total
-            FROM bill_pay_particulars bpp
-            INNER JOIN tbl_invoice ti
-                ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
-                AND bpp.financial_year = ti.finance_year
-                AND bpp.branch_name = ti.branch_name
-            WHERE ti.cost_center = :cost_center
-            AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
-            AND DATE(bpp.pay_dates) BETWEEN :start_date AND :end_date
-            GROUP BY
-                ti.bill_no,
-             
-                ti.status,
-                ti.igst,
-                ti.cgst,
-                ti.sgst;
-            """)
+                            SELECT
+                                ti.bill_no,
+                                ti.Category,
+                                CASE
+                                    WHEN bpp.status = 'part payment'
+                                        THEN
+                                            SUM(bpp.net_amount)
+                                            - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
+                                    ELSE
+                                        SUM(ti.total)
+                                END AS total
+                            FROM bill_pay_particulars bpp
+                            INNER JOIN tbl_invoice ti
+                                ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                                AND bpp.financial_year = ti.finance_year
+                                AND bpp.branch_name = ti.branch_name
+                            WHERE ti.cost_center = :cost_center
+                            AND DATE(ti.invoiceDate)>='2025-09-01'
+                            AND DATE(bpp.pay_dates) BETWEEN :start_date AND :end_date
+                            GROUP BY
+                                ti.bill_no,
+
+                                ti.status,
+                                ti.igst,
+                                ti.cgst,
+                                ti.sgst;
+                        """)
             bill_rows = db.execute(bill_query, {
                 "cost_center": cost_center,
                 "start_date": start_date,
-                "end_date": end_date,
+                "end_date": end_date
             }).fetchall()
 
             for b in bill_rows:
                 category = (b.Category or "").strip().lower()
                 total = float(b.total or 0)
-
                 if "talktime" in category:
                     total_talktime += total
                 elif category == "subscription":
@@ -224,6 +285,12 @@ def get_all_clients_rights_is_dial(
 
         talktime_value = round(total_talktime * (talktime_percent / 100), 2)
         subscription_value = round(total_subscription * (credit_percent / 100), 2)
+        fresh_release = round(talktime_value + subscription_value, 2)
+
+        talktime_value_billing = round(total_talktime_billing1 * (talktime_percent / 100), 2)
+        subscription_value_billing = round(total_subscription_billing1 * (credit_percent / 100), 2)
+        fresh_release_billing = round(talktime_value_billing + subscription_value_billing, 2)
+        print(fresh_release_billing, "Billing++++++")
 
 
 
@@ -283,11 +350,23 @@ def get_all_clients_rights_is_dial(
             2
         )
 
+        talktime_release_pct_billing = total_talktime_billing * (talktime_percent / 100)
+        subscription_release_pct_billing = total_subscription_billing * (credit_percent / 100)
+
+        release_after_percentage_billing = round(
+            talktime_release_pct_billing + subscription_release_pct_billing,
+            2
+        )
+
         if start_date == "2025-09-01":
             effective_opening = base_opening
+            effective_opening_billing = base_opening
         else:
             effective_opening = base_opening + release_after_percentage - consume_before_value
+            effective_opening_billing = base_opening + release_after_percentage_billing - consume_before_value
+
         print(effective_opening, "effective_opening===")
+        print(effective_opening_billing, "effective_opening_billing----")
 
         Release_billing = round(
             (total_talktime_value * (talktime_percent / 100)) +
@@ -318,8 +397,9 @@ def get_all_clients_rights_is_dial(
                 2
             ),
 
-            "Exposure_billing_vr": round(effective_opening + Release_billing - consume_value, 2),
-            "to_be_billed" : round(((effective_opening + Release_billing - consume_value) * 100)/talktime_percent,2)
+        "effective_opening_bill": effective_opening_billing,
+        "Exposure_billing_vr": round(effective_opening_billing + Release_billing - consume_value, 2),
+        "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
         })
 
     return output
@@ -380,7 +460,7 @@ def get_clients_rights_search(
                 AND bpp.branch_name = ti.branch_name
             WHERE ti.cost_center IN (
                     SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
-            AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND DATE(:start_date)
+            AND DATE(ti.invoiceDate) >='2025-09-01'
             AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)
             GROUP BY
                 ti.bill_no,
@@ -417,6 +497,45 @@ def get_clients_rights_search(
     release_before_value = total_talktime1 + total_subscription1
 
     print(release_before_value, "release_before_value===")
+
+
+#################################################################################
+
+    release_query_billing = text("""select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
+    ti WHERE ti.cost_center IN (
+                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = '301'
+                )
+                AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND 
+                DATE(:start_date)  AND Category IN ('talktime','subscription') group by Category""")
+
+    release_rows_billing = db.execute(
+        release_query_billing,
+        {
+            "client_id": client_id,
+            "month_opening_date": month_opening_date,
+            "start_date": start_date,
+        }
+    ).mappings().fetchall()  # 👈 mappings() is important
+
+    total_talktime_billing = 0.0
+    total_subscription_billing = 0.0
+
+    for b in release_rows_billing:
+        category_billing = (b["Category"] or "").strip().lower()
+        total_billing = float(b["release_billing"] or 0)
+
+        if "talktime" in category_billing:
+            total_talktime_billing += total_billing
+        elif category_billing == "subscription":
+            total_subscription_billing += total_billing
+
+    # total release before (all categories)
+    release_before_billing = total_talktime_billing + total_subscription_billing
+
+    print(release_before_billing, "release_before_billing===")
+
+############################   End################################################################
+
 
 
 
@@ -485,40 +604,65 @@ def get_clients_rights_search(
 
     total_talktime = 0.0
     total_subscription = 0.0
+    total_talktime_billing1 = 0.0
+    total_subscription_billing1 = 0.0
 
     for cc in cost_centers:
         cost_center = (cc.cost_center or "").strip()
         if not cost_center:
             continue
+############################  Krishna ####################################################
+        bill_query_billing = text(""" select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
+    ti WHERE ti.cost_center IN (
+                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = '301'
+                )
+                AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date  
+                AND Category IN ('talktime','subscription') group by Category""")
+        bill_rows_billing = db.execute(bill_query_billing, {
+            "cost_center": cost_center,
+            "start_date": start_date,
+            "end_date": end_date
+        }).fetchall()
+
+        for b in bill_rows_billing:
+            category_billing1 = (b.Category or "").strip().lower()
+            release_billing = float(b.release_billing or 0)
+            if "talktime" in category_billing1:
+                total_talktime_billing1 += release_billing
+            elif category_billing1 == "subscription":
+                total_subscription_billing1 += release_billing
+
+
+####################### End ####################################################################
 
         bill_query = text("""
-            SELECT
-                ti.bill_no,
-                ti.Category,
-                CASE
-                    WHEN bpp.status = 'part payment'
-                        THEN
-                            SUM(bpp.net_amount)
-                            - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
-                    ELSE
-                        SUM(ti.total)
-                END AS total
-            FROM bill_pay_particulars bpp
-            INNER JOIN tbl_invoice ti
-                ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
-                AND bpp.financial_year = ti.finance_year
-                AND bpp.branch_name = ti.branch_name
-            WHERE ti.cost_center = :cost_center
-            AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
-            AND DATE(bpp.pay_dates) BETWEEN :start_date AND :end_date
-            GROUP BY
-                ti.bill_no,
-             
-                ti.status,
-                ti.igst,
-                ti.cgst,
-                ti.sgst;
-        """)
+                    SELECT
+                        ti.bill_no,
+                        ti.Category,
+                        CASE
+                            WHEN bpp.status = 'part payment'
+                                THEN
+                                    SUM(bpp.net_amount)
+                                    - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
+                            ELSE
+                                SUM(ti.total)
+                        END AS total
+                    FROM bill_pay_particulars bpp
+                    INNER JOIN tbl_invoice ti
+                        ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                        AND bpp.financial_year = ti.finance_year
+                        AND bpp.branch_name = ti.branch_name
+                    WHERE ti.cost_center = :cost_center
+                    AND DATE(ti.invoiceDate)>='2025-09-01'
+                    AND DATE(bpp.pay_dates) BETWEEN :start_date AND :end_date
+                    GROUP BY
+                        ti.bill_no,
+
+                        ti.status,
+                        ti.igst,
+                        ti.cgst,
+                        ti.sgst;
+                """)
         bill_rows = db.execute(bill_query, {
             "cost_center": cost_center,
             "start_date": start_date,
@@ -533,9 +677,17 @@ def get_clients_rights_search(
             elif category == "subscription":
                 total_subscription += total
 
+
+
+
     talktime_value = round(total_talktime * (talktime_percent / 100), 2)
     subscription_value = round(total_subscription * (credit_percent / 100), 2)
     fresh_release = round(talktime_value + subscription_value, 2)
+
+    talktime_value_billing = round(total_talktime_billing1 * (talktime_percent / 100), 2)
+    subscription_value_billing = round(total_subscription_billing1 * (credit_percent / 100), 2)
+    fresh_release_billing = round(talktime_value_billing + subscription_value_billing, 2)
+    print(fresh_release_billing,"Billing++++++")
 
     total_talktime_value = 0.0
     total_subscription_value = 0.0
@@ -593,12 +745,23 @@ def get_clients_rights_search(
         2
     )
 
+    talktime_release_pct_billing = total_talktime_billing * (talktime_percent / 100)
+    subscription_release_pct_billing = total_subscription_billing * (credit_percent / 100)
+
+    release_after_percentage_billing = round(
+        talktime_release_pct_billing + subscription_release_pct_billing,
+        2
+    )
+
     if start_date=="2025-09-01":
         effective_opening = base_opening
+        effective_opening_billing = base_opening
     else:
         effective_opening = base_opening + release_after_percentage - consume_before_value
+        effective_opening_billing = base_opening + release_after_percentage_billing - consume_before_value
 
     print(effective_opening, "effective_opening===")
+    print(effective_opening_billing,"effective_opening_billing----")
 
     balance = round((effective_opening + fresh_release - consume_value), 2)
 
@@ -631,8 +794,9 @@ def get_clients_rights_search(
             (total_subscription_value * (credit_percent / 100)),
             2
         ),
-        "Exposure_billing_vr": round(effective_opening + Release_billing - consume_value, 2),
-        "to_be_billed" : round(((effective_opening + Release_billing - consume_value) * 100)/talktime_percent,2)
+        "effective_opening_bill": effective_opening_billing,
+        "Exposure_billing_vr": round(effective_opening_billing + Release_billing - consume_value, 2),
+        "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
     }
 
 ################### clients-effective-month get start #################
