@@ -52,6 +52,7 @@ from reallocate_plan import router as reallocate_plan_router
 from forgot_password import router as forgot_password_router
 from usage_summary import router as usage_summary_router
 from statement_summary import router as statement_summary_router
+from invoice import router as invoice_router
 
 
 
@@ -109,6 +110,7 @@ app.include_router(reallocate_plan_router, tags=["Re Allocate Plan"])
 app.include_router(forgot_password_router, tags=["Forgot Password"])
 app.include_router(usage_summary_router, tags=["Usage Summary"])
 app.include_router(statement_summary_router, tags=["Statement Summary"])
+app.include_router(invoice_router, tags=["Invoice"])
 
 
 
@@ -140,59 +142,59 @@ def scheduled_call_summary():
         
 
 
-# # -------------------------------------------------------
-# # DAILY BILLING SCHEDULER (runs at 3 AM)
-# # -------------------------------------------------------
-# def scheduled_daily_billing():
-#     try:
-#         # Manual DB session
-#         db_gen = get_db4()
-#         db: Session = next(db_gen)
+# -------------------------------------------------------
+# DAILY BILLING SCHEDULER (runs at 3 AM)
+# -------------------------------------------------------
+def scheduled_daily_billing():
+    try:
+        # Manual DB session
+        db_gen = get_db4()
+        db: Session = next(db_gen)
 
-#         # 1️⃣ Fetch all eligible DD clients
-#         sql = text("""
-#             SELECT rm.company_id
-#             FROM registration_master rm
-#             JOIN exp_opening_client eoc ON rm.company_id = eoc.ClientId
-#             WHERE rm.STATUS = 'A' AND rm.is_dd_client = 1
-#         """)
+        # 1️⃣ Fetch all eligible DD clients
+        sql = text("""
+            SELECT rm.company_id
+            FROM registration_master rm
+            JOIN exp_opening_client eoc ON rm.company_id = eoc.ClientId
+            WHERE rm.STATUS = 'A' AND rm.is_dd_client = 1
+        """)
 
-#         rows = db.execute(sql).mappings().fetchall()
-#         client_ids = [r["company_id"] for r in rows]
+        rows = db.execute(sql).mappings().fetchall()
+        client_ids = [r["company_id"] for r in rows]
 
-#         if not client_ids:
-#             print("⚠ No DD clients found for scheduler")
-#             return
+        if not client_ids:
+            print("⚠ No DD clients found for scheduler")
+            return
 
-#         # 2️⃣ Compute billing date = yesterday
-#         billing_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        # 2️⃣ Compute billing date = yesterday
+        billing_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
-#         print(f"Running daily billing scheduler on {billing_date} → Clients: {client_ids}")
+        print(f"Running daily billing scheduler on {billing_date} → Clients: {client_ids}")
 
-#         # 3️⃣ Call your API logic exactly as it is
-#         for cid in client_ids:
-#             print(f"→ Billing client: {cid}")
+        # 3️⃣ Call your API logic exactly as it is
+        for cid in client_ids:
+            print(f"→ Billing client: {cid}")
 
-#             req = BillingDailyRequest(
-#                 company_id=cid,
-#                 billing_date=billing_date
-#             )
+            req = BillingDailyRequest(
+                company_id=cid,
+                billing_date=billing_date
+            )
 
-#             # This calls your FULL existing logic (no changes)
-#             compute_ib_consumption(
-#                 request=req,
-#                 db=db,
-#                 db2=get_db2().__next__()
-#             )
+            # This calls your FULL existing logic (no changes)
+            compute_ib_consumption(
+                request=req,
+                db=db,
+                db2=get_db2().__next__()
+            )
 
-#     except Exception as e:
-#         print("Error in daily billing scheduler:", e)
+    except Exception as e:
+        print("Error in daily billing scheduler:", e)
 
-#     finally:
-#         try:
-#             db_gen.close()
-#         except:
-#             pass
+    finally:
+        try:
+            db_gen.close()
+        except:
+            pass
 
 
 
@@ -200,13 +202,13 @@ def scheduled_call_summary():
 # ✅ Create scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
-# scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
+scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
 scheduler.start()
 
 @app.on_event("startup")
 def on_startup():
     print("🚀 Scheduler started — Call Summary job will run daily at 9:30 PM")
-    # print("🚀 Scheduler started — Daily Billing active will run daily at 3:00 AM")
+    print("🚀 Scheduler started — Daily Billing active will run daily at 3:00 AM")
 
 @app.on_event("shutdown")
 def on_shutdown():

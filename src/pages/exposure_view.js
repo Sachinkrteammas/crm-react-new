@@ -48,6 +48,7 @@ const ExposureView = () => {
             // Map API results into dummy structure
             const formattedData = sortedClients.map((client, index) => ({
               sno: index + 1,
+              client_id: client.company_id,
               client: client.company_name,
               opening: 0,
               billed: client.Release_billing ?? 0, // 🔹 Use Release_billing here
@@ -235,6 +236,7 @@ const handleSearch = async () => {
 
       const formattedData = sortedClients.map((client, index) => ({
         sno: index + 1,
+        client_id: client.company_id,
         client: client.company_name,
         opening: 0,
         billed: client.Release_billing ?? 0, // 🔹 Use Release_billing here
@@ -268,6 +270,7 @@ const handleSearch = async () => {
 
       const formattedData = result.map((client, index) => ({
         sno: index + 1,
+        client_id: client.company_id,
         client: client.company_name || "",
         opening: 0,
         billed: client.Release_billing ?? 0, // 🔹 Use Release_billing here
@@ -300,6 +303,7 @@ const handleSearch = async () => {
 
     navigate("/InitialInvoices", {
       state: {
+        clientId: row.client_id,
         clientName: row.client,
         toBeBilled: row.toBeBilled,
         exposure: row.exposure,

@@ -401,6 +401,8 @@ def get_all_clients_rights_is_dial(
         "effective_opening_bill": round(effective_opening_billing,2),
         "Exposure_billing_vr": round(effective_opening_billing + Release_billing - consume_value, 2),
         "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
+                        if ((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent < 0
+                        else 0
         })
 
     return output
@@ -799,6 +801,8 @@ def get_clients_rights_search(
         "effective_opening_bill": round(effective_opening_billing,2),
         "Exposure_billing_vr": round(effective_opening_billing + Release_billing - consume_value, 2),
         "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
+                        if ((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent < 0
+                        else 0
     }
 
 ################### clients-effective-month get start #################

@@ -1,37 +1,125 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import api from "../api";
+import { useLocation } from "react-router-dom";
 
 const CreateInvoice = () => {
+
+  const location = useLocation();
+
+  const {
+    clientId,
+    clientName,
+    toBeBilled,
+    exposure,
+  } = location.state || {};
+
+
+
+  const [loading, setLoading] = useState(false);
+
+  const getFinancialYear = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth() + 1; // Jan = 0
+
+    // Assuming financial year is Apr–Mar
+    if (month >= 4) {
+      return `${year}-${(year + 1).toString().slice(-2)}`;
+    } else {
+      return `${year - 1}-${year.toString().slice(-2)}`;
+    }
+  };
+
   const [items, setItems] = useState([
     {
-      particulars: "Talk-Time-Tool",
-      qty: 28823,
-      rate: 0.75,
-      amount: 21617.25,
+      particulars: "Talk Time",
+      qty: Number(String(toBeBilled || 0).replace("-", "")),
+      rate: 1,
+      amount: 0,
     },
   ]);
 
+  // Compute amount whenever qty or rate changes
+  useEffect(() => {
+    setItems((prevItems) =>
+      prevItems.map((item) => ({
+        ...item,
+        amount: Number(item.qty || 0) * Number(item.rate || 0),
+      }))
+    );
+  }, [toBeBilled]);
+
   const IGST_RATE = 0.18;
 
-
-  const invoiceData = {
-    branchName: "NOIDA-DIALDESK",
-    costCenter: "BSS/OB/NOIDA-DD/777",
-    financialYear: "2025-26",
-    month: "Dec",
-    gstNo: "09AAFCM4591G1Z7",
-    vendorGstNo: "07ACHPG6366J1ZC",
+  const formatDate = (date) => {
+    const options = { day: "2-digit", month: "short", year: "numeric" };
+    return date.toLocaleDateString("en-GB", options).replace(/ /g, "-");
   };
 
-  const [billingData, setBillingData] = useState({
-    billToName: "RADIAN BOOK COMPANY",
-    billToAddress: "37, Kailash Enclave First Floor, Pitampura\nDelhi-110034",
-    shipToName: "RADIAN BOOK COMPANY",
-    shipToAddress: "37, Kailash Enclave\nFirst Floor, Pitampura\nDelhi-110034",
-    date: "23-Dec-2025",
-    dueDate: "Immediate",
-    description: "Talk-Time-Tool",
+
+  const [invoiceData, setInvoiceData] = useState({
+    branchName: "",
+    costCenter: "",
+    financialYear: getFinancialYear(),
+    month: new Date().toLocaleString("en-US", { month: "short"}),
+    gstNo: "",
+    vendorGstNo: "",
   });
 
+  const [billingData, setBillingData] = useState({
+    billToName: "",
+    billToAddress: "",
+    shipToName: "",
+    shipToAddress: "",
+    date: formatDate(new Date()),
+    dueDate: "Immediate",
+    description: "Talk Time",
+  });
+
+  
+  useEffect(() => {
+  if (!clientId) return;
+
+  const fetchCostMaster = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/cost-master/${clientId}`);
+      const record = res.data?.data?.[0];
+
+      if (!record) return;
+
+      setInvoiceData((prev) => ({
+        ...prev,
+        branchName: record.branch,
+        costCenter: record.cost_center,
+        gstNo: record.ServiceTaxNo,
+        vendorGstNo: record.VendorGSTNo,
+      }));
+
+      const address = [
+        record.b_Address1,
+        record.b_Address2,
+        record.b_Address3,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      setBillingData((prev) => ({
+        ...prev,
+        billToName: record.client.toUpperCase(),
+        shipToName: record.client.toUpperCase(),
+        billToAddress: address,
+        shipToAddress: address,
+      }));
+    } catch (err) {
+      console.error("Cost master error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchCostMaster();
+}, [clientId]);
 
   // ------------------ Calculations ------------------
   const totalAmount = items.reduce((sum, i) => sum + Number(i.amount || 0), 0);
@@ -64,7 +152,7 @@ const CreateInvoice = () => {
   };
 
   const handleSubmit = () => {
-    alert("Invoice Submitted");
+    alert("Working on Invoice Submittion..");
   };
 
   // ------------------ UI ------------------
@@ -144,30 +232,36 @@ const CreateInvoice = () => {
 
               {/* BILL TO */}
               <div className="col-md-4">
-                <div className="text-uppercase small text-muted fw-semibold mb-2">
-                  Bill To :
+                <div className="d-flex align-items-baseline mb-2">
+                  <div className="text-uppercase small text-muted fw-semibold me-2">
+                    Bill To :
+                  </div>
+                  <div className="fw-bold mb-2 text-dark">
+                    {billingData.billToName}
+                  </div>
                 </div>
-                <div className="fw-bold mb-2 text-dark">
-                  {billingData.billToName}
-                </div>
-                <div className="small text-muted lh-sm">
-                  {billingData.billToAddress.split("\n").map((line, idx) => (
-                    <div key={idx}>{line}</div>
-                  ))}
+
+                <div className="small text-muted">
+                  {billingData.billToAddress &&
+                    billingData.billToAddress.split("\n").map((line, idx) => (
+                      <div key={idx}>{line.replace(/â€“/g, "-")}</div>
+                    ))}
                 </div>
               </div>
 
               {/* SHIP TO */}
               <div className="col-md-4">
-                <div className="text-uppercase small text-muted fw-semibold mb-2">
+                <div className="d-flex align-items-baseline mb-2">
+                <div className="text-uppercase small text-muted fw-semibold me-2">
                   Ship To :
                 </div>
                 <div className="fw-bold mb-2 text-dark">
                   {billingData.shipToName}
                 </div>
-                <div className="small text-muted lh-sm">
+                </div>
+                <div className="small text-muted">
                   {billingData.shipToAddress.split("\n").map((line, idx) => (
-                    <div key={idx}>{line}</div>
+                    <div key={idx}>{line.replace(/â€“/g, "-")}</div>
                   ))}
                 </div>
               </div>
@@ -296,7 +390,7 @@ const CreateInvoice = () => {
           </div>
 
           {/* Totals */}
-        <div className="row">
+        <div className="row justify-content-center">
           <div className="col-md-4 text-start mt-7">
             <div className="card border-0 shadow-sm rounded-4">
               <div className="card-body">
