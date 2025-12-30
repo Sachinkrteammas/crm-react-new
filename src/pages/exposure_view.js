@@ -52,6 +52,7 @@ const ExposureView = () => {
               opening: 0,
               billed: client.Release_billing ?? 0, // 🔹 Use Release_billing here
               collected: client.Exposure_billing_vr ?? 0, // 🔹 Use Exposure_billing_vr here
+              effective_opening_bill: client.effective_opening_bill ?? 0,
               closing: 0,
               cpOpening: client.opening,
               cpFresh: client.fresh_release,
@@ -114,7 +115,11 @@ const handleExport = async () => {
     const totalConsume = clients.reduce((sum, c) => sum + (c.consume || 0), 0);
     const totalBalance = clients.reduce((sum, c) => sum + (c.balance || 0), 0);
 
+    const OpeningBilling = clients.reduce((sum, c) => sum + (c.Exposure_billing_vr || 0), 0);
+
     const totalBilled = clients.reduce((sum, c) => sum + (c.Release_billing || 0), 0);
+    const BillingConsume = clients.reduce((sum, c) => sum + (c.consume || 0), 0);
+
     const totalCollected = clients.reduce((sum, c) => sum + (c.Exposure_billing_vr || 0), 0);
     const totaltobebilled = clients.reduce((sum, c) => sum + (c.to_be_billed || 0), 0);
 
@@ -126,8 +131,11 @@ const handleExport = async () => {
       "Fresh Release": (client.fresh_release ?? 0).toFixed(2),
       "Consume": (client.consume ?? 0).toFixed(2),
       "Balance": (client.balance ?? 0).toFixed(2),
-      "Release Billing": (client.Release_billing ?? 0).toFixed(2),          // 🔹 Added
-      "Exposure Billing VR": (client.Exposure_billing_vr ?? 0).toFixed(2),
+
+      "OPENING BILLING": (client.effective_opening_bill ?? 0).toFixed(2),
+      "RELEASE FROM BILLING": (client.Release_billing ?? 0).toFixed(2),          // 🔹 Added
+      "CONSUMED": (client.consume ?? 0).toFixed(2),
+      "EXPOSURE": (client.Exposure_billing_vr ?? 0).toFixed(2),
       "% TO BE BILLED": (client.talktime_percent ?? 0).toFixed(2),
       "TO BE BILLED": (client.to_be_billed ?? 0).toFixed(2),
     }));
@@ -140,8 +148,10 @@ const handleExport = async () => {
       "Fresh Release": totalFresh.toFixed(2),
       "Consume": totalConsume.toFixed(2),
       "Balance": totalBalance.toFixed(2),
-      "Release Billing": totalBilled.toFixed(2),
-      "Exposure Billing VR": totalCollected.toFixed(2),
+      "OPENING BILLING": OpeningBilling.toFixed(2),
+      "RELEASE FROM BILLING": totalBilled.toFixed(2),
+      "CONSUMED": BillingConsume.toFixed(2),
+      "EXPOSURE": totalCollected.toFixed(2),
       "TO BE BILLED": totaltobebilled.toFixed(2),
     });
 
@@ -229,6 +239,7 @@ const handleSearch = async () => {
         opening: 0,
         billed: client.Release_billing ?? 0, // 🔹 Use Release_billing here
         collected: client.Exposure_billing_vr ?? 0, // 🔹 Use Exposure_billing_vr here
+        effective_opening_bill: client.effective_opening_bill ?? 0,
         closing: 0,
         cpOpening: client.opening ?? 0,
         cpFresh: client.fresh_release ?? 0,
@@ -261,6 +272,7 @@ const handleSearch = async () => {
         opening: 0,
         billed: client.Release_billing ?? 0, // 🔹 Use Release_billing here
         collected: client.Exposure_billing_vr ?? 0, // 🔹 Use Exposure_billing_vr here
+        effective_opening_bill: client.effective_opening_bill ?? 0,
         closing: 0,
         cpOpening: client.opening ?? 0,
         cpFresh: client.fresh_release ?? 0,
@@ -383,7 +395,8 @@ const handleSearch = async () => {
               <th rowSpan="2">S.NO.</th>
               <th rowSpan="2">CLIENT</th>
               {/* <th colSpan="4" className="ledger-header">LEDGER</th> */}
-              <th colSpan="6" className="credit-header">CREDIT POINT CONSUMPTION</th>
+              <th colSpan="4" className="credit-header">CREDIT POINT FOR COLLECTION</th>
+              <th colSpan="4" className="action-header">CREDIT POINT FOR BILLING</th>
               <th colSpan="4" className="action-header">PROPOSED ACTION</th>
             </tr>
             <tr>
@@ -392,14 +405,19 @@ const handleSearch = async () => {
               <th>COLLECTED</th>
               <th>CLOSING</th> */}
 
-              <th>OPENING</th>
+              <th>OPENING <span style={{ display: "block", fontSize: "12px" }}>A</span></th>
 
 
-              <th>FRESH RELEASED</th>
-              <th>CONSUMED</th>
-              <th>BALANCE</th>
-              <th>RELEASE FROM BILLING</th>
-              <th>EXPOSURE BILLING REQUIRED</th>
+              <th>FRESH RELEASED  <span style={{ display: "block", fontSize: "12px" }}>B</span></th>
+              <th>CONSUMED <span style={{ display: "block", fontSize: "12px" }}>C</span></th>
+              <th>BALANCE <span style={{ display: "block", fontSize: "12px" }}>(A+B-C)</span></th>
+
+              <th>OPENING BILLING <span style={{ display: "block", fontSize: "12px" }}>A</span></th>
+              <th>RELEASE FROM BILLING <span style={{ display: "block", fontSize: "12px" }}>B</span></th>
+              <th>CONSUMED <span style={{ display: "block", fontSize: "12px" }}>C</span></th>
+
+
+              <th>EXPOSURE <span style={{ display: "block", fontSize: "12px" }}>(A+B-C)</span></th>
 
               <th>STATUS</th>
 
@@ -430,7 +448,12 @@ const handleSearch = async () => {
                 <td className={row.cpBalance < 0 ? "negative" : ""}>
                   {row.cpBalance.toFixed(2)}
                 </td>
+
+
+                <td>{row.effective_opening_bill}</td>
                 <td>{row.billed.toFixed(2)}</td>
+                <td>{row.cpConsumed.toFixed(2)}</td>
+
                 <td>{row.collected.toFixed(2)}</td>
 
                 <td>{row.status}</td>
@@ -472,7 +495,11 @@ const handleSearch = async () => {
       <td>{data.reduce((acc, r) => acc + r.cpConsumed, 0).toFixed(2)}</td>
       <td>{data.reduce((acc, r) => acc + r.cpBalance, 0).toFixed(2)}</td>
 
+      <td>{data.reduce((acc, r) => acc + r.effective_opening_bill, 0).toFixed(2)}</td>
       <td>{data.reduce((acc, r) => acc + r.billed, 0).toFixed(2)}</td>
+      <td>{data.reduce((acc, r) => acc + r.cpConsumed, 0).toFixed(2)}</td>
+
+
       <td>{data.reduce((acc, r) => acc + r.collected, 0).toFixed(2)}</td>
       <td></td>
       <td></td>

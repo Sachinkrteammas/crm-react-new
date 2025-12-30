@@ -134,7 +134,7 @@ def get_all_clients_rights_is_dial(
 
         release_query_billing = text("""select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
             ti WHERE ti.cost_center IN (
-                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = '301'
+                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
                         )
                         AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND 
                         DATE(:start_date)  AND Category IN ('talktime','subscription') group by Category""")
@@ -221,14 +221,15 @@ def get_all_clients_rights_is_dial(
             ############################  Krishna ####################################################
             bill_query_billing = text(""" select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
             ti WHERE ti.cost_center IN (
-                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = '301'
+                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
                         )
                         AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date  
                         AND Category IN ('talktime','subscription') group by Category""")
             bill_rows_billing = db.execute(bill_query_billing, {
                 "cost_center": cost_center,
                 "start_date": start_date,
-                "end_date": end_date
+                "end_date": end_date,
+                "client_id": client_id
             }).fetchall()
 
             for b in bill_rows_billing:
@@ -397,7 +398,7 @@ def get_all_clients_rights_is_dial(
                 2
             ),
 
-        "effective_opening_bill": effective_opening_billing,
+        "effective_opening_bill": round(effective_opening_billing,2),
         "Exposure_billing_vr": round(effective_opening_billing + Release_billing - consume_value, 2),
         "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
         })
@@ -503,7 +504,7 @@ def get_clients_rights_search(
 
     release_query_billing = text("""select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
     ti WHERE ti.cost_center IN (
-                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = '301'
+                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
                 )
                 AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND 
                 DATE(:start_date)  AND Category IN ('talktime','subscription') group by Category""")
@@ -572,7 +573,7 @@ def get_clients_rights_search(
     """)
     opening_row = db.execute(opening_query, {
         "client_id": client_id,
-        "start_date": start_date
+        "start_date": start_date,
     }).fetchone()
 
     opening = float(opening_row.dynamic_opening or 0)
@@ -614,14 +615,15 @@ def get_clients_rights_search(
 ############################  Krishna ####################################################
         bill_query_billing = text(""" select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
     ti WHERE ti.cost_center IN (
-                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = '301'
+                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
                 )
                 AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date  
                 AND Category IN ('talktime','subscription') group by Category""")
         bill_rows_billing = db.execute(bill_query_billing, {
             "cost_center": cost_center,
             "start_date": start_date,
-            "end_date": end_date
+            "end_date": end_date,
+            "client_id": client_id
         }).fetchall()
 
         for b in bill_rows_billing:
@@ -794,7 +796,7 @@ def get_clients_rights_search(
             (total_subscription_value * (credit_percent / 100)),
             2
         ),
-        "effective_opening_bill": effective_opening_billing,
+        "effective_opening_bill": round(effective_opening_billing,2),
         "Exposure_billing_vr": round(effective_opening_billing + Release_billing - consume_value, 2),
         "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
     }
