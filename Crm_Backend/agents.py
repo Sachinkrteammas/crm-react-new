@@ -93,7 +93,7 @@ def get_all_clients_rights_is_dial(
                     WHERE ti.cost_center IN (
                             SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
                     AND DATE(ti.invoiceDate) >='2025-09-01'
-                    AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)
+                    AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)-1
                     GROUP BY
                         ti.bill_no,
 
@@ -137,7 +137,7 @@ def get_all_clients_rights_is_dial(
                             SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
                         )
                         AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND 
-                        DATE(:start_date)  AND Category IN ('talktime','subscription') group by Category""")
+                        DATE(:start_date)-1  AND Category IN ('talktime','subscription') group by Category""")
 
         release_rows_billing = db.execute(
             release_query_billing,
@@ -464,7 +464,7 @@ def get_clients_rights_search(
             WHERE ti.cost_center IN (
                     SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
             AND DATE(ti.invoiceDate) >='2025-09-01'
-            AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)
+            AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)-1
             GROUP BY
                 ti.bill_no,
              
@@ -509,7 +509,7 @@ def get_clients_rights_search(
                     SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
                 )
                 AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND 
-                DATE(:start_date)  AND Category IN ('talktime','subscription') group by Category""")
+                DATE(:start_date)-1  AND Category IN ('talktime','subscription') group by Category""")
 
     release_rows_billing = db.execute(
         release_query_billing,
