@@ -128,6 +128,8 @@ import ResetPassword from "./pages/Reset_password";
 import UsageSummary from "./pages/Usage_summary";
 import StatementSummary from "./pages/statement_summary";
 import CreateInvoice from "./pages/Invoice";
+import CustomerDateWiseDensity from "./pages/customer_date_wise_density_of_calls";
+// import SLAClientWise from "./pages/SLA_client_wise";
 
 
 
@@ -367,6 +369,8 @@ function App() {
               <Route path="/usage_summary" element={<UsageSummary />} />
               <Route path="/statement_summary" element={<StatementSummary />} />
               <Route path="/InitialInvoices" element={<CreateInvoice />} />
+              <Route path="/AbandonReports/customer_wise" element={<CustomerDateWiseDensity />} />
+              {/* <Route path="/CdrReports/dd_clientwise" element={<SLAClientWise />} /> */}
               
           </Route>
       </Route>

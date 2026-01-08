@@ -53,6 +53,7 @@ from forgot_password import router as forgot_password_router
 from usage_summary import router as usage_summary_router
 from statement_summary import router as statement_summary_router
 from invoice import router as invoice_router
+from customer_date_wise_density_of_calls import router as customer_date_wise_density_of_calls_router
 
 
 
@@ -111,6 +112,7 @@ app.include_router(forgot_password_router, tags=["Forgot Password"])
 app.include_router(usage_summary_router, tags=["Usage Summary"])
 app.include_router(statement_summary_router, tags=["Statement Summary"])
 app.include_router(invoice_router, tags=["Invoice"])
+app.include_router(customer_date_wise_density_of_calls_router, tags=["Customere Date wise density"])
 
 
 
