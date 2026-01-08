@@ -109,6 +109,7 @@ import ExportMisFiles from "./pages/Export_mis_files";
 import OutCallManageMISReports from "./pages/OutCallManageMISReports";
 import OutMasterFieldMapping from "./pages/OutMasterFieldMapping";
 import OutCallSummaryReports from "./pages/OutCallSummaryReports";
+import OutCallSummaryReportsAutomation from "./pages/OutCallSummaryReportsAutomation";
 import OutCallReportAutomation from "./pages/OutCallReportAutomation";
 import ScenarioReportAutomation from "./pages/ScenarioReportAutomation";
 import ManageOutCallCloseField from "./pages/ManageOutCallCloseField";
@@ -347,6 +348,7 @@ function App() {
               <Route path="/MisAndReportMatrixs/ob_matrix"  element={<OutCallManageMISReports />} />
               <Route path="/MasterField"  element={<OutMasterFieldMapping />} />
               <Route path="/ScenarioAutomates/call_summary_out" element={<OutCallSummaryReports />} />
+              <Route path="/ScenarioAutomates" element={<OutCallSummaryReportsAutomation />} />
               <Route path="/OutCallAutomation" element={<OutCallReportAutomation />} />
               <Route path="/ScenarioReportAutomation" element={<ScenarioReportAutomation />} />
               <Route path="/ObcloseFields" element={<ManageOutCallCloseField />} />

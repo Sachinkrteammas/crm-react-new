@@ -1,36 +1,38 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import api from "../api";
 
-export default function OutCallAutomation() {
+export default function OutCallSummaryReports() {
+  const userType = localStorage.getItem("user_type");
+  const companyId = Number(localStorage.getItem("company_id"));
+
+  const isAdmin = userType === "Super-Admin" || userType === "Admin";
+
   const [clients, setClients] = useState([]);
-  const [campaigns, setCampaigns] = useState([]);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    client: "",
-    campaign: "",
+    client: isAdmin ? "" : companyId, // ✅ FIX
     to: "",
     cc: "",
     remarks: "",
   });
 
-  const activeClientId = formData.client;
+  const activeClientId = isAdmin ? formData.client : companyId;
 
   /* ---------------- FETCH CLIENTS ---------------- */
   useEffect(() => {
+    if (!isAdmin) return;
+
     const fetchClients = async () => {
       try {
         const res = await api.get("/agents/clients-rights");
-
-        // Sort alphabetically
         const sorted = res.data.sort((a, b) =>
           a.company_name.localeCompare(b.company_name)
         );
 
         setClients(sorted);
 
-        // auto-select first client
         if (sorted.length > 0) {
           setFormData((p) => ({
             ...p,
@@ -39,98 +41,68 @@ export default function OutCallAutomation() {
         }
       } catch (err) {
         console.error("Client fetch failed", err);
-        alert("Unable to load clients");
       }
     };
 
     fetchClients();
-  }, []);
+  }, [isAdmin]);
 
-  /* ---------------- FETCH CAMPAIGNS ---------------- */
-  useEffect(() => {
+  /* ---------------- FETCH LIST ---------------- */
+  const fetchRecords = async () => {
     if (!activeClientId) return;
 
-    const fetchCampaigns = async () => {
-      try {
-        const res = await api.get(
-          "/allocations/all-campaigns-with-company",
-          {
-            params: { company_id: activeClientId },
-          }
-        );
-        setCampaigns(res.data || []);
-      } catch (err) {
-        console.error("Campaign fetch failed", err);
-      }
-    };
+    try {
+      const res = await api.get("/allocations", {
+        params: {
+          report_type: "call_summary",
+          client: activeClientId, // ✅ FILTER
+        },
+      });
+      setRecords(res.data || []);
+    } catch (err) {
+      console.error("Failed to fetch list", err);
+    }
+  };
 
-    fetchCampaigns();
-  }, [activeClientId]);
-
-  /* ---------------- FETCH SAVED RECORDS ---------------- */
   useEffect(() => {
-    if (!activeClientId) return;
-
-    const fetchRecords = async () => {
-      try {
-        const res = await api.get(
-          "/allocations/list_outcall_automation",
-          {
-            params: { client: activeClientId },
-          }
-        );
-        setRecords(res.data || []);
-      } catch (err) {
-        console.error("Records fetch failed", err);
-      }
-    };
-
     fetchRecords();
   }, [activeClientId]);
 
   /* ---------------- HANDLE CHANGE ---------------- */
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   /* ---------------- SAVE ---------------- */
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!activeClientId || !formData.campaign || !formData.to) {
-      alert("Client, Campaign and To are required");
+    if (!activeClientId) {
+      alert("Client missing");
       return;
     }
 
     setLoading(true);
+
     try {
-      await api.post("/allocations/save_outcall_automation", {
-        company_id: activeClientId,
-        campaign_name: formData.campaign,
-        to: formData.to,
-        cc: formData.cc,
-        remarks: formData.remarks,
-      });
+      const payload = {
+        ...formData,
+        client: activeClientId,
+        created_by: companyId || activeClientId, // ✅ NEVER NULL
+      };
+
+      await api.post("/allocations/call-summary-out", payload);
 
       alert("✅ Saved successfully");
 
       setFormData((p) => ({
         ...p,
-        campaign: "",
         to: "",
         cc: "",
         remarks: "",
       }));
 
-      // refresh list
-      const res = await api.get(
-        "/allocations/list_outcall_automation",
-        {
-          params: { client: activeClientId },
-        }
-      );
-      setRecords(res.data || []);
+      fetchRecords();
     } catch (err) {
       console.error(err);
       alert("❌ Failed to save");
@@ -144,7 +116,7 @@ export default function OutCallAutomation() {
     if (!window.confirm("Delete this record?")) return;
 
     try {
-      await api.delete(`/allocations/delete_outcall_automation/${id}`);
+      await api.delete(`/allocations/${id}`);
       setRecords((p) => p.filter((r) => r.id !== id));
     } catch (err) {
       console.error(err);
@@ -157,50 +129,31 @@ export default function OutCallAutomation() {
       {/* FORM */}
       <div className="card shadow-sm mb-4">
         <div className="card-header fw-semibold">
-          Out Call Report Automation
+          Scenario Report Automation
         </div>
 
         <div className="card-body">
           <form onSubmit={handleSubmit}>
             <div className="row g-3">
-              {/* Client */}
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Client</label>
-                <select
-                  name="client"
-                  value={formData.client}
-                  onChange={handleChange}
-                  className="form-select"
-                  required
-                >
-                  {clients.map((c) => (
-                    <option key={c.company_id} value={c.company_id}>
-                      {c.company_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {isAdmin && (
+                <div className="col-md-4">
+                  <label className="form-label fw-semibold">Client</label>
+                  <select
+                    name="client"
+                    value={formData.client}
+                    onChange={handleChange}
+                    className="form-select"
+                    required
+                  >
+                    {clients.map((c) => (
+                      <option key={c.company_id} value={c.company_id}>
+                        {c.company_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {/* Campaign */}
-              <div className="col-md-4">
-                <label className="form-label fw-semibold">Campaign</label>
-                <select
-                  name="campaign"
-                  value={formData.campaign}
-                  onChange={handleChange}
-                  className="form-select"
-                  required
-                >
-                  <option value="">Select Campaign</option>
-                  {campaigns.map((c, i) => (
-                    <option key={i} value={c.campaign}>
-                      {c.campaign}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* To */}
               <div className="col-md-4">
                 <label className="form-label fw-semibold">To</label>
                 <input
@@ -213,19 +166,18 @@ export default function OutCallAutomation() {
                 />
               </div>
 
-              {/* CC */}
               <div className="col-md-4">
                 <label className="form-label fw-semibold">CC</label>
                 <input
                   type="text"
                   name="cc"
+                  placeholder="comma separated emails"
                   value={formData.cc}
                   onChange={handleChange}
                   className="form-control"
                 />
               </div>
 
-              {/* Remarks */}
               <div className="col-md-4">
                 <label className="form-label fw-semibold">Remarks</label>
                 <textarea
@@ -233,12 +185,11 @@ export default function OutCallAutomation() {
                   value={formData.remarks}
                   onChange={handleChange}
                   className="form-control"
-                  rows="3"
                 />
               </div>
             </div>
 
-            <div className="text-center mt-4">
+            <div className="mt-3 text-center">
               <button className="btn btn-primary" disabled={loading}>
                 {loading ? "Saving..." : "Submit"}
               </button>
@@ -249,9 +200,7 @@ export default function OutCallAutomation() {
 
       {/* LIST */}
       <div className="card shadow-sm">
-        <div className="card-header fw-semibold">
-          Saved Out Call Automations
-        </div>
+        <div className="card-header fw-semibold">Saved Call Summaries</div>
 
         <div className="table-responsive">
           <table className="table table-bordered table-hover mb-0">
@@ -259,7 +208,6 @@ export default function OutCallAutomation() {
               <tr className="text-center">
                 <th>#</th>
                 <th>Client</th>
-                <th>Campaign</th>
                 <th>To</th>
                 <th>CC</th>
                 <th>Remarks</th>
@@ -270,7 +218,7 @@ export default function OutCallAutomation() {
             <tbody>
               {records.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center">
+                  <td colSpan="7" className="text-center">
                     No records found
                   </td>
                 </tr>
@@ -279,10 +227,9 @@ export default function OutCallAutomation() {
                   <tr key={r.id} className="text-center">
                     <td>{i + 1}</td>
                     <td>{r.client_name}</td>
-                    <td>{r.campaign_name || "-"}</td>
-                    <td>{r.to || "-"}</td>
-                    <td>{r.cc || "-"}</td>
-                    <td>{r.remarks || "-"}</td>
+                    <td>{r.to}</td>
+                    <td>{r.cc}</td>
+                    <td>{r.remarks}</td>
                     <td>{new Date(r.created_at).toLocaleString("en-IN")}</td>
                     <td>
                       <button
