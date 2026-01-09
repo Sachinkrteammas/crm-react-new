@@ -226,6 +226,8 @@ class CDRReportResponse(BaseModel):
     term_reason: Optional[str]
     xfercallid: Optional[int]
 
+    CallType: Optional[str]
+
     Category1: Optional[str]
     Category2: Optional[str]
     Category3: Optional[str]

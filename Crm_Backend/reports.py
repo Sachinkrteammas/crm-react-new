@@ -237,7 +237,14 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
     # 3. Scenario/Category data (two queries, same as PHP)
     # -----------------------------------------------------------------
     scenario_query1 = text("""
-        SELECT * FROM call_master cm
+        SELECT  LeadId,
+    Category1,
+    Category2,
+    Category3,
+    Category4,
+    Category5,
+    CallType,
+    Field9 AS SourceField FROM call_master cm
         WHERE DATE(cm.calldate) BETWEEN :from_date AND :to_date
     """)
     scenario_data1 = db.execute(scenario_query1, {
@@ -269,22 +276,33 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
 
         scenario = scenario_map.get(lead_id)
         if scenario:
+            if request.company_id == 605:
+                source_value = scenario.get("SourceField")
+            else:
+                source_value = "Other_client"
+
             enriched_row.update({
                 "Category1": scenario.get("Category1"),
                 "Category2": scenario.get("Category2"),
                 "Category3": scenario.get("Category3"),
                 "Category4": scenario.get("Category4"),
                 "Category5": scenario.get("Category5"),
-                "Source": scenario.get("Source"),
+                "Source": source_value,
+                "CallType": scenario.get("CallType"),
             })
         else:
+            if request.company_id == 605:
+                source_value = None
+            else:
+                source_value = "Other_client"
             enriched_row.update({
                 "Category1": None,
                 "Category2": None,
                 "Category3": None,
                 "Category4": None,
                 "Category5": None,
-                "Source": None,
+                "Source": source_value,
+                "CallType": None
             })
 
         # ✅ Generate recording link using leadid and agent

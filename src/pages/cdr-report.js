@@ -44,100 +44,192 @@ const handleEndDateChange = (date) => {
   setEndDate(formatDate(date));
 };
 
+
+
+  // Helper: convert ISO 8601 duration (PT1M15S) to HH:MM:SS
+function isoDurationToHHMMSS(duration) {
+    if (!duration) return "00:00:00";
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!match) return "00:00:00";
+    const hours = parseInt(match[1] || 0);
+    const minutes = parseInt(match[2] || 0);
+    const seconds = parseInt(match[3] || 0);
+    return [hours, minutes, seconds]
+        .map((x) => x.toString().padStart(2, "0"))
+        .join(":");
+}
+
+// Helper: sum multiple HH:MM:SS durations
+function sumDurations(...durations) {
+    let totalSeconds = 0;
+    durations.forEach((d) => {
+        const parts = d.split(":").map(Number);
+        totalSeconds += parts[0] * 3600 + parts[1] * 60 + parts[2];
+    });
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    return [h, m, s].map((x) => x.toString().padStart(2, "0")).join(":");
+}
+
   const handleViewClick = async () => {
-        setLoading(true);
-        try {
-            const payload = {
-                from_date: startDate,
-                to_date: endDate,
-                company_id:
-                  userType === "Client"
-                    ? companyId
-                    : selectedClient // from dropdown
-                  };
+    setLoading(true);
 
-            const response = await fetchCDRReport(payload);
+    try {
+        const payload = {
+            from_date: startDate,
+            to_date: endDate,
+            company_id: userType === "Client" ? companyId : selectedClient,
+        };
 
-            const formatted = response.map((row) => ({
+        const response = await fetchCDRReport(payload);
+
+        const formatted = response.map((row) => {
+            const callDuration = isoDurationToHHMMSS(row.call_duration);
+            const queueDuration = isoDurationToHHMMSS(row.queuetime);
+            const holdTime = isoDurationToHHMMSS(row.parked_time);
+            const talkDuration = isoDurationToHHMMSS(row.call_duration);
+            const acwDuration = isoDurationToHHMMSS(row.wrap_time);
+
+            return {
                 agent: row.agent,
                 phone: row.phone_number,
                 callDate: row.call_date,
-                queueTime: row.queuetime,
                 startTimeQueue: row.queue_start,
                 startTime: row.start_time,
                 endTime: row.end_time,
                 endTimeWrap: row.wrap_end_time,
+
+                queueTime: queueDuration,
                 callDurationSec: row.call_duration1,
-                callDurationTime: row.call_duration,
-                wrapTime: row.wrap_time,
-                holdTime: row.parked_time,
+                callDurationTime: callDuration,
+                wrapTime: acwDuration,
+                holdTime: holdTime,
+                talkDuration: talkDuration,
+                totalHandledTime: sumDurations(talkDuration, acwDuration, holdTime),
 
                 Category1: row.Category1,
                 Category2: row.Category2,
                 Category3: row.Category3,
                 Category4: row.Category4,
                 Category5: row.Category5,
-                Source: row.Source ?? row.campaign_id,
+
                 Recording: row.Recording
                     ? row.Recording
                     : `http://your-server.com/recordings/${row.uniqueid}.wav`,
-            }));
+            };
+        });
 
-            setSampleData(formatted);
-            setShowTable(true);
-        } catch (err) {
-            console.error("Failed to fetch report", err);
-        } finally {
-            setLoading(false);
+        setSampleData(formatted);
+        setShowTable(true);
+
+    } catch (err) {
+        console.error("Failed to fetch report", err);
+    } finally {
+        setLoading(false);
+    }
+};
+
+
+
+
+const handleExport = async () => {
+    setLoading(true);
+
+    try {
+        const payload = {
+            from_date: startDate,
+            to_date: endDate,
+            company_id: userType === "Client" ? companyId : selectedClient,
+        };
+
+        // 🔹 API call
+        const response = await fetchCDRReport(payload);
+
+        // 🔹 Format response for Excel
+        const formatted = response.map((row) => {
+            const callDuration = isoDurationToHHMMSS(row.call_duration);
+            const queueDuration = isoDurationToHHMMSS(row.queuetime);
+            const holdTime = isoDurationToHHMMSS(row.parked_time);
+            const talkDuration = isoDurationToHHMMSS(row.call_duration);
+            const acwDuration = isoDurationToHHMMSS(row.wrap_time);
+
+            return {
+                CallDate: row.call_date,
+                Time: row.start_time,
+                AgentId: row.agent,
+                AgentName: row.full_name,
+                Calltype: row.CallType,
+                CampaignName: row.campaign_id,
+                PhoneNumber: row.phone_number,
+                Disposition: row.Category1,
+                DisconnBy: row.term_reason,
+                CallDurationSecond: row.call_duration1,
+                CallDurationMinute: callDuration,
+                QueueDuration: queueDuration,
+                HoldTime: holdTime,
+                Talkduration: talkDuration,
+                AcwDuration: acwDuration,
+                HoursSlot: "00:00:00", // optional: calculate if needed
+                TotalHandledTime: sumDurations(talkDuration, acwDuration, holdTime),
+                Call20SecSL: row.call20,
+                EndTime: row.end_time,
+                CallTransferId: row.xfercallid,
+                Scenario: row.Category1,
+                SubScenario1: row.Category2,
+                SubScenario2: row.Category3,
+                SubScenario3: row.Category4,
+                SubScenario4: row.Category5,
+                Source: row.Source === "Other_client"
+                    ? (row.Source ?? row.campaign_id)
+                    : row.Source,
+                RecordingUrl: row.Recording
+                    ? row.Recording
+                    : `http://your-server.com/recordings/${row.uniqueid}.wav`,
+            };
+        });
+
+        // 🔹 Create Excel
+        const worksheet = XLSX.utils.json_to_sheet(formatted);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "CDR Report");
+
+        const excelBuffer = XLSX.write(workbook, {
+            bookType: "xlsx",
+            type: "array",
+        });
+
+        const file = new Blob([excelBuffer], {
+            type: "application/octet-stream",
+        });
+
+        // 🔹 File name
+        let companyName = "Company";
+        if (userType === "Client") {
+            companyName = clientName || "Company";
+        } else {
+            const selected = clients.find(
+                (c) => String(c.company_id) === String(selectedClient)
+            );
+            companyName = selected?.company_name || "Company";
         }
-  };
+
+        const safeCompanyName = companyName.substring(0, 6);
+        const from = startDate || "from";
+        const to = endDate || "to";
+        const fileName = `${safeCompanyName}_CDR_Report_${from}_to_${to}.xlsx`;
+
+        saveAs(file, fileName);
+
+    } catch (error) {
+        console.error("Excel export failed", error);
+        alert("Failed to generate Excel report");
+    } finally {
+        setLoading(false);
+    }
+};
 
 
-  const handleExport = () => {
-      if (sampleData.length === 0) {
-        alert("No data to export.");
-        return;
-      }
-
-      // ✅ Decide company name (NO return here)
-      let companyName = "Company";
-
-      if (userType === "Client") {
-        companyName = clientName || "Company";
-      } else {
-        const selected = clients.find(
-          (c) => String(c.company_id) === String(selectedClient)
-        );
-        companyName = selected?.company_name || "Company";
-      }
-
-      // Create a worksheet
-      const worksheet = XLSX.utils.json_to_sheet(sampleData);
-
-      // Create a new workbook and append the worksheet
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-
-      // Generate a buffer
-      const excelBuffer = XLSX.write(workbook, {
-        bookType: "xlsx",
-        type: "array",
-      });
-
-      // Save file
-      const file = new Blob([excelBuffer], {
-        type: "application/octet-stream",
-      });
-
-      // ✅ Safe filename
-      const safeCompanyName = companyName.substring(0, 6);
-      const from = startDate || "from";
-      const to = endDate || "to";
-
-      const fileName = `${safeCompanyName}_CDR_Report_${from}_to_${to}.xlsx`;
-
-      saveAs(file, fileName);
-  };
 
   // ✅ Fetch clients (Super-Admin/Admin only)
     useEffect(() => {
@@ -290,7 +382,6 @@ const handleEndDateChange = (date) => {
                 <th>Sub Scenario 2</th>
                 <th>Sub Scenario 3</th>
                 <th>Sub Scenario 4</th>
-                <th>Source</th>
                 <th>Recording</th>
               </tr>
             </thead>
@@ -315,7 +406,6 @@ const handleEndDateChange = (date) => {
                   <td>{row.Category3}</td>
                   <td>{row.Category4}</td>
                   <td>{row.Category5}</td>
-                  <td>{row.Source}</td>
                   <td>
                     <a 
                       href={row.Recording} 
