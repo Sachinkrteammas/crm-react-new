@@ -54,6 +54,7 @@ from usage_summary import router as usage_summary_router
 from statement_summary import router as statement_summary_router
 from invoice import router as invoice_router
 from customer_date_wise_density_of_calls import router as customer_date_wise_density_of_calls_router
+from SLA_client_wise import router as SLA_client_wise_router
 
 
 
@@ -113,6 +114,7 @@ app.include_router(usage_summary_router, tags=["Usage Summary"])
 app.include_router(statement_summary_router, tags=["Statement Summary"])
 app.include_router(invoice_router, tags=["Invoice"])
 app.include_router(customer_date_wise_density_of_calls_router, tags=["Customere Date wise density"])
+app.include_router(SLA_client_wise_router, tags=["SLA Client Wise"])
 
 
 
@@ -169,7 +171,8 @@ def scheduled_daily_billing():
             return
 
         # 2️⃣ Compute billing date = yesterday
-        billing_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        # billing_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        billing_date = '2026-01-08'
 
         print(f"Running daily billing scheduler on {billing_date} → Clients: {client_ids}")
 
@@ -182,12 +185,21 @@ def scheduled_daily_billing():
                 billing_date=billing_date
             )
 
-            # This calls your FULL existing logic (no changes)
-            compute_ib_consumption(
-                request=req,
-                db=db,
-                db2=get_db2().__next__()
-            )
+            db2_gen = None
+            try:
+                db2_gen = get_db2()
+                db2 = next(db2_gen)
+
+                # This calls your FULL existing logic (no changes)
+                compute_ib_consumption(
+                    request=req,
+                    db=db,
+                    db2=db2
+                )
+            
+            finally:
+                if db2_gen:
+                    db2_gen.close()
 
     except Exception as e:
         print("Error in daily billing scheduler:", e)
@@ -204,7 +216,7 @@ def scheduled_daily_billing():
 # ✅ Create scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
-scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
+scheduler.add_job(scheduled_daily_billing, "cron", hour=18, minute=26)   # every day 3:00 AM
 scheduler.start()
 
 @app.on_event("startup")
