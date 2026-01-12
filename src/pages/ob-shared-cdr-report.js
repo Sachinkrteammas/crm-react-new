@@ -54,56 +54,68 @@ const OBSharedCDRReport = () => {
     };
 
 
-  const handleExport = () => {
-      if (cdrData.length === 0) {
-        alert("No data to export.");
-        return;
-      }
+  const handleExport = async () => {
+  setLoading(true);
 
-      
-      // ✅ Decide company name (NO return here)
-      let companyName = "Company";
+  try {
+    const payload = {
+      company_id: userType === "Client" ? companyId : selectedClient,
+      from_date: startDate ? startDate.toLocaleDateString("en-CA") : null,
+      to_date: endDate ? endDate.toLocaleDateString("en-CA") : null,
+    };
 
-      if (userType === "Client") {
-        companyName = clientName || "Company";
-      } else {
-        const selected = clients.find(
-          (c) => String(c.company_id) === String(selectedClient)
-        );
-        companyName = selected?.company_name || "Company";
-      }
-      // ✅ Format dates for filename
-      const formatDateForFile = (date) =>
-        date ? date.toLocaleDateString("en-CA") : "NA";
+    const response = await getOBSharedCDRReport(payload);
 
-      const from = formatDateForFile(startDate);
-      const to = formatDateForFile(endDate);
+    const exportData = response?.status === "success" ? response.data : [];
 
-      // Create a worksheet
-      const worksheet = XLSX.utils.json_to_sheet(cdrData);
+    if (!Array.isArray(exportData) || exportData.length === 0) {
+      alert("No data to export.");
+      return;
+    }
 
-      // Create a new workbook and append the worksheet
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+    let companyName = "Company";
 
-      // Generate a buffer
-      const excelBuffer = XLSX.write(workbook, {
-        bookType: "xlsx",
-        type: "array",
-      });
+    if (userType === "Client") {
+      companyName = clientName || "Company";
+    } else {
+      const selected = clients.find(
+        (c) => String(c.company_id) === String(selectedClient)
+      );
+      companyName = selected?.company_name || "Company";
+    }
 
-      // Save file
-      const file = new Blob([excelBuffer], {
-        type: "application/octet-stream",
-      });
+    const formatDateForFile = (date) =>
+      date ? date.toLocaleDateString("en-CA") : "NA";
 
-      // ✅ Safe filename
-      const safeCompanyName = companyName.substring(0, 6);
+    const from = formatDateForFile(startDate);
+    const to = formatDateForFile(endDate);
 
-      const fileName = `${safeCompanyName}_Ob_shared_cdr_report_${from}_to_${to}.xlsx`;
+    // ✅ Create Excel
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
 
-      saveAs(file, fileName);
-  };
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    const file = new Blob([excelBuffer], {
+      type: "application/octet-stream",
+    });
+
+    const safeCompanyName = companyName.substring(0, 6);
+    const fileName = `${safeCompanyName}_Ob_shared_cdr_report_${from}_to_${to}.xlsx`;
+
+    saveAs(file, fileName);
+
+  } catch (error) {
+    console.error("Export failed:", error);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // ✅ Fetch clients (Super-Admin/Admin only)
     useEffect(() => {
