@@ -50,6 +50,7 @@ def get_dashboard_report(
           COUNT(DISTINCT(t2.phone_number))   AS `Unique`,
           SUM(IF(t2.user <> 'VDCL',1,0))     AS Answered,
           SUM(IF(t2.user =  'VDCL',1,0))     AS Abandon,
+          COUNT(DISTINCT CASE WHEN t2.user = 'VDCL' THEN t2.phone_number END) AS Unique_abandon,
           DATE(t2.call_date)                 AS gdate
         FROM asterisk.vicidial_closer_log t2
         LEFT JOIN asterisk.vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid  AND t2.user=t3.user
@@ -78,6 +79,7 @@ def get_dashboard_report(
             Unique=r["Unique"] or 0,
             Answered=r["Answered"] or 0,
             Abandon=r["Abandon"] or 0,
+            Unique_abandon=r["Unique_abandon"] or 0,
             gdate=g
         ))
 

@@ -35,6 +35,7 @@ const Dashboard = () => {
     unique: 0,
     answered: 0,
     abandon: 0,
+    Unique_abandon: 0,
     tagged: 0,
     abandon_callback: 0,
   });
@@ -171,6 +172,7 @@ const Dashboard = () => {
 
       const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
       const abandon = days.reduce((sum, d) => sum + (d.Abandon ?? 0), 0);
+      const Unique_abandon = days.reduce((sum, d) => sum + (d.Unique_abandon ?? 0), 0);
       const total = days.reduce((sum, d) => sum + (d.Total ?? 0), 0);
       const unique = days.reduce((sum, d) => sum + (d.Unique ?? 0), 0);
 
@@ -179,6 +181,7 @@ const Dashboard = () => {
         unique,
         answered,
         abandon,
+        Unique_abandon,
         tagged: total_tagged,
         abandon_callback: total_abandon_cb,
       });
@@ -404,22 +407,6 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <div className="col">
-                <div className="card h-100">
-                  <div className="card-body d-flex flex-column justify-content-between">
-                    <div className="d-flex align-items-center justify-content-between mb-1">
-                      <div className="badge p-2 bg-label-success rounded">
-                        <i className="icon-base ti tabler-user icon-28px"></i>
-                      </div>
-                      <small className="text-success fw-medium">+20.6%</small>
-                    </div>
-                    <h5 className="card-title mb-1">Unique Calls</h5>
-                    <h4 className="mb-0">
-                      {dashboardData.unique.toLocaleString()}
-                    </h4>
-                  </div>
-                </div>
-              </div>
 
               <div className="col">
                 <div className="card h-100">
@@ -448,13 +435,30 @@ const Dashboard = () => {
                       </div>
                       <small className="text-danger fw-medium">-16.2%</small>
                     </div>
-                    <h5 className="card-title mb-1">Abandon Calls</h5>
+                    <h5 className="card-title mb-1">Abandon Offered Calls</h5>
                     <h4 className="mb-0">
                       {dashboardData.abandon.toLocaleString()}
                     </h4>
                   </div>
                 </div>
               </div>
+
+              <div className="col">
+                <div className="card h-100">
+                  <div className="card-body d-flex flex-column justify-content-between">
+                    <div className="d-flex align-items-center justify-content-between mb-1">
+                      <div className="badge p-2 bg-label-success rounded">
+                        <i className="icon-base ti tabler-user icon-28px"></i>
+                      </div>
+                      <small className="text-success fw-medium">+20.6%</small>
+                    </div>
+                    <h5 className="card-title mb-1">Unique Abandon Calls</h5>
+                    <h4 className="mb-0">
+                      {dashboardData.Unique_abandon.toLocaleString()}
+                    </h4>
+                  </div>
+                </div>
+              </div>              
 
               {/* Total Profit */}
               <div className="col">

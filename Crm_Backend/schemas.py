@@ -313,6 +313,7 @@ class DashboardDay(BaseModel):
     Unique:   int
     Answered: int
     Abandon:  int
+    Unique_abandon:  int
     gdate:    str
 
 class DashboardFullResp(BaseModel):
