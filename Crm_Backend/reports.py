@@ -583,7 +583,7 @@ def get_ob_shared_cdr_report(
             DATE(t2.call_date) AS call_date,
             FROM_UNIXTIME(t2.start_epoch) AS start_time,
             FROM_UNIXTIME(t2.end_epoch) AS end_time,
-            t2.phone_number,
+            LEFT(t2.phone_number,10) AS phone_number,
             t2.user AS agent_id,
             t4.full_name AS agent_name,
             IF(t2.user='VDAD','Not Connected','Connected') AS call_type,
@@ -599,8 +599,9 @@ def get_ob_shared_cdr_report(
         FROM vicidial_log t2
         LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
         LEFT JOIN vicidial_users t4 ON t2.user = t4.user
-        WHERE t2.campaign_id IN :campaign_ids
+        WHERE t2.campaign_id = 'dialdesk'
           AND DATE(t2.call_date) BETWEEN :from_dt AND :to_dt
+          AND t2.lead_id IS NOT NULL
     """)
 
     cdr_rows = db2.execute(
@@ -624,8 +625,12 @@ def get_ob_shared_cdr_report(
         "from_dt": from_dt,
         "to_dt": to_dt
     }).mappings().all()
-    aband_map = {(row["PhoneNo"], str(row["CallDate"])): row["CompanyName"] for row in aband_rows}
+    aband_map = {
+        (str(row["PhoneNo"])[-10:], str(row["CallDate"])): row["CompanyName"]
+        for row in aband_rows
+    }
 
+    print(aband_map,"aband_map")
     # Step 4: Call master lookup (for SubScenarios)
     call_master_query = text("""
         SELECT LeadId, Category1, Category2, Category3, Category4
@@ -642,38 +647,46 @@ def get_ob_shared_cdr_report(
 
     # Step 5: Format output
     response_data = []
+
     for row in cdr_rows:
+        phone = str(row["phone_number"])[-10:]
+        call_date = str(row["call_date"])
+
+        client_name = aband_map.get((phone, call_date))
+        if not client_name:
+            continue
+
         lead_id = row["lead_id"]
         cm = call_master_map.get(lead_id)
 
-        record = {
+        response_data.append({
             "CallDate": row["call_date"],
             "StartTime": row["start_time"],
             "Endtime": row["end_time"],
-            "CustomerNumber": row["phone_number"],
+            "CustomerNumber": phone,
             "AgentID": row["agent_id"],
             "AgentName": row["agent_name"],
-            "CallType": row["call_type"],                 # Connected / Not Connected
-            "SystemDisposition": row["call_status"],      # vicidial status
-            "DialingMode": row["dial_mode"],              # Auto / Mannual
-            "ClientName": aband_map.get((row["phone_number"], str(row["call_date"]))),
+            "CallType": row["call_type"],
+            "SystemDisposition": row["call_status"],
+            "DialingMode": row["dial_mode"],
+            "ClientName": client_name,  # ✅ guaranteed present
             "LeadID": lead_id,
             "ACHT": (row["talk_sec"] or 0) + (row["dispo_sec"] or 0),
             "TalkTime": row["talk_sec"],
             "WaitTime": row["wait_sec"],
-            "PauseTime": row["pause_sec"],                # ✅ added PauseSec
+            "PauseTime": row["pause_sec"],
             "DispoTime": row["dispo_sec"],
             "DisconnectedBy": row["term_reason"],
-            "Scenario": row["call_type"],                 # ✅ fixed Scenario
+            "Scenario": row["call_type"],
             "SubScenario1": cm["Category1"] if cm else None,
             "SubScenario2": cm["Category2"] if cm else None,
             "SubScenario3": cm["Category3"] if cm else None,
             "SubScenario4": cm["Category4"] if cm else None,
-            "Recording": f"https://dialdesk.co.in/download-recording/download.php"
-                         f"?mode=DD&filename={lead_id}&agent={row['agent_id']}"
-
-        }
-        response_data.append(record)
+            "Recording": (
+                "https://dialdesk.co.in/download-recording/download.php"
+                f"?mode=DD&filename={lead_id}&agent={row['agent_id']}"
+            )
+        })
 
     return {"status": "success", "data": response_data}
 
