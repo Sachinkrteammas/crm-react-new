@@ -633,7 +633,7 @@ def get_ob_shared_cdr_report(
     print(aband_map,"aband_map")
     # Step 4: Call master lookup (for SubScenarios)
     call_master_query = text("""
-        SELECT LeadId, Category1, Category2, Category3, Category4
+        SELECT LeadId, Category1, Category2, Category3, Category4, Category5
         FROM call_master
         WHERE ClientId = :client_id
           AND DATE(CallDate) BETWEEN :from_dt AND :to_dt
@@ -677,11 +677,11 @@ def get_ob_shared_cdr_report(
             "PauseTime": row["pause_sec"],
             "DispoTime": row["dispo_sec"],
             "DisconnectedBy": row["term_reason"],
-            "Scenario": row["call_type"],
-            "SubScenario1": cm["Category1"] if cm else None,
-            "SubScenario2": cm["Category2"] if cm else None,
-            "SubScenario3": cm["Category3"] if cm else None,
-            "SubScenario4": cm["Category4"] if cm else None,
+            "Scenario": cm["Category1"] if cm else None,
+            "SubScenario1": cm["Category2"] if cm else None,
+            "SubScenario2": cm["Category3"] if cm else None,
+            "SubScenario3": cm["Category4"] if cm else None,
+            "SubScenario4": cm["Category5"] if cm else None,
             "Recording": (
                 "https://dialdesk.co.in/download-recording/download.php"
                 f"?mode=DD&filename={lead_id}&agent={row['agent_id']}"
