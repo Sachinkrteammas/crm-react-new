@@ -449,7 +449,7 @@ def get_ob_cdr_report(
     # Step 3: Sub Scenario categories
     category_query = text("""
         SELECT cm.LiveUniqueId, cm.LiveLeadId,
-               cm.Category1, cm.Category2, cm.Category3, cm.Category4
+               cm.Category1, cm.Category2, cm.Category3, cm.Category4, cm.Category5
         FROM call_master_out cm
         LEFT JOIN ob_campaign_data ocd ON cm.DataId = ocd.id
         WHERE DATE(cm.calldate) BETWEEN :from_date AND :to_date
@@ -484,6 +484,7 @@ def get_ob_cdr_report(
         row_dict["SubScenario2"] = categories.get("Category2")
         row_dict["SubScenario3"] = categories.get("Category3")
         row_dict["SubScenario4"] = categories.get("Category4")
+        row_dict["SubScenario5"] = categories.get("Category5")
 
         final_data.append(row_dict)
 

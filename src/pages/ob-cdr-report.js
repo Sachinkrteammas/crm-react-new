@@ -295,11 +295,11 @@ const OBCDRReport = () => {
                       📥
                     </a>
                   </td>
-                  <td>{row.Scenario || "-"}</td>
                   <td>{row.SubScenario1 || "-"}</td>
                   <td>{row.SubScenario2 || "-"}</td>
                   <td>{row.SubScenario3 || "-"}</td>
                   <td>{row.SubScenario4 || "-"}</td>
+                  <td>{row.SubScenario5 || "-"}</td>
                 </tr>
                 ))
               ) : (
