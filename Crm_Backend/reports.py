@@ -630,7 +630,6 @@ def get_ob_shared_cdr_report(
         for row in aband_rows
     }
 
-    print(aband_map,"aband_map")
     # Step 4: Call master lookup (for SubScenarios)
     call_master_query = text("""
         SELECT LeadId, Category1, Category2, Category3, Category4, Category5
