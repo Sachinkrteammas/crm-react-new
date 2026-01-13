@@ -48,13 +48,27 @@ const OBCDRReport = () => {
       }
   };
 
-  const handleExport = () => {
-      if (obCdrData.length === 0) {
+  const handleExport = async () => {
+    setLoading(true);
+
+    try {
+      const payload = {
+        company_id: userType === "Client" ? companyId : selectedClient,
+        from_date: startDate ? startDate.toLocaleDateString("en-CA") : null,
+        to_date: endDate ? endDate.toLocaleDateString("en-CA") : null,
+      };
+
+      // 🔥 Fetch fresh data for export (NO dependency on VIEW)
+      const response = await getOBCDRReport(payload);
+
+      const exportData = Array.isArray(response) ? response : [];
+
+      if (exportData.length === 0) {
         alert("No data to export.");
         return;
       }
 
-      // ✅ Decide company name (NO return here)
+      // ✅ Company name
       let companyName = "Company";
 
       if (userType === "Client") {
@@ -65,37 +79,38 @@ const OBCDRReport = () => {
         );
         companyName = selected?.company_name || "Company";
       }
-      // ✅ Format dates for filename
+
       const formatDateForFile = (date) =>
         date ? date.toLocaleDateString("en-CA") : "NA";
 
       const from = formatDateForFile(startDate);
       const to = formatDateForFile(endDate);
 
-      // Create a worksheet
-      const worksheet = XLSX.utils.json_to_sheet(obCdrData);
-
-      // Create a new workbook and append the worksheet
+      // ✅ Create Excel
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
 
-      // Generate a buffer
       const excelBuffer = XLSX.write(workbook, {
         bookType: "xlsx",
         type: "array",
       });
 
-      // Save file
       const file = new Blob([excelBuffer], {
         type: "application/octet-stream",
       });
-      
-      // ✅ Safe filename
-      const safeCompanyName = companyName.substring(0, 6);
 
+      const safeCompanyName = companyName.substring(0, 6);
       const fileName = `${safeCompanyName}_Ob_cdr_report_${from}_to_${to}.xlsx`;
 
       saveAs(file, fileName);
+
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Export failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
 
