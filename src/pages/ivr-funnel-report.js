@@ -79,7 +79,21 @@ const IVRFunnelReport = () => {
 
         const data = await getIVRFunnelReport(payload);
 
-        exportToExcel(data, `IVR_Funnel_Report_${payload.from_date}_to_${payload.to_date}.xlsx`);
+        // Determine client name for filename
+        let clientName = "";
+        if (userType === "Super-Admin" || userType === "Admin") {
+          clientName =
+            clients.find((c) => c.company_id === parseInt(activeClientId))
+              ?.company_name || "Client";
+        } else {
+          const storedUserData = JSON.parse(localStorage.getItem("userData"));
+          clientName = storedUserData?.auth_person || "Client";
+        }
+        clientName = clientName.substring(0, 7); // limit to first 7 letters
+
+        const fileName = `${clientName}_IVR_Funnel_Report_${payload.from_date}_to_${payload.to_date}.xlsx`;
+
+        exportToExcel(data, fileName);
 
       } catch (error) {
         console.error("Error exporting IVR Funnel Report:", error);

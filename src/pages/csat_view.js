@@ -6,10 +6,12 @@ import { format } from "date-fns";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
+import { useRef } from "react";
 
 function CsatView() {
   const userType = localStorage.getItem("user_type");
   const companyId = localStorage.getItem("company_id");
+  const tableWrapperRef = useRef(null);
 
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(companyId);
@@ -18,6 +20,38 @@ function CsatView() {
   const [endDate, setEndDate] = useState(null);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const ROWS_PER_PAGE = 10; // ✅ fixed page size
+
+
+
+  // 🔍 Search filter
+  const filteredData = data.filter((row) => {
+    const search = searchTerm.toLowerCase();
+    return (
+      row.user?.toLowerCase().includes(search) ||
+      row.full_name?.toLowerCase().includes(search)     
+    );
+  });
+
+  // 📄 Pagination
+  const indexOfLastRow = currentPage * ROWS_PER_PAGE;
+  const indexOfFirstRow = indexOfLastRow - ROWS_PER_PAGE;
+  const currentRows = filteredData.slice(indexOfFirstRow, indexOfLastRow);
+
+  const totalPages = Math.ceil(filteredData.length / ROWS_PER_PAGE) || 1; 
+
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+
 
   const activeClientId =
     userType === "Super-Admin" || userType === "Admin"
@@ -52,10 +86,7 @@ function CsatView() {
     }
   }, []);
 
-  const customColStyle = {
-    flex: "0 0 auto",
-    width: "19.666667%",
-  };
+
 
   const handleViewClick = async () => {
     if (!activeClientId) {
@@ -68,6 +99,8 @@ function CsatView() {
       return;
     }
 
+    setCurrentPage(1);
+    setSearchTerm("");
     setLoading(true);
     const formattedStart = format(startDate, "yyyy-MM-dd");
     const formattedEnd = format(endDate, "yyyy-MM-dd");
@@ -91,26 +124,98 @@ function CsatView() {
     }
   };
 
-  const handleExportToExcel = () => {
-    if (data.length === 0) {
-      alert("No data to export.");
+  const handleExportToExcel = async () => {
+    if (!activeClientId) {
+      alert("Please select a client.");
       return;
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+    if (!startDate || !endDate) {
+      alert("Please select both start and end dates.");
+      return;
+    }
 
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
+    const formattedStart = format(startDate, "yyyy-MM-dd");
+    const formattedEnd = format(endDate, "yyyy-MM-dd");
 
-    const file = new Blob([excelBuffer], {
-      type: "application/octet-stream",
-    });
-    saveAs(file, "csat_report.xlsx");
+    setLoading(true);
+    try {
+      // Fetch all data directly from API
+      const response = await api.get(`/call/csat-report/${activeClientId}`, {
+        params: {
+          client_id: parseInt(activeClientId),
+          from_date: formattedStart,
+          to_date: formattedEnd,
+        },
+      });
+
+      const exportData = response.data || [];
+      if (exportData.length === 0) {
+        alert("No data to export.");
+        return;
+      }
+
+      // Map data to match table columns
+      const formattedData = exportData.map((row, index) => ({
+        "AGENT": row.user || "-",
+        "AGENT NAME": row.full_name || "-",
+        "MOBILE NO.": row.phone_number || "-",
+        "LANGUAGE": row.language || "-",
+        "DTMF": row.dtmf || "-",
+        "ENTRY DATE": row.call_date
+          ? format(new Date(row.call_date), "dd MMM yyyy HH:mm:ss")
+          : "-",
+      }));
+
+      // Create Excel
+      const worksheet = XLSX.utils.json_to_sheet(formattedData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "CSAT Report");
+
+      const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+      const file = new Blob([excelBuffer], { type: "application/octet-stream" });
+
+      // Determine filename
+      let nameForFile = "";
+
+      if (userType === "Super-Admin" || userType === "Admin") {
+        // First 7 letters of selected client name
+        nameForFile =
+          clients.find((c) => c.company_id === parseInt(activeClientId))?.company_name?.substring(0, 7) ||
+          "client";
+      } else {
+        // Logged-in client: use auth_person name
+        const storedUserData = JSON.parse(localStorage.getItem("userData"));
+        nameForFile = storedUserData?.auth_person || "client";
+      }
+      const fileName = `${nameForFile.substring(0, 7)}_csat_report_${formattedStart}_to_${formattedEnd}.xlsx`;
+
+      saveAs(file, fileName);
+
+    } catch (error) {
+      console.error("Failed to export CSAT report:", error);
+      alert("Error exporting CSAT report");
+    } finally {
+      setLoading(false);
+    }
   };
+
+
+  // Scroll to top whenever visible rows change
+  useEffect(() => {
+    if (tableWrapperRef.current) {
+      tableWrapperRef.current.scrollTop = 0;
+    }
+  }, [currentRows]);
+
+
+  useEffect(() => {
+    const maxPage = Math.ceil(filteredData.length / ROWS_PER_PAGE) || 1;
+    if (currentPage > maxPage) {
+      setCurrentPage(1);
+    }
+  }, [filteredData.length]);
+
 
   return (
     <>
@@ -194,38 +299,90 @@ function CsatView() {
               </div>
 
               {!loading && data.length > 0 && (
-                <div className="card p-4">
-                  <div
-                    className="table-responsive"
-                    style={{
-                      maxHeight: "600px",
-                      overflowX: "auto",
-                      overflowY: "auto",
+              <div className="card p-4">
+                {/* 🔹 Search */}
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <input
+                    type="text"
+                    className="form-control"
+                    style={{ maxWidth: "300px" }}
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setCurrentPage(1);
                     }}
-                  >
-                    <table className="table table-bordered table-striped">
-                      <thead
-                        className="table-dark"
-                      >
-                        <tr>
-                          {Object.keys(data[0]).map((key) => (
-                            <th key={key}>{key}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {data.map((row, index) => (
-                          <tr key={index}>
-                            {Object.values(row).map((val, idx) => (
-                              <td key={idx}>{val ?? "-"}</td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  />
                 </div>
-              )}
+
+                {/* Scrollable table */}
+                <div
+                  ref={tableWrapperRef}
+                  className="table-responsive"
+                  style={{
+                    maxHeight: "500px", // table scroll height
+                    overflowY: "auto",
+                    overflowX: "auto",
+                  }}
+                >
+                  <table className="table table-bordered table-striped">
+                    <thead className="table-dark" style={{ position: "sticky", top: 0, zIndex: 0 }}>
+                      <tr>
+                        <th>S.NO</th>
+                        <th>AGENT</th>
+                        <th>AGENT NAME</th>
+                        <th>MOBILE NO.</th>
+                        <th>LANGUAGE</th>
+                        <th>DTMF</th>
+                        <th>ENTRY DATE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentRows.map((row, index) => (
+                        <tr>
+                          <td>{(currentPage - 1) * ROWS_PER_PAGE + index + 1}</td>
+                          <td>{row.user || "-"}</td>
+                          <td>{row.full_name || "-"}</td>
+                          <td>{row.phone_number || "-"}</td>
+                          <td>{row.language || "-"}</td>
+                          <td>{row.dtmf || "-"}</td>
+                          <td>
+                            {row.call_date
+                              ? format(new Date(row.call_date), "dd MMM yyyy HH:mm:ss")
+                              : "-"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* ✅ Pagination controls */}
+                {totalPages > 1 && (
+                  <div className="d-flex justify-content-between align-items-center mt-3">
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      disabled={currentPage === 1}
+                      onClick={() => handlePageChange(currentPage - 1)}
+                    >
+                      ⬅ Previous
+                    </button>
+
+                    <span>
+                      Page {currentPage} of {totalPages}
+                    </span>
+
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      disabled={currentPage === totalPages}
+                      onClick={() => handlePageChange(currentPage + 1)}
+                    >
+                      Next ➡
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
             </div>
           </div>
     </>
