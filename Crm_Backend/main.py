@@ -171,8 +171,8 @@ def scheduled_daily_billing():
             return
 
         # 2️⃣ Compute billing date = yesterday
-        # billing_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-        billing_date = '2026-01-08'
+        billing_date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        #billing_date = '2026-01-13'
 
         print(f"Running daily billing scheduler on {billing_date} → Clients: {client_ids}")
 
@@ -216,7 +216,7 @@ def scheduled_daily_billing():
 # ✅ Create scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
-scheduler.add_job(scheduled_daily_billing, "cron", hour=18, minute=26)   # every day 3:00 AM
+#scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
 scheduler.start()
 
 @app.on_event("startup")

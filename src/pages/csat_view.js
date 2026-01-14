@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import api from "../api";
@@ -8,11 +8,49 @@ import { saveAs } from "file-saver";
 import "../styles/loader.css";
 
 function CsatView() {
+  const userType = localStorage.getItem("user_type");
+  const companyId = localStorage.getItem("company_id");
+
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(companyId);
+
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const companyId = 605;
+
+  const activeClientId =
+    userType === "Super-Admin" || userType === "Admin"
+      ? selectedClient
+      : companyId;
+
+
+
+  /* ---------------------------
+     FETCH CLIENT LIST (ADMIN)
+  --------------------------- */
+  useEffect(() => {
+    if (userType === "Super-Admin" || userType === "Admin") {
+      api
+        .get("/agents/clients-rights")
+        .then((res) => {
+          const sorted = res.data.sort((a, b) =>
+            a.company_name.localeCompare(b.company_name)
+          );
+          setClients(sorted);
+        })
+        .catch((err) => console.error("Error fetching clients:", err));
+    }
+  }, []);
+
+  /* ---------------------------
+     AUTO-SET CLIENT (NON-ADMIN)
+  --------------------------- */
+  useEffect(() => {
+    if (!(userType === "Super-Admin" || userType === "Admin")) {
+      setSelectedClient(companyId);
+    }
+  }, []);
 
   const customColStyle = {
     flex: "0 0 auto",
@@ -20,6 +58,11 @@ function CsatView() {
   };
 
   const handleViewClick = async () => {
+    if (!activeClientId) {
+      alert("Please select a client.");
+      return;
+    }
+
     if (!startDate || !endDate) {
       alert("Please select both start and end dates.");
       return;
@@ -30,15 +73,15 @@ function CsatView() {
     const formattedEnd = format(endDate, "yyyy-MM-dd");
 
     try {
-      const response = await api.get(`/call/csat-report/${companyId}`, {
+      const response = await api.get(`/call/csat-report/${activeClientId}`, {
         params: {
-          client_id: companyId,
+          client_id: parseInt(activeClientId),
           from_date: formattedStart,
           to_date: formattedEnd,
         },
       });
 
-      setData(response.data);
+      setData(response.data || []);
       console.log("CSAT Report Data:", response.data);
     } catch (error) {
       console.error("Failed to fetch CSAT report:", error);
@@ -83,62 +126,75 @@ function CsatView() {
       )}
 
       <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
-        <div className="col-12">
-          <div className="card">
-            <h5 className="card-header">CSAT View</h5>
-            <div className="card-body">
-              <div className="row g-2 align-items-end">
-                <div style={customColStyle} className="col-md-3 col-sm-6">
-                  <label className="form-label" htmlFor="start-date">
-                    Start Date
-                  </label>
-                  <DatePicker
-                    selected={startDate}
-                    onChange={(date) => setStartDate(date)}
-                    dateFormat="dd-MM-yyyy"
-                    placeholderText="DD-MM-YYYY"
-                    className="form-control"
-                    id="start-date"
-                  />
-                </div>
+      <div className="row gy-4 gx-3">
 
-                <div style={customColStyle} className="col-md-3 col-sm-6">
-                  <label className="form-label" htmlFor="end-date">
-                    End Date
-                  </label>
-                  <DatePicker
-                    selected={endDate}
-                    onChange={(date) => setEndDate(date)}
-                    dateFormat="dd-MM-yyyy"
-                    placeholderText="DD-MM-YYYY"
-                    className="form-control"
-                    id="end-date"
-                  />
-                </div>
+      <div className="card p-4 mb-4">
+        <h5 className="mb-3">CSAT View</h5>
 
-                <div className="col-md-3 col-sm-6">
-                  <button
-                    type="button"
-                    className="btn btn-primary w-75 px-4 py-2"
-                    onClick={handleViewClick}
-                  >
-                    View
-                  </button>
-                </div>
+        {/* <div className="card-body"> */}
 
-                <div className="col-md-3 col-sm-6">
-                  <button
-                    type="button"
-                    className="btn btn-primary w-75 px-4 py-2"
-                    onClick={handleExportToExcel}
-                  >
-                    Export
-                  </button>
-                </div>
+          {/* 🔹 ROW 1 : Client + Dates (ONE LINE) */}
+          <div className="d-flex flex-wrap align-items-center gap-3">
+
+            {(userType === "Super-Admin" || userType === "Admin") && (
+              <div style={{ maxWidth: "220px" }}>
+                <select
+                  className="form-select"
+                  value={selectedClient}
+                  onChange={(e) => setSelectedClient(e.target.value)}
+                >
+                  <option value="">-- Select Client --</option>
+                  {clients.map((c) => (
+                    <option key={c.company_id} value={c.company_id}>
+                      {c.company_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div style={{ maxWidth: "220px" }}>
+              <DatePicker
+                selected={startDate}
+                onChange={setStartDate}
+                dateFormat="dd-MM-yyyy"
+                placeholderText="DD-MM-YYYY"
+                className="form-control"
+              />
+            </div>
+
+            <div style={{ maxWidth: "220px" }}>
+              <DatePicker
+                selected={endDate}
+                onChange={setEndDate}
+                dateFormat="dd-MM-yyyy"
+                placeholderText="DD-MM-YYYY"
+                className="form-control"
+              />
+            </div>
+
+            {/* VIEW BUTTON */}
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleViewClick}
+                >
+                  View
+                </button>
+
+            {/* EXPORT BUTTON */}
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleExportToExcel}
+              >
+                Export
+              </button>
+              </div>
               </div>
 
               {!loading && data.length > 0 && (
-                <div className="col-12 mt-4">
+                <div className="card p-4">
                   <div
                     className="table-responsive"
                     style={{
@@ -150,7 +206,6 @@ function CsatView() {
                     <table className="table table-bordered table-striped">
                       <thead
                         className="table-dark"
-                        style={{ position: "sticky", top: 0, zIndex: 2 }}
                       >
                         <tr>
                           {Object.keys(data[0]).map((key) => (
@@ -173,8 +228,6 @@ function CsatView() {
               )}
             </div>
           </div>
-        </div>
-      </div>
     </>
   );
 }
