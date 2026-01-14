@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from schemas import *
 from database import get_db, get_db2, get_db3, get_db4
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import List, Dict, Any
 
 
@@ -324,45 +324,165 @@ def get_call_distribution_report(
 
 
 
+# @router.post("/ticket_case_analysis", response_model=TicketCaseAnalysisResponse)
+# def get_ticket_case_analysis(
+#     company_id: int,
+#     req: DashboardReq,
+#     db: Session = Depends(get_db4),
+# ):
+#     # Build date condition exactly as in PHP
+#     vt = req.view_type or "Today"
+#     if vt == "Today":
+#         cond = "DATE(CallDate) = CURDATE()"
+#     elif vt == "Yesterday":
+#         cond = "DATE(CallDate) = SUBDATE(CURDATE(),INTERVAL 1 DAY)"
+#     elif vt == "Weekly":
+#         cond = "DATE(CallDate) BETWEEN SUBDATE(CURDATE(),INTERVAL 6 DAY) AND CURDATE()"
+#     elif vt == "Monthly":
+#         cond = "DATE(CallDate) BETWEEN SUBDATE(CURDATE(),INTERVAL 30 DAY) AND CURDATE()"
+#     else: # Custom
+#         cond = "DATE(CallDate) BETWEEN :from_date AND :to_date"
+
+#     params = {"cid": company_id}
+#     if vt == "Custom":
+#         params["from_date"] = req.from_date
+#         params["to_date"]   = req.to_date
+
+#     # --- 1) Case distribution by Category1 ---
+#     sql_cases = text(f"""
+#         SELECT 
+#           SUM(CASE WHEN Category1 = 'Enquiry' THEN 1 ELSE 0 END)    AS Enquiry,
+#           SUM(CASE WHEN Category1 = 'Complaint' THEN 1 ELSE 0 END)  AS Complaint,
+#           SUM(CASE WHEN Category1 = 'Escalation' THEN 1 ELSE 0 END)  AS BulkOrder,
+#           SUM(CASE WHEN Category1 = 'Request' THEN 1 ELSE 0 END)    AS Request,
+#           SUM(CASE WHEN Category1 NOT IN 
+#               ('Enquiry','Complaint','Escalation','Request') 
+#             THEN 1 ELSE 0 END)                                    AS Other
+#         FROM call_master 
+#         WHERE ClientId = :cid AND {cond}
+#     """)
+#     row = db.execute(sql_cases, params).mappings().first()
+
+#     case_data = [TicketCaseBreakdown(
+#         name="Cases",
+#         Enquiry=row["Enquiry"] or 0,
+#         Complaint=row["Complaint"] or 0,
+#         BulkOrder=row["BulkOrder"] or 0,
+#         Request=row["Request"] or 0,
+#         Other=row["Other"] or 0,
+#     )]
+
+#     # --- 2) Open ticket TAT ---
+#     # PHP uses tbl_time table to define TAT per category, but for simplicity
+#     # we’ll count “In TAT” vs “OutOfTAT” by comparing CloseLoopingDate vs CallDate hours
+#     sql_open = text(f"""
+#         SELECT
+#           SUM(CASE 
+#                 WHEN CloseLoopingDate IS NOT NULL 
+#                      AND TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) 
+#                          <= tt.time_Hours
+#                 THEN 1 ELSE 0 END) AS InTAT,
+#           SUM(CASE 
+#                 WHEN (CloseLoopingDate IS NULL 
+#                         AND TIMESTAMPDIFF(HOUR, CallDate, NOW()) > tt.time_Hours)
+#                      OR (CloseLoopingDate IS NOT NULL
+#                         AND TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) > tt.time_Hours)
+#                 THEN 1 ELSE 0 END) AS OutOfTAT
+#         FROM call_master cm
+#         JOIN tbl_time tt 
+#           ON cm.ClientId = tt.clientId 
+#          AND CONCAT_WS('',cm.Category1,cm.Category2,cm.Category3,
+#                        cm.Category4,cm.Category5) = 
+#              CONCAT_WS('',tt.Category1,tt.Category2,tt.Category3,
+#                        tt.Category4,tt.Category5)
+#         WHERE cm.ClientId = :cid 
+#           AND {cond}
+#           AND cm.CloseLoopingDate IS NULL  -- Open tickets only
+#     """)
+#     open_row = db.execute(sql_open, params).mappings().first()
+#     open_tat = [TicketTATBreakdown(
+#         name="Open",
+#         InTAT=open_row["InTAT"] or 0,
+#         OutOfTAT=open_row["OutOfTAT"] or 0,
+#     )]
+
+#     # --- 3) Close ticket TAT ---
+#     sql_close = text(f"""
+#         SELECT
+#           SUM(CASE 
+#                 WHEN TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) 
+#                          <= tt.time_Hours
+#                 THEN 1 ELSE 0 END) AS InTAT,
+#           SUM(CASE 
+#                 WHEN TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) 
+#                          > tt.time_Hours
+#                 THEN 1 ELSE 0 END) AS OutOfTAT
+#         FROM call_master cm
+#         JOIN tbl_time tt 
+#           ON cm.ClientId = tt.clientId 
+#          AND CONCAT_WS('',cm.Category1,cm.Category2,cm.Category3,
+#                        cm.Category4,cm.Category5) = 
+#              CONCAT_WS('',tt.Category1,tt.Category2,tt.Category3,
+#                        tt.Category4,tt.Category5)
+#         WHERE cm.ClientId = :cid 
+#           AND {cond}
+#           AND cm.CloseLoopingDate IS NOT NULL  -- Closed tickets only
+#     """)
+#     close_row = db.execute(sql_close, params).mappings().first()
+#     close_tat = [TicketTATBreakdown(
+#         name="Close",
+#         InTAT=close_row["InTAT"] or 0,
+#         OutOfTAT=close_row["OutOfTAT"] or 0,
+#     )]
+
+#     return TicketCaseAnalysisResponse(
+#         cases=case_data,
+#         open_tat=open_tat,
+#         close_tat=close_tat
+#     )
+
+
+
 @router.post("/ticket_case_analysis", response_model=TicketCaseAnalysisResponse)
 def get_ticket_case_analysis(
     company_id: int,
     req: DashboardReq,
     db: Session = Depends(get_db4),
 ):
-    # Build date condition exactly as in PHP
-    vt = req.view_type or "Today"
-    if vt == "Today":
-        cond = "DATE(CallDate) = CURDATE()"
-    elif vt == "Yesterday":
-        cond = "DATE(CallDate) = SUBDATE(CURDATE(),INTERVAL 1 DAY)"
-    elif vt == "Weekly":
-        cond = "DATE(CallDate) BETWEEN SUBDATE(CURDATE(),INTERVAL 6 DAY) AND CURDATE()"
-    elif vt == "Monthly":
-        cond = "DATE(CallDate) BETWEEN SUBDATE(CURDATE(),INTERVAL 30 DAY) AND CURDATE()"
-    else: # Custom
-        cond = "DATE(CallDate) BETWEEN :from_date AND :to_date"
+    # --- 1) Compute date range instead of using DATE() ---
+    today = datetime.now().date()
+    if req.view_type == "Today" or req.view_type is None:
+        start = datetime.combine(today, datetime.min.time())
+        end   = datetime.combine(today + timedelta(days=1), datetime.min.time())
+    elif req.view_type == "Yesterday":
+        start = datetime.combine(today - timedelta(days=1), datetime.min.time())
+        end   = datetime.combine(today, datetime.min.time())
+    elif req.view_type == "Weekly":
+        start = datetime.combine(today - timedelta(days=6), datetime.min.time())
+        end   = datetime.combine(today + timedelta(days=1), datetime.min.time())
+    elif req.view_type == "Monthly":
+        start = datetime.combine(today - timedelta(days=30), datetime.min.time())
+        end   = datetime.combine(today + timedelta(days=1), datetime.min.time())
+    else:  # Custom
+        start = datetime.strptime(req.from_date, "%Y-%m-%d")
+        end   = datetime.strptime(req.to_date, "%Y-%m-%d") + timedelta(days=1)
 
-    params = {"cid": company_id}
-    if vt == "Custom":
-        params["from_date"] = req.from_date
-        params["to_date"]   = req.to_date
+    params = {"cid": company_id, "start": start, "end": end}
 
-    # --- 1) Case distribution by Category1 ---
+    cond = "CallDate >= :start AND CallDate < :end"
+
+    # --- 2) Case distribution by Category1 ---
     sql_cases = text(f"""
         SELECT 
           SUM(CASE WHEN Category1 = 'Enquiry' THEN 1 ELSE 0 END)    AS Enquiry,
           SUM(CASE WHEN Category1 = 'Complaint' THEN 1 ELSE 0 END)  AS Complaint,
           SUM(CASE WHEN Category1 = 'Escalation' THEN 1 ELSE 0 END)  AS BulkOrder,
-          SUM(CASE WHEN Category1 = 'Request' THEN 1 ELSE 0 END)    AS Request,
-          SUM(CASE WHEN Category1 NOT IN 
-              ('Enquiry','Complaint','Escalation','Request') 
-            THEN 1 ELSE 0 END)                                    AS Other
+          SUM(CASE WHEN Category1 = 'Request' THEN 1 ELSE 0 END)   AS Request,
+          SUM(CASE WHEN Category1 NOT IN ('Enquiry','Complaint','Escalation','Request') THEN 1 ELSE 0 END) AS Other
         FROM call_master 
         WHERE ClientId = :cid AND {cond}
     """)
     row = db.execute(sql_cases, params).mappings().first()
-
     case_data = [TicketCaseBreakdown(
         name="Cases",
         Enquiry=row["Enquiry"] or 0,
@@ -372,32 +492,28 @@ def get_ticket_case_analysis(
         Other=row["Other"] or 0,
     )]
 
-    # --- 2) Open ticket TAT ---
-    # PHP uses tbl_time table to define TAT per category, but for simplicity
-    # we’ll count “In TAT” vs “OutOfTAT” by comparing CloseLoopingDate vs CallDate hours
+    # --- 3) Open ticket TAT ---
     sql_open = text(f"""
         SELECT
           SUM(CASE 
                 WHEN CloseLoopingDate IS NOT NULL 
-                     AND TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) 
-                         <= tt.time_Hours
+                     AND TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) <= tt.time_Hours
                 THEN 1 ELSE 0 END) AS InTAT,
           SUM(CASE 
-                WHEN (CloseLoopingDate IS NULL 
-                        AND TIMESTAMPDIFF(HOUR, CallDate, NOW()) > tt.time_Hours)
-                     OR (CloseLoopingDate IS NOT NULL
-                        AND TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) > tt.time_Hours)
+                WHEN (CloseLoopingDate IS NULL AND TIMESTAMPDIFF(HOUR, CallDate, NOW()) > tt.time_Hours)
+                     OR (CloseLoopingDate IS NOT NULL AND TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) > tt.time_Hours)
                 THEN 1 ELSE 0 END) AS OutOfTAT
         FROM call_master cm
-        JOIN tbl_time tt 
-          ON cm.ClientId = tt.clientId 
-         AND CONCAT_WS('',cm.Category1,cm.Category2,cm.Category3,
-                       cm.Category4,cm.Category5) = 
-             CONCAT_WS('',tt.Category1,tt.Category2,tt.Category3,
-                       tt.Category4,tt.Category5)
+        JOIN (SELECT * FROM tbl_time WHERE clientId = :cid) tt
+          ON cm.ClientId = tt.clientId
+         AND (cm.Category1 <=> tt.Category1)
+         AND (cm.Category2 <=> tt.Category2)
+         AND (cm.Category3 <=> tt.Category3)
+         AND (cm.Category4 <=> tt.Category4)
+         AND (cm.Category5 <=> tt.Category5)
         WHERE cm.ClientId = :cid 
           AND {cond}
-          AND cm.CloseLoopingDate IS NULL  -- Open tickets only
+          AND cm.CloseLoopingDate IS NULL
     """)
     open_row = db.execute(sql_open, params).mappings().first()
     open_tat = [TicketTATBreakdown(
@@ -406,27 +522,22 @@ def get_ticket_case_analysis(
         OutOfTAT=open_row["OutOfTAT"] or 0,
     )]
 
-    # --- 3) Close ticket TAT ---
+    # --- 4) Close ticket TAT ---
     sql_close = text(f"""
         SELECT
-          SUM(CASE 
-                WHEN TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) 
-                         <= tt.time_Hours
-                THEN 1 ELSE 0 END) AS InTAT,
-          SUM(CASE 
-                WHEN TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) 
-                         > tt.time_Hours
-                THEN 1 ELSE 0 END) AS OutOfTAT
+          SUM(CASE WHEN TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) <= tt.time_Hours THEN 1 ELSE 0 END) AS InTAT,
+          SUM(CASE WHEN TIMESTAMPDIFF(HOUR, CallDate, CloseLoopingDate) > tt.time_Hours THEN 1 ELSE 0 END) AS OutOfTAT
         FROM call_master cm
-        JOIN tbl_time tt 
-          ON cm.ClientId = tt.clientId 
-         AND CONCAT_WS('',cm.Category1,cm.Category2,cm.Category3,
-                       cm.Category4,cm.Category5) = 
-             CONCAT_WS('',tt.Category1,tt.Category2,tt.Category3,
-                       tt.Category4,tt.Category5)
+        JOIN (SELECT * FROM tbl_time WHERE clientId = :cid) tt
+          ON cm.ClientId = tt.clientId
+         AND (cm.Category1 <=> tt.Category1)
+         AND (cm.Category2 <=> tt.Category2)
+         AND (cm.Category3 <=> tt.Category3)
+         AND (cm.Category4 <=> tt.Category4)
+         AND (cm.Category5 <=> tt.Category5)
         WHERE cm.ClientId = :cid 
           AND {cond}
-          AND cm.CloseLoopingDate IS NOT NULL  -- Closed tickets only
+          AND cm.CloseLoopingDate IS NOT NULL
     """)
     close_row = db.execute(sql_close, params).mappings().first()
     close_tat = [TicketTATBreakdown(
