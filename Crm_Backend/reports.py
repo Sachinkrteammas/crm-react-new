@@ -823,7 +823,8 @@ def get_ivr_report(
 @router.post("/ivr_funnel_report")
 def get_ivr_funnel_report(
     request: IVRFunnelReportRequest,
-    db2: Session = Depends(get_db2)
+    db2: Session = Depends(get_db4),
+    db: Session = Depends(get_db2)
 ):
     try:
         # Step 1 – fetch closer log
@@ -832,7 +833,7 @@ def get_ivr_funnel_report(
             FROM vicidial_closer_log vcl
             WHERE DATE(call_date) BETWEEN :from_date AND :to_date
         """)
-        cdr_results = db2.execute(qry_closer_log, {
+        cdr_results = db.execute(qry_closer_log, {
             "from_date": request.from_date,
             "to_date": request.to_date,
         }).mappings().fetchall()
