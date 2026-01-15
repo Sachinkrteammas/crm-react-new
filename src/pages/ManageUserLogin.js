@@ -40,6 +40,7 @@ const ManageUserLogin = () => {
   const [loading, setLoading] = useState(true);
 
   const [expanded, setExpanded] = useState({});
+  const [expandedEdit, setExpandedEdit] = useState({});
   const [selectedRights, setSelectedRights] = useState([]);   // ← store selected IDs
 
   const [users, setUsers] = useState([]);
@@ -241,6 +242,7 @@ const ManageUserLogin = () => {
       <ul style={{ listStyle: "none", marginLeft: 10, paddingLeft: 0 }}>
         {items.map((item) => {
           const hasChildren = item.children && item.children.length > 0;
+          const isExpanded = expandedEdit[item.id];
           return (
             <li key={item.id} style={{ marginBottom: 5 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -248,25 +250,34 @@ const ManageUserLogin = () => {
                   <span
                     style={{ cursor: "pointer", fontWeight: "bold" }}
                     onClick={() =>
-                      setExpanded((prev) => ({
+                      setExpandedEdit((prev) => ({
                         ...prev,
                         [item.id]: !prev[item.id],
                       }))
                     }
                   >
-                    {expanded[item.id] ? "▼" : "►"}
+                    {isExpanded ? "▼" : "▶"}
                   </span>
                 )}
 
                 <input
                   type="checkbox"
                   checked={editRights.includes(item.id)}
-                  onChange={() => handleEditRightSelect(item.id)}
+                  onChange={() => {handleEditRightSelect(item.id);
+
+                    // Auto-expand when checkbox is clicked
+                    if (hasChildren) {
+                      setExpandedEdit((prev) => ({
+                        ...prev,
+                        [item.id]: true
+                      }));
+                    }
+                  }}
                 />
                 <label>{item.page_name}</label>
               </div>
 
-              {hasChildren && expanded[item.id] && (
+              {hasChildren && isExpanded && (
                 <div style={{ marginLeft: 20 }}>{renderEditMenu(item.children)}</div>
               )}
             </li>

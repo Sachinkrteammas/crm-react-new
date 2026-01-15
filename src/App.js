@@ -109,6 +109,7 @@ import ExportMisFiles from "./pages/Export_mis_files";
 import OutCallManageMISReports from "./pages/OutCallManageMISReports";
 import OutMasterFieldMapping from "./pages/OutMasterFieldMapping";
 import OutCallSummaryReports from "./pages/OutCallSummaryReports";
+import OutCallSummaryReportsAutomation from "./pages/OutCallSummaryReportsAutomation";
 import OutCallReportAutomation from "./pages/OutCallReportAutomation";
 import ScenarioReportAutomation from "./pages/ScenarioReportAutomation";
 import ManageOutCallCloseField from "./pages/ManageOutCallCloseField";
@@ -128,6 +129,8 @@ import UsageSummary from "./pages/Usage_summary";
 import StatementSummary from "./pages/statement_summary";
 import CreateInvoice from "./pages/Invoice";
 import NewOutboundDashboard from "./pages/NewOutboundDashboard";
+import CustomerDateWiseDensity from "./pages/customer_date_wise_density_of_calls";
+import SLAClientWise from "./pages/SLA_client_wise";
 
 
 
@@ -348,6 +351,7 @@ function App() {
               <Route path="/MisAndReportMatrixs/ob_matrix"  element={<OutCallManageMISReports />} />
               <Route path="/MasterField"  element={<OutMasterFieldMapping />} />
               <Route path="/ScenarioAutomates/call_summary_out" element={<OutCallSummaryReports />} />
+              <Route path="/ScenarioAutomates" element={<OutCallSummaryReportsAutomation />} />
               <Route path="/OutCallAutomation" element={<OutCallReportAutomation />} />
               <Route path="/ScenarioReportAutomation" element={<ScenarioReportAutomation />} />
               <Route path="/ObcloseFields" element={<ManageOutCallCloseField />} />
@@ -367,7 +371,8 @@ function App() {
               <Route path="/statement_summary" element={<StatementSummary />} />
               <Route path="/InitialInvoices" element={<CreateInvoice />} />
               <Route path="/outbound_dashboard" element={<NewOutboundDashboard />} />
-
+              <Route path="/AbandonReports/customer_wise" element={<CustomerDateWiseDensity />} />
+              <Route path="/CdrReports/dd_clientwise" element={<SLAClientWise />} />
           </Route>
       </Route>
     </Routes>

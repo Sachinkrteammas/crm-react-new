@@ -67,7 +67,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db4)):
     query_login = text("SELECT * FROM logincreation_master WHERE username = :username")
     login_user = db.execute(query_login, {"username": request.email}).mappings().fetchone()
 
-    if login_user and (request.password == login_user["password"]):
+    if login_user and (request.password == login_user["password2"]):
         token = create_access_token({"sub": login_user["username"]})
         return {
             "message": "Login successful (Client - logincreation_master)",

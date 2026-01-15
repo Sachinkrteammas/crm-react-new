@@ -237,7 +237,14 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
     # 3. Scenario/Category data (two queries, same as PHP)
     # -----------------------------------------------------------------
     scenario_query1 = text("""
-        SELECT * FROM call_master cm
+        SELECT  LeadId,
+    Category1,
+    Category2,
+    Category3,
+    Category4,
+    Category5,
+    CallType,
+    Field9 AS SourceField FROM call_master cm
         WHERE DATE(cm.calldate) BETWEEN :from_date AND :to_date
     """)
     scenario_data1 = db.execute(scenario_query1, {
@@ -269,22 +276,33 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
 
         scenario = scenario_map.get(lead_id)
         if scenario:
+            if request.company_id == 605:
+                source_value = scenario.get("SourceField")
+            else:
+                source_value = "Other_client"
+
             enriched_row.update({
                 "Category1": scenario.get("Category1"),
                 "Category2": scenario.get("Category2"),
                 "Category3": scenario.get("Category3"),
                 "Category4": scenario.get("Category4"),
                 "Category5": scenario.get("Category5"),
-                "Source": scenario.get("Source"),
+                "Source": source_value,
+                "CallType": scenario.get("CallType"),
             })
         else:
+            if request.company_id == 605:
+                source_value = None
+            else:
+                source_value = "Other_client"
             enriched_row.update({
                 "Category1": None,
                 "Category2": None,
                 "Category3": None,
                 "Category4": None,
                 "Category5": None,
-                "Source": None,
+                "Source": source_value,
+                "CallType": None
             })
 
         # ✅ Generate recording link using leadid and agent
@@ -431,7 +449,7 @@ def get_ob_cdr_report(
     # Step 3: Sub Scenario categories
     category_query = text("""
         SELECT cm.LiveUniqueId, cm.LiveLeadId,
-               cm.Category1, cm.Category2, cm.Category3, cm.Category4
+               cm.Category1, cm.Category2, cm.Category3, cm.Category4, cm.Category5
         FROM call_master_out cm
         LEFT JOIN ob_campaign_data ocd ON cm.DataId = ocd.id
         WHERE DATE(cm.calldate) BETWEEN :from_date AND :to_date
@@ -466,6 +484,7 @@ def get_ob_cdr_report(
         row_dict["SubScenario2"] = categories.get("Category2")
         row_dict["SubScenario3"] = categories.get("Category3")
         row_dict["SubScenario4"] = categories.get("Category4")
+        row_dict["SubScenario5"] = categories.get("Category5")
 
         final_data.append(row_dict)
 
@@ -565,7 +584,7 @@ def get_ob_shared_cdr_report(
             DATE(t2.call_date) AS call_date,
             FROM_UNIXTIME(t2.start_epoch) AS start_time,
             FROM_UNIXTIME(t2.end_epoch) AS end_time,
-            t2.phone_number,
+            LEFT(t2.phone_number,10) AS phone_number,
             t2.user AS agent_id,
             t4.full_name AS agent_name,
             IF(t2.user='VDAD','Not Connected','Connected') AS call_type,
@@ -581,8 +600,9 @@ def get_ob_shared_cdr_report(
         FROM vicidial_log t2
         LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
         LEFT JOIN vicidial_users t4 ON t2.user = t4.user
-        WHERE t2.campaign_id IN :campaign_ids
+        WHERE t2.campaign_id = 'dialdesk'
           AND DATE(t2.call_date) BETWEEN :from_dt AND :to_dt
+          AND t2.lead_id IS NOT NULL
     """)
 
     cdr_rows = db2.execute(
@@ -606,11 +626,14 @@ def get_ob_shared_cdr_report(
         "from_dt": from_dt,
         "to_dt": to_dt
     }).mappings().all()
-    aband_map = {(row["PhoneNo"], str(row["CallDate"])): row["CompanyName"] for row in aband_rows}
+    aband_map = {
+        (str(row["PhoneNo"])[-10:], str(row["CallDate"])): row["CompanyName"]
+        for row in aband_rows
+    }
 
     # Step 4: Call master lookup (for SubScenarios)
     call_master_query = text("""
-        SELECT LeadId, Category1, Category2, Category3, Category4
+        SELECT LeadId, Category1, Category2, Category3, Category4, Category5
         FROM call_master
         WHERE ClientId = :client_id
           AND DATE(CallDate) BETWEEN :from_dt AND :to_dt
@@ -624,38 +647,46 @@ def get_ob_shared_cdr_report(
 
     # Step 5: Format output
     response_data = []
+
     for row in cdr_rows:
+        phone = str(row["phone_number"])[-10:]
+        call_date = str(row["call_date"])
+
+        client_name = aband_map.get((phone, call_date))
+        if not client_name:
+            continue
+
         lead_id = row["lead_id"]
         cm = call_master_map.get(lead_id)
 
-        record = {
+        response_data.append({
             "CallDate": row["call_date"],
             "StartTime": row["start_time"],
             "Endtime": row["end_time"],
-            "CustomerNumber": row["phone_number"],
+            "CustomerNumber": phone,
             "AgentID": row["agent_id"],
             "AgentName": row["agent_name"],
-            "CallType": row["call_type"],                 # Connected / Not Connected
-            "SystemDisposition": row["call_status"],      # vicidial status
-            "DialingMode": row["dial_mode"],              # Auto / Mannual
-            "ClientName": aband_map.get((row["phone_number"], str(row["call_date"]))),
+            "CallType": row["call_type"],
+            "SystemDisposition": row["call_status"],
+            "DialingMode": row["dial_mode"],
+            "ClientName": client_name,  # ✅ guaranteed present
             "LeadID": lead_id,
             "ACHT": (row["talk_sec"] or 0) + (row["dispo_sec"] or 0),
             "TalkTime": row["talk_sec"],
             "WaitTime": row["wait_sec"],
-            "PauseTime": row["pause_sec"],                # ✅ added PauseSec
+            "PauseTime": row["pause_sec"],
             "DispoTime": row["dispo_sec"],
             "DisconnectedBy": row["term_reason"],
-            "Scenario": row["call_type"],                 # ✅ fixed Scenario
-            "SubScenario1": cm["Category1"] if cm else None,
-            "SubScenario2": cm["Category2"] if cm else None,
-            "SubScenario3": cm["Category3"] if cm else None,
-            "SubScenario4": cm["Category4"] if cm else None,
-            "Recording": f"https://dialdesk.co.in/download-recording/download.php"
-                         f"?mode=DD&filename={lead_id}&agent={row['agent_id']}"
-
-        }
-        response_data.append(record)
+            "Scenario": cm["Category1"] if cm else None,
+            "SubScenario1": cm["Category2"] if cm else None,
+            "SubScenario2": cm["Category3"] if cm else None,
+            "SubScenario3": cm["Category4"] if cm else None,
+            "SubScenario4": cm["Category5"] if cm else None,
+            "Recording": (
+                "https://dialdesk.co.in/download-recording/download.php"
+                f"?mode=DD&filename={lead_id}&agent={row['agent_id']}"
+            )
+        })
 
     return {"status": "success", "data": response_data}
 
@@ -792,7 +823,8 @@ def get_ivr_report(
 @router.post("/ivr_funnel_report")
 def get_ivr_funnel_report(
     request: IVRFunnelReportRequest,
-    db2: Session = Depends(get_db2)
+    db2: Session = Depends(get_db4),
+    db: Session = Depends(get_db2)
 ):
     try:
         # Step 1 – fetch closer log
@@ -801,7 +833,7 @@ def get_ivr_funnel_report(
             FROM vicidial_closer_log vcl
             WHERE DATE(call_date) BETWEEN :from_date AND :to_date
         """)
-        cdr_results = db2.execute(qry_closer_log, {
+        cdr_results = db.execute(qry_closer_log, {
             "from_date": request.from_date,
             "to_date": request.to_date,
         }).mappings().fetchall()

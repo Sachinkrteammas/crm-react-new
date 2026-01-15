@@ -226,6 +226,8 @@ class CDRReportResponse(BaseModel):
     term_reason: Optional[str]
     xfercallid: Optional[int]
 
+    CallType: Optional[str]
+
     Category1: Optional[str]
     Category2: Optional[str]
     Category3: Optional[str]
@@ -311,6 +313,7 @@ class DashboardDay(BaseModel):
     Unique:   int
     Answered: int
     Abandon:  int
+    Unique_abandon:  int
     gdate:    str
 
 class DashboardFullResp(BaseModel):

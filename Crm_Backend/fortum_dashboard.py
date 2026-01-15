@@ -56,8 +56,12 @@ def get_client_invoice_details(
 
     additional_invoice_result = db.execute(additional_invoice_query, {"client_id": client_id}).fetchone()
 
-    opening_add = float(additional_invoice_result.OpeningAmt or 0)
-    amount_received = float(additional_invoice_result.ReceiveAmt or 0)
+    if additional_invoice_result:
+        opening_add = float(additional_invoice_result.OpeningAmt or 0)
+        amount_received = float(additional_invoice_result.ReceiveAmt or 0)
+    else:
+        opening_add = 0.0
+        amount_received = 0.0
     print(opening_add, amount_received)
     
 
