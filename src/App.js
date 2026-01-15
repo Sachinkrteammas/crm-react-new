@@ -127,6 +127,7 @@ import ResetPassword from "./pages/Reset_password";
 import UsageSummary from "./pages/Usage_summary";
 import StatementSummary from "./pages/statement_summary";
 import CreateInvoice from "./pages/Invoice";
+import NewOutboundDashboard from "./pages/NewOutboundDashboard";
 
 
 
@@ -322,7 +323,7 @@ function App() {
               <Route path="/AbandonCallReports/external" element={<AbandonedCallDetails />} />
               <Route path="/dialer_mapping" element={<DialerMapping />} />
               <Route path="/view_close_looping" element={<CloseLooping />} />
-              <Route path="/outbound_dashboard" element={<OutboundDashboard />} />
+              <Route path="/outbound_dashboard_old" element={<OutboundDashboard />} />
               <Route path="/Outbounds/addingroup" element={<IngroupManager />} />
               <Route path="/WorkFlows" element={<ManageWorkFlow />} />
               <Route path="/UploadExistingBases" element={<UploadExistingCustomers />} />
@@ -365,7 +366,8 @@ function App() {
               <Route path="/usage_summary" element={<UsageSummary />} />
               <Route path="/statement_summary" element={<StatementSummary />} />
               <Route path="/InitialInvoices" element={<CreateInvoice />} />
-              
+              <Route path="/outbound_dashboard" element={<NewOutboundDashboard />} />
+
           </Route>
       </Route>
     </Routes>

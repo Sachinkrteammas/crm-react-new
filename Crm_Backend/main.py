@@ -53,6 +53,7 @@ from forgot_password import router as forgot_password_router
 from usage_summary import router as usage_summary_router
 from statement_summary import router as statement_summary_router
 from invoice import router as invoice_router
+from new_outbound_dashboard import router as new_outbound_dashboard
 
 
 
@@ -111,6 +112,7 @@ app.include_router(forgot_password_router, tags=["Forgot Password"])
 app.include_router(usage_summary_router, tags=["Usage Summary"])
 app.include_router(statement_summary_router, tags=["Statement Summary"])
 app.include_router(invoice_router, tags=["Invoice"])
+app.include_router(new_outbound_dashboard, tags=["New Outbound Dashboard"])
 
 
 
@@ -202,7 +204,7 @@ def scheduled_daily_billing():
 # ✅ Create scheduler
 scheduler = BackgroundScheduler()
 scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
-scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
+# scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
 scheduler.start()
 
 @app.on_event("startup")
