@@ -155,6 +155,8 @@ def statement_summary(
     phone_date_pairs = [(r.PhoneNumber, r.CallbackDate) for r in ob_rows]
     if phone_date_pairs:
         in_values = ", ".join(f"('{pn}','{dt}')" for pn, dt in phone_date_pairs)
+    else:
+        in_values = "('','0000-00-00')"  # guaranteed no match
     
     query = text(f"""
                 SELECT t2.list_id,
