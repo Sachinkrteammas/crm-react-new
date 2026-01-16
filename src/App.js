@@ -131,7 +131,8 @@ import CreateInvoice from "./pages/Invoice";
 import NewOutboundDashboard from "./pages/NewOutboundDashboard";
 import CustomerDateWiseDensity from "./pages/customer_date_wise_density_of_calls";
 import SLAClientWise from "./pages/SLA_client_wise";
-
+import SLADayWise from "./pages/SLA_day_wise";
+import SLASlotWise from "./pages/SLA_Slot_wise";
 
 
 function App() {
@@ -373,6 +374,8 @@ function App() {
               <Route path="/outbound_dashboard" element={<NewOutboundDashboard />} />
               <Route path="/AbandonReports/customer_wise" element={<CustomerDateWiseDensity />} />
               <Route path="/CdrReports/dd_clientwise" element={<SLAClientWise />} />
+              <Route path="/CdrReports/sla_day_wise" element={<SLADayWise />} />
+              <Route path="/CdrReports/report" element={<SLASlotWise />} />
           </Route>
       </Route>
     </Routes>
