@@ -57,6 +57,8 @@ from invoice import router as invoice_router
 from new_outbound_dashboard import router as new_outbound_dashboard
 from customer_date_wise_density_of_calls import router as customer_date_wise_density_of_calls_router
 from SLA_client_wise import router as SLA_client_wise_router
+from skilled_reports import router as skilled_reports_router
+from Agent_Apr import router as Agent_Apr_router
 
 
 
@@ -118,6 +120,8 @@ app.include_router(invoice_router, tags=["Invoice"])
 app.include_router(new_outbound_dashboard, tags=["New Outbound Dashboard"])
 app.include_router(customer_date_wise_density_of_calls_router, tags=["Customere Date wise density"])
 app.include_router(SLA_client_wise_router, tags=["SLA Client Wise"])
+app.include_router(skilled_reports_router, tags=["Skilled Reports"])
+app.include_router(Agent_Apr_router, tags=["Agent APR"])
 
 
 

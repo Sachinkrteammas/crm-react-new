@@ -62,6 +62,39 @@ const SLAClientWise = () => {
     return;
   }
 
+  if(!filters.type) {
+    alert("Please select Type.");
+    return;
+  }
+
+
+  // 🔹 Get selected client name for file name
+  let clientNameForFile = "All";
+
+  if (filters.client && filters.client !== "ALL") {
+    const selectedClient = clients.find(
+      (c) => String(c.company_id) === String(filters.client)
+    );
+    if (selectedClient?.company_name) {
+      clientNameForFile = selectedClient.company_name;
+    }
+  }
+
+  // 🔹 Limit to first 6 characters
+  clientNameForFile = clientNameForFile.substring(0, 6);
+
+  const formatDateForFile = (date) => {
+    if (!date) return "";
+    const d = String(date.getDate()).padStart(2, "0");
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const y = date.getFullYear();
+    return `${d}-${m}-${y}`;
+  };
+
+  const fileStartDate = formatDateForFile(filters.startDate);
+  const fileEndDate = formatDateForFile(filters.endDate);
+
+
   setLoading(true);
   try {
     const params = {
@@ -99,10 +132,12 @@ const SLAClientWise = () => {
           Talk: values["Talk"],
           Wait: values["wait"],
           Dispo: values["dispo"],
-          Pause: values["pause"],
+          // Pause: values["pause"],
           Hold: values["hold"],
           "Al %": values["Al %"],
           "SL %": values["SL %"],
+          "RL %": values["RL %"],
+          "RL": values["RL"],
           "Total Login": values["Total login"],
           "Net Login": values["Net login"],
           "Utilization %": values["Utilization %"],
@@ -122,7 +157,10 @@ const SLAClientWise = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "SLA Slot Wise");
 
-    XLSX.writeFile(workbook, "SLA_Slot_Wise_Report.xlsx");
+    const fileName = `${clientNameForFile}_SLA_Slot_Wise_Report_${fileStartDate}_to_${fileEndDate}.xlsx`;
+
+    XLSX.writeFile(workbook, fileName);
+
   } catch (err) {
     console.error(err);
     alert("Failed to export SLA report");

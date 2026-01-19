@@ -12,6 +12,7 @@ const CreateAgent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [loading, setLoading] = useState(false);
+  const [loadingButton, setLoadingbutton] = useState(false);
 
   const filteredAgents = agents.filter((a) =>
     `${a.displayname} ${a.username} ${a.email}`
@@ -49,6 +50,7 @@ const CreateAgent = () => {
     phone_no: "",
     LanguagesKnown: [],
     ClientRights: [],
+    employment_type: "",
   });
 
   useEffect(() => {
@@ -101,6 +103,7 @@ const CreateAgent = () => {
       phone_no: "",
       LanguagesKnown: [],
       ClientRights: [],
+      employment_type: "",
     });
     setEditingAgent(null);
   };
@@ -132,6 +135,8 @@ const CreateAgent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    setLoadingbutton(true);
     try {
       if (editingAgent) {
         await api.put(`/agents/${editingAgent.id}`, form);
@@ -146,6 +151,8 @@ const CreateAgent = () => {
       setAgents(res.data);
     } catch (err) {
       alert("Error: " + (err.response?.data?.detail || "Failed to save agent"));
+    } finally {
+      setLoadingbutton(false);
     }
   };
 
@@ -337,6 +344,7 @@ const CreateAgent = () => {
                           <div className="row g-3">
                             <div className="col-md-4"><strong>Process:</strong> {viewingAgent.processname}</div>
                             <div className="col-md-4"><strong>Work Mode:</strong> {viewingAgent.workmode}</div>
+                            <div className="col-md-4"><strong>Employment Type:</strong> {viewingAgent.employment_type}</div>
                           </div>
                         </div>
                       </div>
@@ -683,6 +691,20 @@ const CreateAgent = () => {
                         />
                       </div>
 
+                      <div className="col-md-4">
+                        <label className="form-label">Employment Type *</label>
+                        <select
+                          name="employment_type"
+                          className="form-control"
+                          value={form.employment_type}
+                          onChange={handleChange}
+                        >
+                          <option value="">Employment Type</option>
+                          <option value="Full Time">Full Time</option>
+                          <option value="Part Time">Part Time</option>
+                        </select>
+                      </div>
+
                       {/* Languages */}
                       <div className="col-md-12">
                       <label className="form-label">Languages Known *</label>
@@ -758,8 +780,9 @@ const CreateAgent = () => {
 
                       {/* Submit */}
                       <div className="col-12">
-                        <button type="submit" className="btn btn-primary">
-                          {editingAgent ? "Update" : "Save"}
+                        <button type="submit" className="btn btn-primary" disabled={loadingButton}>
+                          { loadingButton ? (editingAgent ? "Updating..." : "Saving...") : (editingAgent ? "Update" : "Save")}
+                          {/* {editingAgent ? "Update" : "Save"} */}
                         </button>
                       </div>
                     </form>

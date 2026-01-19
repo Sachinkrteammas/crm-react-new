@@ -133,6 +133,11 @@ import CustomerDateWiseDensity from "./pages/customer_date_wise_density_of_calls
 import SLAClientWise from "./pages/SLA_client_wise";
 import SLADayWise from "./pages/SLA_day_wise";
 import SLASlotWise from "./pages/SLA_Slot_wise";
+import RealtimeAgentMapWithClients from "./pages/Realtime_agent_map";
+import OverallAgentSkills from "./pages/overall_agent_skills";
+import CampaignWiseAgentSkill from "./pages/campaign_wise_agent_skills";
+import AgentAprExport from "./pages/Agent_apr";
+
 
 
 function App() {
@@ -376,6 +381,10 @@ function App() {
               <Route path="/CdrReports/dd_clientwise" element={<SLAClientWise />} />
               <Route path="/CdrReports/sla_day_wise" element={<SLADayWise />} />
               <Route path="/CdrReports/report" element={<SLASlotWise />} />
+              <Route path="/AbandonReports/client_live_agent" element={<RealtimeAgentMapWithClients />} />
+              <Route path="/AbandonReports/skill_wise_excel" element={<OverallAgentSkills />} />
+              <Route path="/AbandonReports/agent_wise_skill_excel" element={<CampaignWiseAgentSkill />} />
+              <Route path="/AbandonReports/agent_apr" element={<AgentAprExport />} />
           </Route>
       </Route>
     </Routes>

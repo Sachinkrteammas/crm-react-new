@@ -872,11 +872,11 @@ def create_agent(agent: dict, db: Session = Depends(get_db4)):
             INSERT INTO agent_master
             (displayname, username, password, password2, processname, workmode, dob, 
              dateofjoining, agent_type, address, state, city, Gender, Versant, 
-             email, phone_no, LanguagesKnown, ClientRights, createdate, status)
+             email, phone_no, LanguagesKnown, ClientRights, createdate, status, employment_type)
             VALUES 
             (:displayname, :username, :password, :password2, :processname, :workmode, :dob,
              :dateofjoining, :agent_type, :address, :state, :city, :Gender, :Versant, 
-             :email, :phone_no, :LanguagesKnown, :ClientRights, :createdate, 'A')
+             :email, :phone_no, :LanguagesKnown, :ClientRights, :createdate, 'A', :employment_type)
         """)
 
         db.execute(query, {
@@ -932,7 +932,7 @@ def update_agent(agent_id: int, agent: dict, db: Session = Depends(get_db4)):
                 state=:state, city=:city, Gender=:Gender, Versant=:Versant,
                 email=:email, phone_no=:phone_no,
                 LanguagesKnown=:LanguagesKnown, ClientRights=:ClientRights,
-                update_date=:update_date
+                update_date=:update_date,employment_type=:employment_type
             WHERE id=:id
         """)
 

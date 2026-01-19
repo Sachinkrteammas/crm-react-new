@@ -63,13 +63,13 @@ def outbound_kpi_summary(
     r = db2.execute(query, {"start": start_date, "end": end_date}).mappings().fetchone() or {}
 
     return {
-        "totalDataAssigned": int(r.get("total_data_assigned", 0)),
-        "uniqueNumbersDialed": int(r.get("unique_numbers_dialed", 0)),
-        "totalAttempts": int(r.get("total_attempts", 0)),
-        "avgAttemptsPerNumber": float(r.get("avg_attempts_per_number", 0)),
-        "connectedCalls": int(r.get("connected_calls", 0)),
-        "connectionRate": float(r.get("connection_rate", 0)),
-        "qualifiedLeads": int(r.get("qualified_leads", 0)),
+        "totalDataAssigned": int(r.get("total_data_assigned", 0) or 0),
+        "uniqueNumbersDialed": int(r.get("unique_numbers_dialed", 0) or 0),
+        "totalAttempts": int(r.get("total_attempts", 0) or 0),
+        "avgAttemptsPerNumber": float(r.get("avg_attempts_per_number") or 0),
+        "connectedCalls": int(r.get("connected_calls", 0) or 0),
+        "connectionRate": float(r.get("connection_rate") or 0),
+        "qualifiedLeads": int(r.get("qualified_leads", 0) or 0),
     }
 
 
@@ -114,10 +114,10 @@ def outbound_call_funnel(
 
     return {
         # Absolute numbers
-        "uniqueDialed": int(unique_dialed),
-        "totalAttempts": int(total_attempts),
-        "connectedCalls": int(connected),
-        "qualifiedLeads": int(qualified),
+        "uniqueDialed": int(unique_dialed or 0),
+        "totalAttempts": int(total_attempts or 0),
+        "connectedCalls": int(connected or 0),
+        "qualifiedLeads": int(qualified or 0),
 
         # Funnel rates
         "dialRate": round(dial_rate, 1),
@@ -151,19 +151,20 @@ def outbound_performance_trend(
 
     rows = db2.execute(query, {"start": start_date, "end": end_date}).mappings().all()
 
+    total_days = len(rows)
     return {
         "trend": [
             {
                 "day": str(r["day"]),
                 "attempts": int(r["attempts"]),
-                "connect": float(r["connect_rate"]),
-                "outcome": float(r["outcome_rate"]),
+                "connect": float(r["connect_rate"] or 0),
+                "outcome": float(r["outcome_rate"] or 0),
             } for r in rows
         ],
         "averages": {
-            "avgAttempts": round(sum(r["attempts"] for r in rows) / len(rows), 0),
-            "avgConnect": round(sum(r["connect_rate"] for r in rows) / len(rows), 1),
-            "avgOutcome": round(sum(r["outcome_rate"] for r in rows) / len(rows), 1),
+            "avgAttempts": round(sum(r["attempts"] for r in rows) / total_days, 0) if total_days else 0,
+            "avgConnect": round(sum(r["connect_rate"] for r in rows) / total_days, 1) if total_days else 0,
+            "avgOutcome": round(sum(r["outcome_rate"] for r in rows) / total_days, 1) if total_days else 0,
         }
     }
 

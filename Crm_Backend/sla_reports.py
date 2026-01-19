@@ -627,6 +627,24 @@ def slot_wise_utilization(
             "Other Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.Other_ag or "").split(",") if a]),
         }
 
+        # --- RL and RL % calculation ---
+        rl_sql = text(f"""
+            SELECT COUNT(1) as cnt
+            FROM aband_call_master
+            WHERE {client_list_cond}
+            AND call_status='answer'
+            AND calldate >= '{start_time}'
+            AND calldate < '{end_time}'
+        """)
+        rl_count = db1.execute(rl_sql).fetchone().cnt or 0
+        rl_percent = round(((rl_count + r.Answered) / r.Total) * 100, 2) if r.Total else 0
+
+        data[date_label][time_label].update({
+            "RL": rl_count,
+            "RL %": rl_percent
+        })
+
+
         cur += timedelta(hours=1)
 
     return {

@@ -38,6 +38,7 @@ const ManageUserLogin = () => {
 
   const [menuData, setMenuData] = useState([]); // store API menu
   const [loading, setLoading] = useState(true);
+  const [loadingButton, setLoadingButton] = useState(true);
 
   const [expanded, setExpanded] = useState({});
   const [expandedEdit, setExpandedEdit] = useState({});
@@ -347,6 +348,7 @@ const ManageUserLogin = () => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     if (!editUserId) return;
+    setLoadingButton(true);
     try {
       const payload = {
         name: editForm.name,
@@ -374,6 +376,8 @@ const ManageUserLogin = () => {
     } catch (err) {
       if (err.response?.data?.detail) setErrorMessage(err.response.data.detail);
       else setErrorMessage("Something went wrong.");
+    } finally {
+      setLoadingButton(false);
     }
   };
 
@@ -710,8 +714,8 @@ const ManageUserLogin = () => {
                         </div>
                       </div>
                       <div className="col-12 d-flex justify-content-end">
-                        <button type="submit" className="btn btn-primary">
-                          Update
+                        <button type="submit" className="btn btn-primary" disabled={loadingButton}>
+                          {loadingButton ? "Updating..": "Update"}
                         </button>
                       </div>
                     </form>

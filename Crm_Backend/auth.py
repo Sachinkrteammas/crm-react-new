@@ -50,7 +50,7 @@ def login(request: LoginRequest, db: Session = Depends(get_db4)):
             }
 
     # ✅ Admin case (same flow as Superadmin)
-        elif user["user_type"] == "Admin":
+        elif user["user_type"] in ["Admin", "admin"]:
             print("Admin user logged in",user["user_type"] )
             token = create_access_token({"sub": user["Email"]})
             return {
