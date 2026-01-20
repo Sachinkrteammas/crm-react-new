@@ -431,7 +431,8 @@ def get_ob_cdr_report(
             SEC_TO_TIME(t2.length_in_sec) AS CallDurationFmt,
             IF(t2.user='VDAD','Not Connected','Connected') AS Scenario,
             IF(t2.list_id='998','Manual','Auto') AS DialMode,
-            t3.dispo_sec AS WrapTime
+            t3.dispo_sec AS WrapTime,
+            t3.talk_sec AS TalkSec
         FROM asterisk.vicidial_log t2
         LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid
         LEFT JOIN vicidial_users vu ON t2.user=vu.user
@@ -471,6 +472,11 @@ def get_ob_cdr_report(
     final_data = []
     for row in vicidial_rows:
         row_dict = dict(row)
+
+        # Step: Override Scenario if call not connected
+        if not row_dict.get("Endtime") or not row_dict.get("TalkSec"):
+            row_dict["Scenario"] = "Not Connected"
+        # else leave Scenario as it was from DB (Connected / Not Connected)
 
         # Recording URL
         row_dict["Recording"] = (
@@ -659,6 +665,13 @@ def get_ob_shared_cdr_report(
         lead_id = row["lead_id"]
         cm = call_master_map.get(lead_id)
 
+        # Determine CallType with PHP-style logic
+        if not row.get("end_time") or not row.get("talk_sec"):
+            call_type = "Not Connected"
+        else:
+            call_type = row.get("call_type", "Connected")  # fallback to DB value
+
+
         response_data.append({
             "CallDate": row["call_date"],
             "StartTime": row["start_time"],
@@ -666,7 +679,7 @@ def get_ob_shared_cdr_report(
             "CustomerNumber": phone,
             "AgentID": row["agent_id"],
             "AgentName": row["agent_name"],
-            "CallType": row["call_type"],
+            "CallType": call_type,
             "SystemDisposition": row["call_status"],
             "DialingMode": row["dial_mode"],
             "ClientName": client_name,  # ✅ guaranteed present

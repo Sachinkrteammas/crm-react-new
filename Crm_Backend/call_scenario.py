@@ -200,10 +200,11 @@ def send_call_summary(
 
         vicidial_query = text("""
             SELECT 
-                SUM(IF(`user`='VDAD',1,0)) AS Notconnected,
-                SUM(IF(`user`!='VDAD',1,0)) AS Connected
-            FROM vicidial_log
-            WHERE campaign_id='Cryst000'
+                SUM(IF(t2.user='VDAD' OR t2.end_epoch IS NULL,1,0)) AS Notconnected,
+                SUM(IF(t2.user!='VDAD' AND t2.end_epoch IS NOT NULL ,1,0)) AS Connected
+            FROM vicidial_log t2
+            LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid
+            WHERE t2.campaign_id='Cryst000'
             AND DATE(call_date) = CURDATE();
         """)
 
