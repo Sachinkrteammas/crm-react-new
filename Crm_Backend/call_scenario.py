@@ -187,7 +187,7 @@ def send_call_summary(
                     WHEN call_status = '' OR call_status IS NULL THEN 'Not Connected'
                     ELSE call_status
                 END AS status,
-                COUNT(*) AS Count
+                COUNT(DISTINCT PhoneNo) AS Count
             FROM aband_call_master
             WHERE CompanyName = 'Crystal Eye Centre Private Limited'
             AND DATE(CallDate) = CURDATE()
@@ -200,8 +200,8 @@ def send_call_summary(
 
         vicidial_query = text("""
             SELECT 
-                SUM(IF(t2.user='VDAD' OR t2.end_epoch IS NULL,1,0)) AS Notconnected,
-                SUM(IF(t2.user!='VDAD' AND t2.end_epoch IS NOT NULL ,1,0)) AS Connected
+                SUM(IF(t2.user='VDAD' OR t2.end_epoch IS NULL OR t3.talk_sec IS NULL OR t3.talk_sec=0 ,1,0)) AS Notconnected,
+                SUM(IF(t2.user!='VDAD' AND t2.end_epoch IS NOT NULL AND t3.talk_sec IS NOT NULL AND t3.talk_sec!=0  ,1,0)) AS Connected
             FROM vicidial_log t2
             LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid
             WHERE t2.campaign_id='Cryst000'
