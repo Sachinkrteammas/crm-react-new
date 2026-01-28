@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
@@ -7,10 +7,11 @@ from datetime import datetime
 from database import get_db4
 import shutil
 import os
+from fastapi.responses import FileResponse
 
 router = APIRouter()
 
-UPLOAD_DIR = "uploads/training_docs"
+UPLOAD_DIR = "uploads/training_file"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ---------------------------
@@ -24,22 +25,44 @@ async def upload_training_docs(
     descriptions: List[str] = Form(...),
     db: Session = Depends(get_db4)
 ):
+    # ✅ Normalize descriptions
+    if len(descriptions) == 1 and "," in descriptions[0]:
+        descriptions = [d.strip() for d in descriptions[0].split(",") if d.strip()]
+    else:
+        descriptions = [d.strip() for d in descriptions if d.strip()]
+
     if len(files) != len(descriptions):
         raise HTTPException(status_code=400, detail="Files and descriptions count mismatch")
     if len(files) > 10:
         raise HTTPException(status_code=400, detail="Maximum 10 files allowed")
 
+    # ✅ Create client-specific folder like PHP
+    client_folder = os.path.join(UPLOAD_DIR, f"client_{ClientId}")
+    os.makedirs(client_folder, exist_ok=True)
+
+    # ✅ Allowed file extensions
+    allowed_ext = {'jpg','jpeg','gif','png','pdf','doc','docx','csv','xlsx','xls'}
+
     field_data = {}
     for idx, file in enumerate(files):
-        filename = f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{file.filename}"
-        file_path = os.path.join(UPLOAD_DIR, filename)
+        ext = file.filename.split(".")[-1].lower()
+        if ext not in allowed_ext:
+            raise HTTPException(status_code=400, detail=f"File type '{ext}' not allowed")
+
+        # ✅ Generate random 6-digit prefix like PHP
+        rand = str(int(datetime.now().timestamp()*1000 % 1000000)).zfill(6)
+        filename = f"{rand}{file.filename}"
+        file_path = os.path.join(client_folder, filename)
+
+        # Save the file
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
 
-        field_data[f"Field{idx+1}"] = file_path
+        # ✅ Store only the filename in DB, not full path
+        field_data[f"Field{idx+1}"] = filename
         field_data[f"Des{idx+1}"] = descriptions[idx]
 
-    # Use correct column 'createdate'
+    # Insert into database
     columns = ", ".join(["ClientId"] + list(field_data.keys()) + ["createdate"])
     values = ", ".join([":ClientId"] + [f":{k}" for k in field_data.keys()] + ["NOW()"])
     query = text(f"INSERT INTO training_master ({columns}) VALUES ({values})")
@@ -50,14 +73,14 @@ async def upload_training_docs(
     result = db.execute(query, params)
     db.commit()
 
-    return {"detail": "Files uploaded successfully", "id": result.lastrowid}
+    return {"detail": "Training document uploaded successfully", "id": result.lastrowid}
 
 
 # ---------------------------
 # Get Training Docs
 # ---------------------------
 @router.get("/training/list")
-def list_training_docs(ClientId: Optional[str] = None, db: Session = Depends(get_db4)):
+def list_training_docs(ClientId: Optional[int] = None, db: Session = Depends(get_db4)):
     query_str = "SELECT * FROM training_master"
     params = {}
     if ClientId:
@@ -97,12 +120,16 @@ def delete_training_doc(id: int, db: Session = Depends(get_db4)):
 
     if not row:
         raise HTTPException(status_code=404, detail="Training doc not found")
+    
+    client_folder = os.path.join(UPLOAD_DIR, f"client_{row['ClientId']}")
 
     for i in range(1, 11):
         file_col = f"Field{i}"
-        file_path = row.get(file_col)
-        if file_path and os.path.exists(file_path):
-            os.remove(file_path)
+        filename = row.get(file_col)
+        if filename:
+            file_path = os.path.join(client_folder, filename)
+            if os.path.exists(file_path):
+                os.remove(file_path)
 
     db.execute(
         text("DELETE FROM training_master WHERE id = :id"),
@@ -111,6 +138,44 @@ def delete_training_doc(id: int, db: Session = Depends(get_db4)):
     db.commit()
 
     return {"detail": "Training doc deleted successfully"}
+
+
+
+@router.get("/training/download")
+def download_training_file(
+    file: str = Query(...),
+    ClientId: str = Query(...),
+):
+    # ✅ Build client-specific folder path
+    client_folder = os.path.join(UPLOAD_DIR, f"client_{ClientId}")
+    file_path = os.path.join(client_folder, file)
+
+    # ✅ Check if file exists
+    if not os.path.exists(file_path) or not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="File does not exist on given path.")
+
+    # ✅ Determine content type based on extension
+    ext = file.split('.')[-1].lower()
+    content_type_map = {
+        'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'csv': 'text/csv',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif'
+    }
+    content_type = content_type_map.get(ext, 'application/octet-stream')
+
+    # ✅ Return file as attachment
+    return FileResponse(
+        path=file_path,
+        media_type=content_type,
+        filename=file  # this ensures "attachment; filename=<file>" like PHP
+    )
 
 
 # ---------------------------

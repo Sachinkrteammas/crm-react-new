@@ -280,7 +280,7 @@ export const uploadTrainingDocs = async (ClientId, files, descriptions) => {
     files.forEach((file) => formData.append("files", file));
     descriptions.forEach((desc) => formData.append("descriptions", desc));
 
-    const response = await api.post("/training/upload", formData, {
+    const response = await api.post("/in_call/training/upload", formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -297,7 +297,7 @@ export const uploadTrainingDocs = async (ClientId, files, descriptions) => {
 export const getTrainingDocs = async (ClientId = "") => {
   try {
     const params = ClientId ? { ClientId } : {};
-    const response = await api.get("/training/list", { params });
+    const response = await api.get("/in_call/training/list", { params });
     return response.data;
   } catch (error) {
     console.error("Error fetching training docs:", error);
@@ -308,7 +308,7 @@ export const getTrainingDocs = async (ClientId = "") => {
 // ---------------- Delete Training Doc ----------------
 export const deleteTrainingDoc = async (id) => {
   try {
-    const response = await api.delete(`/training/delete/${id}`);
+    const response = await api.delete(`/in_call/training/delete/${id}`);
     return response.data;
   } catch (error) {
     console.error("Error deleting training doc:", error);

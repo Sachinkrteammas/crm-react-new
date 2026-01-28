@@ -1,39 +1,55 @@
 // src/pages/ProcessUpdate.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Trash2 } from "lucide-react"; // icon for delete
+import api from "../api";
 
 const ManageProcessUpdate = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 10;
 
-  const processData = [
-    {
-      id: 1,
-      datetime: "29 Aug 2025 07:22:00",
-      processUpdate: "Complete 10 digit Contact number has to be update",
-      clientName: "Anest Iwata Motherson Private Limited",
-      type: "Permanent",
-      validFrom: "30 Aug 2025",
-      validTill: "30 Apr 2026",
-      updateReadCount: 0,
-    },
-    {
-      id: 2,
-      datetime: "29 Aug 2025 07:22:00",
-      processUpdate: "Complete 10 digit Contact number has to be update",
-      clientName: "Anest Iwata Motherson Private Limited",
-      type: "Permanent",
-      validFrom: "30 Aug 2025",
-      validTill: "30 Apr 2026",
-      updateReadCount: 0,
-    },
-  ];
+
+  const [processData, setProcessData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+
+  // Fetch API data
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get("/view_process_update");
+      setProcessData(response.data);
+    } catch (error) {
+      console.error("Error fetching process updates:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+
+  // Delete a process update
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this process update?")) return;
+
+    try {
+      await api.delete(`/delete_process_update?process_id=${id}`);
+      // Remove deleted item from state
+      setProcessData((prev) => prev.filter((row) => row.id !== id));
+      alert(`Process update with ID ${id} deleted successfully!`);
+    } catch (error) {
+      console.error("Error deleting process update:", error);
+      alert("Failed to delete process update.");
+    }
+  };
 
   const filteredData = processData.filter(
     (row) =>
-      row.processUpdate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      row.clientName.toLowerCase().includes(searchTerm.toLowerCase())
+      row.process_update.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      row.company_name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const paginatedData = filteredData.slice(
@@ -88,15 +104,27 @@ const ManageProcessUpdate = () => {
                   paginatedData.map((row) => (
                     <tr key={row.id}>
                       <td>{row.id}</td>
-                      <td>{row.datetime}</td>
-                      <td>{row.processUpdate}</td>
-                      <td>{row.clientName}</td>
+                      <td>
+                        {new Date(row.date_time).toLocaleString("en-US", {
+                          day: "2-digit",
+                          month: "short",   // Jan, Feb, Mar
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false
+                        })}
+                      </td>
+                      <td>{row.process_update}</td>
+                      <td>{row.company_name}</td>
                       <td>{row.type}</td>
-                      <td>{row.validFrom}</td>
-                      <td>{row.validTill}</td>
-                      <td>{row.updateReadCount}</td>
+                      <td>{row.valid_from}</td>
+                      <td>{row.valid_till}</td>
+                      <td>{row.Total}</td>
                       <td className="text-center">
-                        <button className="btn btn-danger btn-sm d-flex align-items-center justify-content-center">
+                        <button 
+                          className="btn btn-danger btn-sm d-flex align-items-center justify-content-center"
+                          onClick={() => handleDelete(row.id)}
+                        >
                           <Trash2 size={16} />
                         </button>
                       </td>
