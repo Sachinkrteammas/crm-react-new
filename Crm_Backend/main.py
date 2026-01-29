@@ -59,6 +59,10 @@ from customer_date_wise_density_of_calls import router as customer_date_wise_den
 from SLA_client_wise import router as SLA_client_wise_router
 from skilled_reports import router as skilled_reports_router
 from Agent_Apr import router as Agent_Apr_router
+from anestwatta import router as anest_dashboard_router
+
+
+
 
 
 
@@ -122,6 +126,7 @@ app.include_router(customer_date_wise_density_of_calls_router, tags=["Customere 
 app.include_router(SLA_client_wise_router, tags=["SLA Client Wise"])
 app.include_router(skilled_reports_router, tags=["Skilled Reports"])
 app.include_router(Agent_Apr_router, tags=["Agent APR"])
+app.include_router(anest_dashboard_router)
 
 
 
@@ -146,11 +151,6 @@ def scheduled_call_summary():
     finally:
         db_gen.close()
         db2_gen.close()
-
-        
-
-
-        
 
 
 # -------------------------------------------------------

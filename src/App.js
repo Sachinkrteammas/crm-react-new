@@ -137,6 +137,7 @@ import RealtimeAgentMapWithClients from "./pages/Realtime_agent_map";
 import OverallAgentSkills from "./pages/overall_agent_skills";
 import CampaignWiseAgentSkill from "./pages/campaign_wise_agent_skills";
 import AgentAprExport from "./pages/Agent_apr";
+import DashboardAnest from "./pages/DashboardAnest";
 
 
 
@@ -233,6 +234,7 @@ function App() {
         "/campaigns_mapping" : "Campaigns Mapping | DialDesk",
         "/mappings" : "Did Client And Campaigns Mapping | DialDesk",
         "/allocation_plan" : "Allocation Plan| DialDesk",
+        "/DashboardAnest" : "Dashboard Anest Wata | DialDesk",
     };
 
     const location = useLocation();
@@ -385,6 +387,8 @@ function App() {
               <Route path="/AbandonReports/skill_wise_excel" element={<OverallAgentSkills />} />
               <Route path="/AbandonReports/agent_wise_skill_excel" element={<CampaignWiseAgentSkill />} />
               <Route path="/AbandonReports/agent_apr" element={<AgentAprExport />} />
+              <Route path="/DashboardAnest" element={<DashboardAnest />} />
+              <></>
           </Route>
       </Route>
     </Routes>
