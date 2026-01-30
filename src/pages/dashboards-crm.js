@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import DashboardAnest from "./DashboardAnest"
 import {
   PieChart,
   Pie,
@@ -335,7 +336,28 @@ const Dashboard = () => {
     }
   };
 
+  // Transform dynamic case data into a single object for Recharts
+  const transformedTicketCaseData = ticketCaseData.map((item) => {
+    return {
+      name: item.name,
+      ...item.data, // Spread dynamic categories as keys
+    };
+  });
+
+  // Assign colors dynamically
+  const CATEGORY_COLORS = [
+    "#6366F1", "#EC4899", "#F59E0B", "#10B981", "#F43F5E",
+    "#3B82F6", "#8B5CF6", "#F472B6", "#FBBF24", "#22D3EE"
+  ];
+
+
   const navigate = useNavigate();
+
+  // 🔥 Render special dashboard for client 627
+  if (String(selectedClient) === "627") {
+    return <DashboardAnest />;
+  }
+
 
   return (
     <>
@@ -919,22 +941,25 @@ const Dashboard = () => {
                   <div className="card-body">
                     <ResponsiveContainer width="100%" height={250}>
                       <BarChart
-                        data={ticketCaseData}
+                        data={transformedTicketCaseData}
                         margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" stroke="#b4b7bd" />
                         <YAxis stroke="#b4b7bd" />
-                        <Tooltip />
+                        <Tooltip position={{ y: -50 }} />
                         <Legend />
-                        <Bar dataKey="Enquiry" stackId="a" fill="#6366F1" />
-                        <Bar dataKey="Complaint" stackId="a" fill="#EC4899" />
-                        <Bar dataKey="BulkOrder" stackId="a" fill="#F59E0B" />
-                        <Bar dataKey="Request" stackId="a" fill="#10B981" />
-                        <Bar dataKey="Other" stackId="a" fill="#F43F5E" />
+                        {ticketCaseData[0] &&
+                          Object.keys(ticketCaseData[0].data).map((key, idx) => (
+                            <Bar
+                              key={key}
+                              dataKey={key}
+                              stackId="a"
+                              fill={CATEGORY_COLORS[idx % CATEGORY_COLORS.length]}
+                            />
+                          ))}
                       </BarChart>
                     </ResponsiveContainer>
-
                     <div className="row mt-4">
                       <div className="col-md-6">
                         <h6 className="text-center mb-2">

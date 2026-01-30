@@ -660,6 +660,7 @@
 
 // Final Version with Calls + Billings Toggle but here on ly design for calls have outbonds and billings have.. 
 import React, { useState, useEffect } from "react";
+import Dashboard from "./dashboards-crm"
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 
@@ -887,7 +888,7 @@ const DashboardAnest = () => {
   const fetchDashboardData = async () => {
     try {
       const payload = {
-        company_id: Number(selectedClient),
+        company_id: 627,
         view_type: getViewType(dateRange),
         from_date: fromDate || null,
         to_date: toDate || null,
@@ -1119,7 +1120,7 @@ const DashboardAnest = () => {
   }, [fromDate, toDate, callType]);
 
   useEffect(() => {
-    handleDateRangeChange("30days");
+    handleDateRangeChange("today");
   }, []);
 
   // ===== Card =====
@@ -1141,8 +1142,39 @@ const DashboardAnest = () => {
     </div>
   );
 
-  return (
+  // Transform dynamic case data into a single object for Recharts
+  const transformedTicketCaseData = ticketCaseData.map((item) => {
+    return {
+      name: item.name,
+      ...item.data, // Spread dynamic categories as keys
+    };
+  });
 
+
+  // Assign colors dynamically
+  const CATEGORY_COLORS = [
+    "#6366F1", "#EC4899", "#F59E0B", "#10B981", "#F43F5E",
+    "#3B82F6", "#8B5CF6", "#F472B6", "#FBBF24", "#22D3EE"
+  ];
+
+  // 🔁 If any client OTHER than 627 is selected → show old dashboard
+  if (selectedClient && String(selectedClient) !== "627") {
+    return <Dashboard />;
+  }
+
+
+  return (
+    <>
+          {loading && (
+            <div className="loader-overlay">
+              <div className="bar"></div>
+              <div className="bar"></div>
+              <div className="bar"></div>
+              <div className="bar"></div>
+              <div className="bar"></div>
+            </div>
+          )}
+          <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
     
 
     <div className="mt-5 mb-2">
@@ -1151,22 +1183,12 @@ const DashboardAnest = () => {
          <div className="col-md-4">
           {userType === "Super-Admin" || userType === "Admin" ? (
             <>
-              <label className="form-label fw-semibold">Select Client</label>
-              <select
-                className="form-select"
-                value={selectedClient}
-                onChange={(e) => setSelectedClient(e.target.value)}
+              <button
+                className="btn btn-primary mt-4"
+                onClick={() => setSelectedClient("0")}
               >
-                <option value="">-- Select Client --</option>
-                {clients.map((client) => (
-                  <option
-                    key={client.company_id}
-                    value={String(client.company_id)}
-                  >
-                    {client.company_name}
-                  </option>
-                ))}
-              </select>
+                ← Back
+              </button>
             </>
           ) : (
             <p>
@@ -1200,14 +1222,14 @@ const DashboardAnest = () => {
           </div> */}
 
           {/* Calls / Billings but right now disabled billings*/}
-          <div className="d-flex gap-2">
+          {/* <div className="d-flex gap-2">
             <button
               className="btn btn-sm btn-primary"  // always calls
               disabled
             >
               Calls
             </button>
-          </div>
+          </div> */}
 
 
 
@@ -1275,15 +1297,26 @@ const DashboardAnest = () => {
               </select>
             )} */}
 
-            {/* Calls / Inbound and Outbound but right now disabled Outbound*/}
+            {/* Calls / Inbound and Outbound */}
             {activeTab === "calls" && (
-              <select
-                className="form-select form-select-sm mt-2"
-                value={callType}
-                disabled   // 🔒 prevents change
-              >
-                <option value="Inbound">Inbound</option>
-              </select>
+              <div className="col-sm mt-2">
+                <select
+                  className="form-select form-select-sm"
+                  value={callType}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCallType(val);
+
+                    // Navigate to Outbound dashboard if selected
+                    if (val === "Outbounds") {
+                      navigate(`/outbound_dashboard`);
+                    }
+                  }}
+                >
+                  <option value="Inbound">Inbound</option>
+                  <option value="Outbounds">Outbounds</option>
+                </select>
+              </div>
             )}
 
 
@@ -1332,7 +1365,7 @@ const DashboardAnest = () => {
                 <Card
                   title="Total Answered Calls"
                   value={data.total_answered_calls}
-                  bg="#3F51B5"
+                  bg="#767eac"
                 />
                 <Card
                   title="Unique Abandon Calls"
@@ -1693,19 +1726,23 @@ const DashboardAnest = () => {
                   <div className="card-body">
                     <ResponsiveContainer width="100%" height={250}>
                       <BarChart
-                        data={ticketCaseData}
+                        data={transformedTicketCaseData}
                         margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
                       >
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" stroke="#b4b7bd" />
                         <YAxis stroke="#b4b7bd" />
-                        <Tooltip />
+                        <Tooltip position={{ y: -20 }} />
                         <Legend />
-                        <Bar dataKey="Enquiry" stackId="a" fill="#6366F1" />
-                        <Bar dataKey="Complaint" stackId="a" fill="#EC4899" />
-                        <Bar dataKey="BulkOrder" stackId="a" fill="#F59E0B" />
-                        <Bar dataKey="Request" stackId="a" fill="#10B981" />
-                        <Bar dataKey="Other" stackId="a" fill="#F43F5E" />
+                        {ticketCaseData[0] &&
+                          Object.keys(ticketCaseData[0].data).map((key, idx) => (
+                            <Bar
+                              key={key}
+                              dataKey={key}
+                              stackId="a"
+                              fill={CATEGORY_COLORS[idx % CATEGORY_COLORS.length]}
+                            />
+                          ))}
                       </BarChart>
                     </ResponsiveContainer>
 
@@ -1801,6 +1838,8 @@ const DashboardAnest = () => {
         </>
       )}
     </div>
+    </div>
+    </>
   );
 };
 

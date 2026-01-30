@@ -1,6 +1,6 @@
 from datetime import datetime, date, timedelta
 from decimal import Decimal
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict
 
 from pydantic import BaseModel, EmailStr
 
@@ -363,13 +363,18 @@ class TicketCaseBreakdown(BaseModel):
     Request: int
     Other: int
 
+class TicketCaseBreakdownDynamic(BaseModel):
+    name: str
+    data: Dict[str, int]
+
+
 class TicketTATBreakdown(BaseModel):
     name: str
     InTAT: int
     OutOfTAT: int
 
 class TicketCaseAnalysisResponse(BaseModel):
-    cases: List[TicketCaseBreakdown]
+    cases: List[TicketCaseBreakdownDynamic]
     open_tat: List[TicketTATBreakdown]
     close_tat: List[TicketTATBreakdown]
 

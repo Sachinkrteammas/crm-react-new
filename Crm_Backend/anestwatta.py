@@ -58,7 +58,7 @@ def get_dashboard_summary(
               AND CallDate >= :startdate
               AND CallDate < :enddate_plus_one
         """
-        print("Complaint SQL:", complaint_sql)
+        # print("Complaint SQL:", complaint_sql)
         complaint = db_main.execute(
             text(complaint_sql),
             {
@@ -87,7 +87,7 @@ def get_dashboard_summary(
               AND t2.term_reason <> 'AFTERHOURS'
               AND t2.lead_id IS NOT NULL
         """).bindparams(bindparam("campaign_ids", expanding=True))
-        print("Call SQL:", call_sql)
+        # print("Call SQL:", call_sql)
         call_stats = db_vici.execute(
             call_sql,
             {"startdate": startdate, "enddate": enddate, "campaign_ids": campaign_ids}
@@ -104,7 +104,7 @@ def get_dashboard_summary(
               AND CallDate >= :startdate
               AND CallDate < :enddate_plus_one
         """
-        print("Tagged SQL:", tagged_sql)
+        # print("Tagged SQL:", tagged_sql)
         total_tagged = db_main.execute(
             text(tagged_sql),
             {"cid": client_id, "startdate": startdate, "enddate_plus_one": enddate_plus_one}
@@ -121,7 +121,7 @@ def get_dashboard_summary(
               AND Callbackdate < :enddate_plus_one
               AND (TagStatus='yes' OR TagStatus='1')
         """
-        print("Callback SQL:", cb_sql)
+        # print("Callback SQL:", cb_sql)
         abandon_cb = db_main.execute(
             text(cb_sql),
             {"cid": client_id, "startdate": startdate, "enddate_plus_one": enddate_plus_one}
