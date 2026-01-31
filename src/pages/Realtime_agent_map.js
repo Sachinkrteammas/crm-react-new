@@ -73,6 +73,48 @@ const RealtimeAgentMapWithClients = () => {
     }
   };
 
+
+  const downloadAgentExcel = async (igpname) => {
+    try {
+      const response = await api.get(
+        "/export-agent-excel",
+        {
+          params: { igpname },
+          responseType: "blob", // 👈 VERY IMPORTANT
+        }
+      );
+
+      // Create blob URL
+      const url = window.URL.createObjectURL(
+        new Blob([response.data])
+      );
+
+      // Get filename from response headers
+      const contentDisposition = response.headers["content-disposition"];
+      let fileName = "agent_list.xlsx";
+
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match && match[1]) {
+          fileName = match[1];
+        }
+      }
+
+      // Trigger download
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Excel download failed", err);
+      alert("Failed to download Excel");
+    }
+  };
+
   return (
     <>
       {loading && (
@@ -160,7 +202,11 @@ const RealtimeAgentMapWithClients = () => {
                                   </>
                                 )}
                                 <td>{skill.skill_name}</td>
-                                <td className="text-primary fw-bold">
+                                <td
+                                  className="text-primary fw-bold"
+                                  style={{ cursor: "pointer" }}
+                                  onClick={() => downloadAgentExcel(skill.skill_name)}
+                                >
                                   {skill.agent_count}
                                 </td>
                               </tr>

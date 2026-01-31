@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Dict, Any
@@ -9,6 +9,11 @@ from fastapi.responses import FileResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
 import tempfile
+from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
+import pandas as pd
+from io import BytesIO
+from datetime import datetime
 
 
 
@@ -360,4 +365,54 @@ def export_agent_wise_skill_excel(
         path=tmp_file.name,
         filename="Agent_Skilled_Mapped.xlsx",
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
+
+
+
+@router.get("/export-agent-excel")
+def export_agent_excel(
+    igpname: str = Query(..., description="IGP Name"),
+    db: Session = Depends(get_db2)
+):
+    sql = """
+        SELECT
+            vl.user AS agent_user,
+            vu.full_name AS agent_name
+        FROM vicidial_live_agents vl
+        JOIN vicidial_users vu
+            ON vl.user = vu.user
+        WHERE vl.campaign_id = 'Dialdesk'
+          AND vl.closer_campaigns LIKE :igpname
+        ORDER BY vu.full_name
+    """
+
+    rows = db.execute(
+        text(sql),
+        {"igpname": f"%{igpname}%"}
+    ).fetchall()
+
+
+    # if not rows:
+    #     raise HTTPException(status_code=404, detail="No data found")
+
+    # Create DataFrame
+    df = pd.DataFrame(rows, columns=["Agent User", "Agent Name"])
+
+    # Create Excel in memory
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Agents")
+
+    output.seek(0)
+
+    file_name = f"agent_list_{igpname}_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.xlsx"
+
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{file_name}"'
+        }
     )
