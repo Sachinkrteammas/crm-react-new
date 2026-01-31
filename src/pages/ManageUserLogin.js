@@ -38,7 +38,7 @@ const ManageUserLogin = () => {
 
   const [menuData, setMenuData] = useState([]); // store API menu
   const [loading, setLoading] = useState(true);
-  const [loadingButton, setLoadingButton] = useState(true);
+  const [loadingButton, setLoadingButton] = useState(false);
 
   const [expanded, setExpanded] = useState({});
   const [expandedEdit, setExpandedEdit] = useState({});
