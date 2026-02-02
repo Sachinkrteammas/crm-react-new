@@ -932,3 +932,92 @@ def get_ivr_funnel_report(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+
+
+
+
+
+@router.get("/after-hours-calls")
+def get_after_hours_calls(
+    client_id: int = Query(..., description="Client ID"),
+    start_date: str = Query(..., description="YYYY-MM-DD"),
+    db: Session = Depends(get_db2),     # call_log DB
+    db4: Session = Depends(get_db4)     # did_master DB
+):
+
+    # ------------------------------------------------
+    # 1. Fetch ALL DID numbers for the client
+    # ------------------------------------------------
+    did_query = text("""
+        SELECT did_number
+        FROM did_master
+        WHERE client_id = :client_id
+    """)
+
+    did_rows = db4.execute(
+        did_query,
+        {"client_id": client_id}
+    ).mappings().all()
+
+    if not did_rows:
+        raise HTTPException(
+            status_code=404,
+            detail="No DIDs found for given client_id"
+        )
+
+    did_numbers = [row["did_number"] for row in did_rows]
+
+    # ------------------------------------------------
+    # 2. After-hours time windows (same as PHP)
+    # ------------------------------------------------
+    data1 = f"{start_date} 20:01:00"
+    data2 = f"{start_date} 23:59:59"
+    data3 = f"{start_date} 00:01:00"
+    data4 = f"{start_date} 07:59:59"
+
+    # ------------------------------------------------
+    # 3. After-hours calls for ALL DIDs
+    # ------------------------------------------------
+    query = text("""
+        SELECT caller_code, start_time
+        FROM call_log
+        WHERE number_dialed IN :did_numbers
+        AND start_time BETWEEN :data1 AND :data2
+
+        UNION
+
+        SELECT caller_code, start_time
+        FROM call_log
+        WHERE number_dialed IN :did_numbers
+        AND start_time BETWEEN :data3 AND :data4
+        ORDER BY start_time
+    """)
+
+    rows = db.execute(
+        query,
+        {
+            "did_numbers": tuple(did_numbers),  # IMPORTANT
+            "data1": data1,
+            "data2": data2,
+            "data3": data3,
+            "data4": data4
+        }
+    ).mappings().all()
+
+    # ------------------------------------------------
+    # 4. Response
+    # ------------------------------------------------
+    return {
+        "client_id": client_id,
+        "did_numbers": did_numbers,
+        "date": start_date,
+        "total_calls": len(rows),
+        "data": [
+            {
+                "start_time": row["start_time"],
+                "caller_code": row["caller_code"]
+            }
+            for row in rows
+        ]
+    }

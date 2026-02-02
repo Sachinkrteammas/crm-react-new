@@ -181,21 +181,22 @@ def send_call_summary(
 
         # 7️⃣ Abandoned & Disconnection Callback Summary
         callback_query = text("""
-            SELECT 
-                CASE 
-                    WHEN call_status = 'Answer' THEN 'Connected'
-                    WHEN call_status = '' OR call_status IS NULL THEN 'Not Connected'
-                    ELSE call_status
-                END AS status,
-                COUNT(DISTINCT PhoneNo) AS Count
-            FROM aband_call_master
-            WHERE CompanyName = 'Crystal Eye Centre Private Limited'
-            AND DATE(CallDate) = CURDATE()
-            AND Callbackdate IS NOT NULL
-            GROUP BY status;
+            SELECT
+                SUM(CASE WHEN mcl.id IS NOT NULL THEN 1 ELSE 0 END) AS Connected,
+                SUM(CASE WHEN mcl.id IS NULL THEN 1 ELSE 0 END) AS `Not Connected`
+            FROM
+                asterisk.vicidial_log t2
+                LEFT JOIN asterisk.manual_call_log mcl
+                    ON mcl.uniqueid = t2.uniqueid
+                    AND RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10)
+            WHERE
+                DATE(t2.call_date)=CURDATE()
+                AND t2.campaign_id ='Cryst002'
+                AND t2.list_id IN ('998','2001')
+                AND t2.lead_id IS NOT NULL;
         """)
 
-        callback_rows = db.execute(callback_query).mappings().all()
+        callback_rows = db2.execute(callback_query).mappings().all()
         callback_data = [dict(r) for r in callback_rows]
 
         vicidial_query = text("""
@@ -218,12 +219,13 @@ def send_call_summary(
             {"Abandoned & Disconnection Callback": "Not Connected", "Count of Abandoned & Disconnection Callback": 0},
         ]
 
-        # Fill values
-        for row in callback_data:
-            if row["status"] == "Connected":
-                final_callback[0]["Count of Abandoned & Disconnection Callback"] = row["Count"]
-            elif row["status"] == "Not Connected":
-                final_callback[1]["Count of Abandoned & Disconnection Callback"] = row["Count"]
+        # Fill values correctly (aggregate query returns a single row)
+        if callback_data:
+            row = callback_data[0]
+
+            final_callback[0]["Count of Abandoned & Disconnection Callback"] = row.get("Connected", 0) or 0
+            final_callback[1]["Count of Abandoned & Disconnection Callback"] = row.get("Not Connected", 0) or 0
+
 
         # ✅ Add Vicidial Counts
         final_callback[0]["Count of Abandoned & Disconnection Callback"] += vic_connected

@@ -138,6 +138,7 @@ import OverallAgentSkills from "./pages/overall_agent_skills";
 import CampaignWiseAgentSkill from "./pages/campaign_wise_agent_skills";
 import AgentAprExport from "./pages/Agent_apr";
 import DashboardAnest from "./pages/DashboardAnest";
+import AfterHoursCalls from "./pages/After_hour_call";
 
 
 
@@ -388,6 +389,7 @@ function App() {
               <Route path="/AbandonReports/agent_wise_skill_excel" element={<CampaignWiseAgentSkill />} />
               <Route path="/AbandonReports/agent_apr" element={<AgentAprExport />} />
               <Route path="/DashboardAnest" element={<DashboardAnest />} />
+              <Route path="/after_hour_calls" element={<AfterHoursCalls />} />
               <></>
           </Route>
       </Route>

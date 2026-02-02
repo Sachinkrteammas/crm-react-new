@@ -128,6 +128,13 @@ const ManageUserLogin = () => {
       alert("Client is not loaded yet!");
       return;
     }
+
+     // Frontend validation to prevent empty submission
+    if (!form.name || !form.email || !form.password || !form.confirmPassword || !form.phone || !form.designation || selectedRights.length === 0) {
+      setErrorMessage("Please fill all fields and select at least one user right.");
+      return;
+    }
+    
     setErrorMessage("");
 
     try {
