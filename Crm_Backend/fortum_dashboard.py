@@ -29,8 +29,13 @@ def get_client_invoice_details(
         WHERE clientId = :client_id
     """)
     consume_row = db.execute(consume_query, {"client_id": client_id}).fetchone()
-    CreditPointPercent = float(consume_row.CreditPointPercent or 0)
-    TalktimePercent = float(consume_row.TalktimePercent or 0)
+    if consume_row:
+        CreditPointPercent = float(consume_row.CreditPointPercent or 0)
+        TalktimePercent = float(consume_row.TalktimePercent or 0)
+    else:
+        CreditPointPercent = 0.0
+        TalktimePercent = 0.0
+
 
     # Step 2: Get cost center
     cost_center_query = text("""
