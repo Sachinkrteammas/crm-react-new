@@ -83,7 +83,7 @@ def get_all_clients_rights_is_dial(
                                     SUM(bpp.net_amount)
                                     - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
                             ELSE
-                                SUM(ti.total)
+                                SUM(bpp.net_amount)
                         END AS release_sum
                     FROM bill_pay_particulars bpp
                     INNER JOIN tbl_invoice ti
@@ -93,7 +93,7 @@ def get_all_clients_rights_is_dial(
                     WHERE ti.cost_center IN (
                             SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
                     AND DATE(ti.invoiceDate) >='2025-09-01'
-                    AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)-1
+                    AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND date_sub(DATE(:start_date),interval 1 day)
                     GROUP BY
                         ti.bill_no,
 
@@ -252,7 +252,7 @@ def get_all_clients_rights_is_dial(
                                             SUM(bpp.net_amount)
                                             - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
                                     ELSE
-                                        SUM(ti.total)
+                                        SUM(bpp.net_amount)
                                 END AS total
                             FROM bill_pay_particulars bpp
                             INNER JOIN tbl_invoice ti
@@ -375,6 +375,16 @@ def get_all_clients_rights_is_dial(
             2
         )
 
+        try:
+            to_be_billed = round(
+                ((effective_opening_billing + Release_billing - consume_value) * 100) / talktime_percent,
+                2
+            ) if (
+                         ((effective_opening_billing + Release_billing - consume_value) * 100) / talktime_percent
+                 ) < 0 else 0
+        except ZeroDivisionError:
+            to_be_billed = 0
+
 
         output.append({
             "company_id": client_id,
@@ -400,9 +410,10 @@ def get_all_clients_rights_is_dial(
 
         "effective_opening_bill": round(effective_opening_billing,2),
         "Exposure_billing_vr": round(effective_opening_billing + Release_billing - consume_value, 2),
-        "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
-                        if ((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent < 0
-                        else 0
+        # "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
+        #                 if ((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent < 0
+        #                 else 0
+        "to_be_billed": to_be_billed
         })
 
     return output
@@ -454,7 +465,7 @@ def get_clients_rights_search(
                             SUM(bpp.net_amount)
                             - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
                     ELSE
-                        SUM(ti.total)
+                        SUM(bpp.net_amount)
                 END AS release_sum
             FROM bill_pay_particulars bpp
             INNER JOIN tbl_invoice ti
@@ -464,7 +475,7 @@ def get_clients_rights_search(
             WHERE ti.cost_center IN (
                     SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
             AND DATE(ti.invoiceDate) >='2025-09-01'
-            AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND DATE(:start_date)-1
+            AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND date_sub(DATE(:start_date),interval 1 day)
             GROUP BY
                 ti.bill_no,
              
@@ -649,7 +660,7 @@ def get_clients_rights_search(
                                     SUM(bpp.net_amount)
                                     - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
                             ELSE
-                                SUM(ti.total)
+                                SUM(bpp.net_amount)
                         END AS total
                     FROM bill_pay_particulars bpp
                     INNER JOIN tbl_invoice ti
@@ -775,6 +786,17 @@ def get_clients_rights_search(
             2
         )
 
+    try:
+        to_be_billed = round(
+            ((effective_opening_billing + Release_billing - consume_value) * 100) / talktime_percent,
+            2
+        ) if (
+                     ((effective_opening_billing + Release_billing - consume_value) * 100) / talktime_percent
+             ) < 0 else 0
+    except ZeroDivisionError:
+        to_be_billed = 0
+
+
 
 
     return {
@@ -800,9 +822,10 @@ def get_clients_rights_search(
         ),
         "effective_opening_bill": round(effective_opening_billing,2),
         "Exposure_billing_vr": round(effective_opening_billing + Release_billing - consume_value, 2),
-        "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
-                        if ((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent < 0
-                        else 0
+        # "to_be_billed" : round(((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent,2)
+        #                 if ((effective_opening_billing + Release_billing - consume_value) * 100)/talktime_percent < 0
+        #                 else 0
+        "to_be_billed": to_be_billed
     }
 
 ################### clients-effective-month get start #################
