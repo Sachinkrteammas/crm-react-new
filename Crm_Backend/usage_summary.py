@@ -63,16 +63,26 @@ def get_client_invoice_usage(
     print(opening_add, amount_received)
 
     opening_invoice_query = text("""
-        SELECT category, SUM(total) AS total_amount
-        FROM bill_pay_particulars bpp
-        INNER JOIN tbl_invoice ti
-            ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
-            AND bpp.financial_year = ti.finance_year
-            AND bpp.branch_name = ti.branch_name
-        WHERE ti.cost_center = :cost_center
-        AND DATE(ti.invoiceDate) >= '2025-04-01'
-        AND DATE(ti.invoiceDate) < :start_date
-        GROUP BY category
+        SELECT sub.category, SUM(sub.total) AS total_amount
+        FROM (
+            SELECT 
+                DATE(ti.invoiceDate) AS invoiceDate,
+                ti.bill_no,
+                category,
+                total,
+                grnd
+            FROM bill_pay_particulars bpp
+            INNER JOIN tbl_invoice ti
+                ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                AND bpp.financial_year = ti.finance_year
+                AND bpp.branch_name = ti.branch_name
+            WHERE ti.cost_center = :cost_center
+            AND DATE(ti.invoiceDate) >= '2025-04-01'
+            AND DATE(ti.invoiceDate) < :start_date
+            GROUP BY ti.bill_no, ti.status, ti.igst, ti.cgst, ti.sgst
+        ) AS sub
+        WHERE sub.category IN ('Talktime', 'Talk Time', 'Subscription')
+        GROUP BY sub.category;                         
     """)
     invoice_rows = db.execute(opening_invoice_query, {
         "cost_center": cost_center,
@@ -130,8 +140,14 @@ def get_client_invoice_usage(
          AND bpp.financial_year = ti.finance_year
          AND bpp.branch_name = ti.branch_name
         WHERE ti.cost_center = :cost_center
+          AND category IN ('Talktime', 'Talk Time', 'Subscription')               
           AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
-        ORDER BY ti.invoiceDate
+        GROUP BY
+            ti.bill_no,
+            ti.status,
+            ti.igst,
+            ti.cgst,
+            ti.sgst;
     """)
 
     all_invoices = db.execute(invoice_query, {
