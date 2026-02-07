@@ -523,6 +523,7 @@ def statement_summary(
     used_amount = (
         Decimal(ib_total) +
         Decimal(ibn_total) +
+        Decimal(ob_total) +
         Decimal(ab_total) +
         Decimal(sms_total) +
         Decimal(email_total) +
