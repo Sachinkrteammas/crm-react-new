@@ -429,9 +429,11 @@ def get_ob_cdr_report(
             FROM_UNIXTIME(t2.end_epoch) AS Endtime,
             t2.length_in_sec AS CallDuration,
             SEC_TO_TIME(t2.length_in_sec) AS CallDurationFmt,
-            IF(t2.user='VDAD','Not Connected','Connected') AS Scenario,
+            IF(t2.user='VDAD','Not Connected','Connected') AS `Call Type`,
             IF(t2.list_id='998','Manual','Auto') AS DialMode,
             t3.dispo_sec AS WrapTime,
+            t3.`wait_sec` AS WaitSec,
+            (t3.talk_sec + t3.dispo_sec) AS ACHT,
             t3.talk_sec AS TalkSec
         FROM asterisk.vicidial_log t2
         LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid
@@ -473,10 +475,10 @@ def get_ob_cdr_report(
     for row in vicidial_rows:
         row_dict = dict(row)
 
-        # Step: Override Scenario if call not connected
+        # Step: Override Call Type if call not connected
         if not row_dict.get("Endtime") or not row_dict.get("TalkSec"):
-            row_dict["Scenario"] = "Not Connected"
-        # else leave Scenario as it was from DB (Connected / Not Connected)
+            row_dict["Call Type"] = "Not Connected"
+        # else leave Call Type as it was from DB (Connected / Not Connected)
 
         # Recording URL
         row_dict["Recording"] = (

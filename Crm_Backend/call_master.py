@@ -62,7 +62,7 @@ def get_call_master_data(
         # Build column list
         field_map = {f["fieldNumber"]: f["FieldName"] for f in field_meta}
         columns = [f"field{fnum}" for fnum in field_map]
-        columns += ["SrNo","CallDate","MSISDN","tat","duedate","callcreated","CloseLoopingDate","CloseLoopCate1","CloseLoopCate2", "Category1", "Category2", "Category3", "Category4", "Category5","closelooping_remarks","FollowupDate","CaseCloseBy"]
+        columns += ["SrNo","CallDate","MSISDN","tat","duedate","callcreated","CloseLoopingDate","CloseLoopCate1","CloseLoopCate2", "Category1", "Category2", "Category3", "Category4", "Category5","closelooping_remarks","FollowupDate","CaseCloseBy","LeadId"]
 
         # Step 2: WHERE clause setup
         where_clauses = ["ClientId = :client_id"]
@@ -123,6 +123,7 @@ def get_call_master_data(
                 "Call Action Remarks": row.get("closelooping_remarks"),
                 "Follow Up Date": row.get("FollowupDate"),
                 "Case Closed By": row.get("CaseCloseBy"),
+                "LeadId": row.get("LeadId"),
             })
             response.append(record)
 
@@ -816,19 +817,11 @@ def download_excel_raw(
     </table>
 
     <table><tr><td>&nbsp;</td></tr></table>
+  
 
+    <!-- SUMMARY_PLACEHOLDER -->
+    {{SUMMARY_TABLE}}
 
-    <table border='1' width='600' cellpadding='2' cellspacing='2' style="font-size:11pt;">
-        <tr><td colspan='5' style='font-size:15pt;background-color:#607d8b;color:#fff;'>Plan Details</td></tr>
-        <tr><th>Plan Name</th><th>Start Date</th><th>End Date</th><th>Validity</th><th>Used</th></tr>
-        <tr>
-            <td>{plan_result.PlanName if plan_result else ''}</td>
-            <td>{balance_result.start_date if balance_result else ''}</td>
-            <td>{balance_result.end_date if balance_result else ''}</td>
-            <td>{f"{plan_result.RentalPeriod or ''} {plan_result.PeriodType or ''}".strip() if plan_result else ''}</td>
-            <td>{'{Used_Amount}'}</td>
-        </tr>
-    </table>
 
     <table><tr><td>&nbsp;</td></tr></table>
 
@@ -1284,21 +1277,21 @@ def download_excel_raw(
         Decimal(amount_rx)
     )
 
-    used_amount = (
-        Decimal(ib_total) +
-        Decimal(ibn_total) +
-        Decimal(ob_total) +
-        Decimal(ab_total) +
-        Decimal(sms_total) +
-        Decimal(email_total) +
-        Decimal(amount_rx)
-    )
-    print("#######",used_amount)
-    html = html.replace("{Used_Amount}", f"{used_amount:.2f}")
+    # used_amount = (
+    #     Decimal(ib_total) +
+    #     Decimal(ibn_total) +
+    #     Decimal(ob_total) +
+    #     Decimal(ab_total) +
+    #     Decimal(sms_total) +
+    #     Decimal(email_total) +
+    #     Decimal(amount_rx)
+    # )
+    # print("#######",used_amount)
+    # html = html.replace("{Used_Amount}", f"{used_amount:.2f}")
 
 
     # === 3️⃣ Append Summary Table ===
-    html += f"""
+    summary_html  = f"""
     <table><tr><td>&nbsp;</td></tr></table>
     <table border='1' width='600' cellpadding='2' cellspacing='2' style='font-size:11pt;'>
         <tr>
@@ -1323,6 +1316,9 @@ def download_excel_raw(
         </tr>
     </table>
     """
+
+    html = html.replace("{SUMMARY_TABLE}", summary_html)
+
 
 
     html += "</table></body></html>"

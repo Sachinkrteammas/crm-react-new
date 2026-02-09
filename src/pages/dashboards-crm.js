@@ -136,6 +136,8 @@ const Dashboard = () => {
   };
 
   useEffect(() => {
+    if (dateRange === "custom") return;
+
     if (!selectedClient || !fromDate || !toDate) return;
 
     const fetchAllData = async () => {
@@ -156,7 +158,7 @@ const Dashboard = () => {
     };
 
     fetchAllData();
-  }, [selectedClient, fromDate, toDate]);
+  }, [selectedClient, fromDate, toDate, dateRange]);
 
   const fetchDashboardData = async () => {
     try {

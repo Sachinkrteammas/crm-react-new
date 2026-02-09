@@ -317,17 +317,6 @@ def statement_summary(
     <table><tr><td>&nbsp;</td></tr></table>
 
 
-    <table border='1' width='600' cellpadding='2' cellspacing='2' style="font-size:11pt;">
-        <tr><td colspan='5' style='font-size:15pt;background-color:#607d8b;color:#fff;'>Plan Details</td></tr>
-        <tr><th>Plan Name</th><th>Start Date</th><th>End Date</th><th>Validity</th><th>Used</th></tr>
-        <tr>
-            <td>{plan_result.PlanName if plan_result else ''}</td>
-            <td>{balance_result.start_date if balance_result else ''}</td>
-            <td>{balance_result.end_date if balance_result else ''}</td>
-            <td>{f"{plan_result.RentalPeriod or ''} {plan_result.PeriodType or ''}".strip() if plan_result else ''}</td>
-            <td>{'{Used_Amount}'}</td>
-        </tr>
-    </table>
 
     <table><tr><td>&nbsp;</td></tr></table>
 
@@ -520,17 +509,17 @@ def statement_summary(
         Decimal(amount_rx)
     )
 
-    used_amount = (
-        Decimal(ib_total) +
-        Decimal(ibn_total) +
-        Decimal(ob_total) +
-        Decimal(ab_total) +
-        Decimal(sms_total) +
-        Decimal(email_total) +
-        Decimal(amount_rx)
-    )
-    print("#######",used_amount)
-    html = html.replace("{Used_Amount}", f"{used_amount:.2f}")
+    # used_amount = (
+    #     Decimal(ib_total) +
+    #     Decimal(ibn_total) +
+    #     Decimal(ob_total) +
+    #     Decimal(ab_total) +
+    #     Decimal(sms_total) +
+    #     Decimal(email_total) +
+    #     Decimal(amount_rx)
+    # )
+    # print("#######",used_amount)
+    # html = html.replace("{Used_Amount}", f"{used_amount:.2f}")
 
 
 

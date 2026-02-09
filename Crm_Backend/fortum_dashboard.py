@@ -72,16 +72,27 @@ def get_client_invoice_details(
 
     # ---- A. Credits before start_date
     opening_invoice_query = text("""
-        SELECT category, SUM(total) AS total_amount
-        FROM bill_pay_particulars bpp
-        INNER JOIN tbl_invoice ti
-            ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
-            AND bpp.financial_year = ti.finance_year
-            AND bpp.branch_name = ti.branch_name
+        SELECT sub.category, SUM(sub.total) AS total_amount
+        FROM(
+            SELECT 
+                DATE(ti.invoiceDate) AS invoiceDate, category, total
+                FROM bill_pay_particulars bpp
+                INNER JOIN tbl_invoice ti 
+                    ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
+                    AND bpp.financial_year = ti.finance_year
+                    AND bpp.branch_name = ti.branch_name
         WHERE ti.cost_center = :cost_center
         AND DATE(ti.invoiceDate) >= '2025-04-01'
         AND DATE(ti.invoiceDate) < :start_date
-        GROUP BY category
+        GROUP BY
+            ti.bill_no,
+            ti.status,
+            ti.igst,
+            ti.cgst,
+            ti.sgst
+            ) AS sub
+            
+            GROUP BY sub.category
     """)
     invoice_rows = db.execute(opening_invoice_query, {
         "cost_center": cost_center,
@@ -130,6 +141,12 @@ def get_client_invoice_details(
             AND bpp.branch_name = ti.branch_name
         WHERE ti.cost_center = :cost_center
         AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date
+        GROUP BY
+            ti.bill_no,
+            ti.status,
+            ti.igst,
+            ti.cgst,
+            ti.sgst
         ORDER BY ti.invoiceDate ASC
     """)
     all_invoices = db.execute(invoice_query, {
@@ -212,10 +229,10 @@ def get_client_invoice_details(
 
         else:
             # 🔹 Split month into sub-periods based on invoice dates
-            month_invoice_dates = sorted([
+            month_invoice_dates = sorted({
                 datetime.strptime(str(inv.invoiceDate), "%Y-%m-%d")
                 for inv in month_invoices
-            ])
+            })
 
             sub_ranges = []
             range_start = month_start
@@ -255,46 +272,72 @@ def get_client_invoice_details(
 
                 value = total_ib_value + total_ob_value + total_email_value
 
-                # Check if invoice exists for this sub-period
-                inv = None
                 if inv_date:
-                    inv = next(
-                        (i for i in month_invoices if datetime.strptime(str(i.invoiceDate), "%Y-%m-%d") == inv_date),
-                        None
-                    )
-
-                if inv:
-                    category = inv.category
-                    total = float(inv.total)
-                    print("####",total)
-                    if category in ("Talk Time", "Talktime"):
-                        total *= (TalktimePercent / 100)
-                        total = round(total,0)
-                    elif category == "Subscription":
-                        total *= (CreditPointPercent / 100)
-                        total = round(total,0)
+                    same_date_invoices = [
+                        i for i in month_invoices
+                        if datetime.strptime(str(i.invoiceDate), "%Y-%m-%d") == inv_date
+                    ]
                 else:
-                    category = "NA"
-                    total = 0
+                    same_date_invoices = []
 
-                balance = remaining_balance + total - value
+                # 🔹 If no invoice → NA row (unchanged behavior)
+                if not same_date_invoices:
+                    balance = remaining_balance - value
 
-                result.append({
-                    "invoiceDate": sub_start.strftime("%Y-%m-%d"),
-                    # "periodEnd": sub_end.strftime("%Y-%m-%d"),
-                    "category": category,
-                    "Amount_Received": total,
-                    "remaining_balance": remaining_balance,
-                    "total_ib_pulse": total_ib_pulse,
-                    "total_ib_value": total_ib_value,
-                    "total_ob_pulse": total_ob_pulse,
-                    "total_ob_value": total_ob_value,
-                    "total_email_pulse": total_email_pulse,
-                    "total_email_value": total_email_value,
-                    "value": value,
-                })
+                    result.append({
+                        "invoiceDate": sub_start.strftime("%Y-%m-%d"),
+                        "category": "NA",
+                        "Amount_Received": 0,
+                        "remaining_balance": remaining_balance,
+                        "total_ib_pulse": total_ib_pulse,
+                        "total_ib_value": total_ib_value,
+                        "total_ob_pulse": total_ob_pulse,
+                        "total_ob_value": total_ob_value,
+                        "total_email_pulse": total_email_pulse,
+                        "total_email_value": total_email_value,
+                        "value": value,
+                    })
 
-                remaining_balance = balance
+                    remaining_balance = balance
+
+                # 🔹 If multiple invoices on same date → LOOP BY CATEGORY
+                else:
+                    for idx2, inv in enumerate(same_date_invoices):
+                        is_last = idx2 == len(same_date_invoices) - 1
+
+                        category = inv.category
+                        total = float(inv.total)
+
+                        if category in ("Talk Time", "Talktime"):
+                            total *= (TalktimePercent / 100)
+                            total = round(total, 0)
+                        elif category == "Subscription":
+                            total *= (CreditPointPercent / 100)
+                            total = round(total, 0)
+
+                        # 🔑 Apply pulse ONLY on last invoice row of the date
+                        applied_value = value if is_last else 0
+
+                        balance = remaining_balance + total - applied_value
+
+                        result.append({
+                            "invoiceDate": sub_start.strftime("%Y-%m-%d"),
+                            "category": category,
+                            "Amount_Received": total,
+                            "remaining_balance": remaining_balance,
+
+                            "total_ib_pulse": total_ib_pulse if is_last else 0,
+                            "total_ib_value": total_ib_value if is_last else 0,
+                            "total_ob_pulse": total_ob_pulse if is_last else 0,
+                            "total_ob_value": total_ob_value if is_last else 0,
+                            "total_email_pulse": total_email_pulse if is_last else 0,
+                            "total_email_value": total_email_value if is_last else 0,
+
+                            "value": applied_value,
+                        })
+
+                        remaining_balance = balance
+
 
 
         # Move to next month
