@@ -153,16 +153,18 @@ const handleExport = async () => {
             const holdTime = isoDurationToHHMMSS(row.parked_time);
             const talkDuration = isoDurationToHHMMSS(row.call_duration);
             const acwDuration = isoDurationToHHMMSS(row.wrap_time);
+            const startDate = new Date(row.start_time);
+            const hour = String(startDate.getHours()).padStart(2, "0");
 
             return {
                 CallDate: row.call_date,
                 Time: row.start_time,
                 AgentId: row.agent,
                 AgentName: row.full_name,
-                Calltype: row.CallType,
+                Calltype: 'Inbound',
                 CampaignName: row.campaign_id,
                 PhoneNumber: row.phone_number,
-                Disposition: row.Category1,
+                Disposition: row.status,
                 DisconnBy: row.term_reason,
                 CallDurationSecond: row.call_duration1,
                 CallDurationMinute: callDuration,
@@ -170,8 +172,8 @@ const handleExport = async () => {
                 HoldTime: holdTime,
                 Talkduration: talkDuration,
                 AcwDuration: acwDuration,
-                HoursSlot: "00:00:00", // optional: calculate if needed
-                TotalHandledTime: sumDurations(talkDuration, acwDuration, holdTime),
+                HoursSlot: `${hour}:00:00`, // optional: calculate if needed
+                TotalHandledTime: sumDurations(talkDuration, acwDuration),
                 Call20SecSL: row.call20,
                 EndTime: row.end_time,
                 CallTransferId: row.xfercallid,

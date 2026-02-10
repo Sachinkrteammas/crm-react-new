@@ -434,7 +434,10 @@ def get_ob_cdr_report(
             t3.dispo_sec AS WrapTime,
             t3.`wait_sec` AS WaitSec,
             (t3.talk_sec + t3.dispo_sec) AS ACHT,
-            t3.talk_sec AS TalkSec
+            t3.talk_sec AS TalkSec,
+            t2.status as `System Disposition`,
+            t2.campaign_id as `Client Name`,
+            t3.dead_sec as `Dead Time`
         FROM asterisk.vicidial_log t2
         LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid
         LEFT JOIN vicidial_users vu ON t2.user=vu.user
