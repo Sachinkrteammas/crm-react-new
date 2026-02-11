@@ -146,7 +146,7 @@ const CorrectiveReport = () => {
       Remarks: (() => {
         const totalClose = site.corrections.reduce((sum, c) => sum + c.close, 0);
         const totalCorr = site.corrections.reduce((sum, c) => sum + c.total, 0);
-        return totalClose ? (totalCorr / totalClose).toFixed(2) : "0.00";
+        return totalClose ? ( totalClose / totalCorr ).toFixed(2) : "0.00";
       })(),
     };
     flattenedData.push(siteTotal);
@@ -159,7 +159,7 @@ const CorrectiveReport = () => {
     "Total Corrections": grandTotals.total,
     Open: grandTotals.open,
     Close: grandTotals.close,
-    Remarks: grandTotals.close ? (grandTotals.total / grandTotals.close).toFixed(2) : "0.00",
+    Remarks: grandTotals.close ? ( grandTotals.close / grandTotals.total ).toFixed(2) : "0.00",
   });
 
   const worksheet = XLSX.utils.json_to_sheet(flattenedData);
@@ -320,7 +320,7 @@ const CorrectiveReport = () => {
                             {(() => {
                                 const totalClose = site.corrections.reduce((sum, c) => sum + c.close, 0);
                                 const totalCorr = site.corrections.reduce((sum, c) => sum + c.total, 0);
-                                return totalClose ? (totalCorr / totalClose).toFixed(2) : "0.00";
+                                return totalClose ? ( totalClose / totalCorr ).toFixed(2) : "0.00";
                             })()}
                             </td>
                         </tr>
@@ -333,7 +333,7 @@ const CorrectiveReport = () => {
                     <td>{grandTotals.close}</td>
                     <td>
                         {grandTotals.close
-                            ? (grandTotals.total / grandTotals.close).toFixed(2)
+                            ? ( grandTotals.close / grandTotals.total ).toFixed(2)
                             : "0.00"}
                     </td>
                   </tr>

@@ -56,20 +56,21 @@ def corrective_report(
     data_arr: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
     for call in calls:
-        c3 = call.get("Category3", "Unknown")
-        c2 = call.get("Category2", "Unknown")
+        c3 = call.get("Category3") or "Undefined"
+        c2 = call.get("Category2") or "Undefined"
+        status = call.get("CloseLoopCate1")
 
         if c3 not in data_arr:
             data_arr[c3] = {}
         if c2 not in data_arr[c3]:
-            data_arr[c3][c2] = {"open": 0, "close": 0, "data": None}
+            data_arr[c3][c2] = {"open": 0, "close": 0, "data": []}                
 
-        if not call.get("CloseLoopCate1"):  # empty or None → open
+        if status == "Open":
             data_arr[c3][c2]["open"] += 1
         else:  # closed
             data_arr[c3][c2]["close"] += 1
 
-        data_arr[c3][c2]["data"] = call
+        data_arr[c3][c2]["data"].append(call)
 
     # 4. Compute totals per site/category (optional, similar to PHP export)
     grand_total_open = sum(d["open"] for c in data_arr.values() for d in c.values())
