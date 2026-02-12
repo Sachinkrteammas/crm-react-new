@@ -598,7 +598,7 @@ def get_ob_shared_cdr_report(
             LEFT(t2.phone_number,10) AS phone_number,
             t2.user AS agent_id,
             t4.full_name AS agent_name,
-            IF(t2.user='VDAD','Not Connected','Connected') AS call_type,
+            IF(mcl.id IS NOT NULL, 'Connected', 'Not Connected') AS call_type,
             t2.status AS call_status,
             IF(t2.list_id='998','Mannual','Auto') AS dial_mode,
             t2.uniqueid,
@@ -611,9 +611,13 @@ def get_ob_shared_cdr_report(
         FROM vicidial_log t2
         LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
         LEFT JOIN vicidial_users t4 ON t2.user = t4.user
-        WHERE t2.campaign_id = 'dialdesk'
+        LEFT JOIN asterisk.manual_call_log mcl ON RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10) AND mcl.uniqueid = t2.uniqueid
+        WHERE t2.campaign_id IN ('dialdesk','Cryst002','Ajmal000','Superher')
           AND DATE(t2.call_date) BETWEEN :from_dt AND :to_dt
+          AND t2.list_id in ('998','2001') 
           AND t2.lead_id IS NOT NULL
+        ORDER BY 
+          start_time ASC
     """)
 
     cdr_rows = db2.execute(
@@ -670,11 +674,11 @@ def get_ob_shared_cdr_report(
         lead_id = row["lead_id"]
         cm = call_master_map.get(lead_id)
 
-        # Determine CallType with PHP-style logic
-        if not row.get("end_time") or not row.get("talk_sec"):
-            call_type = "Not Connected"
-        else:
-            call_type = row.get("call_type", "Connected")  # fallback to DB value
+        # # Determine CallType with PHP-style logic
+        # if not row.get("end_time") or not row.get("talk_sec"):
+        #     call_type = "Not Connected"
+        # else:
+        #     call_type = row.get("call_type", "Connected")  # fallback to DB value
 
 
         response_data.append({
@@ -684,7 +688,7 @@ def get_ob_shared_cdr_report(
             "CustomerNumber": phone,
             "AgentID": row["agent_id"],
             "AgentName": row["agent_name"],
-            "CallType": call_type,
+            "CallType": row["call_type"],
             "SystemDisposition": row["call_status"],
             "DialingMode": row["dial_mode"],
             "ClientName": client_name,  # ✅ guaranteed present
