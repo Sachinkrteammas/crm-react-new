@@ -876,27 +876,32 @@ def get_ivr_funnel_report(
         }).mappings().fetchall()
 
         # Step 3 – process monthly counters
-        record_list, month_list = {}, set()
+        record_list = {}
+
+        def init_month():
+            return {
+                "Total IVR calls": 0,
+                "Total IVR Closed Calls": 0,
+                "Transferred from IVR to queue": 0,
+                "Customer dropped calls before queue": 0,
+                "Customer dropped calls in queue": 0,
+                "Customers abandoned in queue": 0,
+                "Customers transferred/connected to agent": 0,
+                "Customers transferred from agent to CSAT IVR": 0,
+            }
+        
         for row in ivr_results:
             month = row["month"]
             outcome = row["outcome"]
             uid = row["uniqueid"]
-            cdr = cdr_map.get(uid, {})
+            cdr = cdr_map.get(uid)
 
             if month not in record_list:
-                record_list[month] = {
-                    "Total IVR calls": 0,
-                    "Total IVR Closed Calls": 0,
-                    "Transferred from IVR to queue": 0,
-                    "Customer dropped calls before queue": 0,
-                    "Customer dropped calls in queue": 0,
-                    "Customers abandoned in queue": 0,
-                    "Customers transferred/connected to agent": 0,
-                    "Customers transferred from agent to CSAT IVR": 0,
-                }
+                record_list[month] = init_month()
+
             rec = record_list[month]
             rec["Total IVR calls"] += 1
-            month_list.add(month)
+            
 
             # Closed vs Forward
             if outcome != "TransferredtoAgent":
@@ -908,21 +913,45 @@ def get_ivr_funnel_report(
             if outcome == "TransferredtoAgent" and not cdr:
                 rec["Customer dropped calls before queue"] += 1
 
-            # Queue outcomes
-            if cdr.get("status") == "TIMEOT":
-                rec["Customers abandoned in queue"] += 1
-            elif str(cdr.get("user", "")).lower() == "vdcl":
-                rec["Customer dropped calls in queue"] += 1
-            elif cdr.get("user") and str(cdr["user"]).lower() != "vdcl":
-                rec["Customers transferred/connected to agent"] += 1
-            elif cdr.get("user"):
-                rec["Customer dropped calls in queue"] += 1
+            # Queue outcomes (same logic as PHP)
+            if cdr:
+                status = cdr.get("status")
+                user = str(cdr.get("user", "")).lower()
 
-            # CSAT
-            if cdr.get("xfercallid"):
-                rec["Customers transferred from agent to CSAT IVR"] += 1
+                if status == "TIMEOT":
+                    rec["Customers abandoned in queue"] += 1
+                elif user == "vdcl":
+                    rec["Customer dropped calls in queue"] += 1
+                elif user and user != "vdcl":
+                    rec["Customers transferred/connected to agent"] += 1
+        # -----------------------------
+        # Step 4 – Separate CSAT Query (IMPORTANT FIX)
+        # -----------------------------
+        qry_csat = text("""
+            SELECT DATE_FORMAT(call_date, '%b-%y') AS month,
+                   COUNT(*) AS total
+            FROM vicidial_closer_log
+            WHERE DATE(call_date) BETWEEN :from_date AND :to_date
+              AND xfercallid != 0
+            GROUP BY month
+        """)
 
-        # Step 4 – return JSON in proper order
+        csat_results = db.execute(qry_csat, {
+            "from_date": request.from_date,
+            "to_date": request.to_date,
+        }).mappings().fetchall()
+
+        for row in csat_results:
+            month = row["month"]
+
+            if month not in record_list:
+                record_list[month] = init_month()
+
+            record_list[month]["Customers transferred from agent to CSAT IVR"] = row["total"]
+
+        # -----------------------------
+        # Step 5 – Return Sorted Result
+        # -----------------------------
         return [
             {
                 "Month": month,
