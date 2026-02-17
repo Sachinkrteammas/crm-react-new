@@ -334,7 +334,7 @@ function App() {
               <Route path="/fortum_dashboard" element={<FortumDashboard />} />
               <Route path="/AbandonCallReports/external" element={<AbandonedCallDetails />} />
               <Route path="/dialer_mapping" element={<DialerMapping />} />
-              <Route path="/view_close_looping" element={<CloseLooping />} />
+              <Route path="/view_close_looping/:callId" element={<CloseLooping />} />
               <Route path="/outbound_dashboard_old" element={<OutboundDashboard />} />
               <Route path="/Outbounds/addingroup" element={<IngroupManager />} />
               <Route path="/WorkFlows" element={<ManageWorkFlow />} />

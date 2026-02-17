@@ -44,6 +44,7 @@ const [scenario4Name, setScenario4Name] = useState("");
 
 const [callId, setCallId] = useState("");
 const [callAction, setCallAction] = useState("");
+const [callActionList, setCallActionList] = useState([]);
 
 
 
@@ -95,6 +96,30 @@ const [callAction, setCallAction] = useState("");
   })
   .catch(err => console.error("Level1 Error:", err));
 }, [activeCompanyId]);
+
+
+  useEffect(() => {
+    if (!activeCompanyId || activeCompanyId === "null") return;
+
+    // 🔥 Reset old value when client changes
+    setCallAction("");
+    setCallActionList([]);
+
+    const fetchCallActions = async () => {
+      try {
+        const res = await api.get(`/close-looping/actions`, {
+          params: { client_id: activeCompanyId },
+        });
+
+        setCallActionList(res.data || []);
+      } catch (err) {
+        console.error("Error fetching call actions:", err);
+      }
+    };
+
+    fetchCallActions();
+  }, [activeCompanyId]);
+
 
 
   const handleScenarioChange = async (id) => {
@@ -375,11 +400,13 @@ const [callAction, setCallAction] = useState("");
                     className="form-select"
                     value={callAction}
                     onChange={(e) => setCallAction(e.target.value)}
-                    >
+                  >
                     <option value="">In Call Action</option>
-                    <option value="Open">Open</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Close By System">Closed</option>
+                    {callActionList.map((action, index) => (
+                      <option key={index} value={action}>
+                        {action}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

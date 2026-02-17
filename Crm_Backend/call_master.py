@@ -103,28 +103,55 @@ def get_call_master_data(
         response = []
         for row in result:
             record = {}
+
+            # -----------------------------
+            # 1️⃣ First: Core fixed fields
+            # -----------------------------
+            record["callId"] = row.get("SrNo")
+            record["CallFrom"] = row.get("MSISDN")
+            record["Category1"] = row.get("Category1")
+            record["Category2"] = row.get("Category2")
+            record["Category3"] = row.get("Category3")
+            record["Category4"] = row.get("Category4")
+            record["Category5"] = row.get("Category5")
+
             for fnum, label in field_map.items():
                 record[label] = row.get(f"field{fnum}")
-            record.update({
-                "callId": row.get("SrNo"),
-                "CallDate": row.get("CallDate"),
-                "CallFrom": row.get("MSISDN"),
-                "TAT": row.get("tat"),
-                "Due Date": row.get("duedate"),
-                "Call Created": row.get("callcreated"),
-                "Call Action": row.get("CloseLoopCate1"),
-                "Call Sub Action": row.get("CloseLoopCate2"),
-                "Closer Date": row.get("CloseLoopingDate"),
-                "Category1": row.get("Category1"),
-                "Category2": row.get("Category2"),
-                "Category3": row.get("Category3"),
-                "Category4": row.get("Category4"),
-                "Category5": row.get("Category5"),
-                "Call Action Remarks": row.get("closelooping_remarks"),
-                "Follow Up Date": row.get("FollowupDate"),
-                "Case Closed By": row.get("CaseCloseBy"),
-                "LeadId": row.get("LeadId"),
-            })
+
+            # -----------------------------
+            # 3️⃣ Third: Remaining fields
+            # -----------------------------
+            record["CallDate"] = str(row.get("CallDate")).replace("T", " ")
+            record["Call Action"] = row.get("CloseLoopCate1")
+            record["Call Sub Action"] = row.get("CloseLoopCate2")
+            record["Call Action Remarks"] = row.get("closelooping_remarks") 
+            record["Closer Date"] = row.get("CloseLoopingDate")
+            record["Follow Up Date"] = row.get("FollowupDate")
+            record["Case Closed By"] = row.get("CaseCloseBy")
+            record["TAT"] = row.get("tat")
+            record["Due Date"] = row.get("duedate")
+            record["Call Created"] = row.get("callcreated")                                   
+            record["LeadId"] = row.get("LeadId")
+            # record.update({
+            #     "callId": row.get("SrNo"),
+            #     "CallDate": row.get("CallDate"),
+            #     "CallFrom": row.get("MSISDN"),
+            #     "TAT": row.get("tat"),
+            #     "Due Date": row.get("duedate"),
+            #     "Call Created": row.get("callcreated"),
+            #     "Call Action": row.get("CloseLoopCate1"),
+            #     "Call Sub Action": row.get("CloseLoopCate2"),
+            #     "Closer Date": row.get("CloseLoopingDate"),
+            #     "Category1": row.get("Category1"),
+            #     "Category2": row.get("Category2"),
+            #     "Category3": row.get("Category3"),
+            #     "Category4": row.get("Category4"),
+            #     "Category5": row.get("Category5"),
+            #     "Call Action Remarks": row.get("closelooping_remarks"),
+            #     "Follow Up Date": row.get("FollowupDate"),
+            #     "Case Closed By": row.get("CaseCloseBy"),
+            #     "LeadId": row.get("LeadId"),
+            # })
             response.append(record)
 
         return response

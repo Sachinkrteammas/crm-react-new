@@ -444,6 +444,35 @@ def update_call(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/close-looping/actions")
+def get_close_loop_actions(
+    client_id: int = Query(...),
+    db: Session = Depends(get_db4)
+):
+    """
+    Fetch all distinct CloseLoopCate1 values (CALL ACTION)
+    for a given client.
+    """
+    try:
+        query = text("""
+            SELECT DISTINCT CloseLoopCate1
+            FROM call_master
+            WHERE ClientId = :client_id
+              AND CloseLoopCate1 IS NOT NULL
+              AND TRIM(CloseLoopCate1) <> ''
+            ORDER BY CloseLoopCate1
+        """)
+
+        result = db.execute(query, {
+            "client_id": client_id
+        })
+
+        rows = [row[0] for row in result.fetchall()]
+
+        return rows  # Returns plain list like ["Open", "Closed", "Pending"]
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 
 

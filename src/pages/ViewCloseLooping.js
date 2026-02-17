@@ -1,46 +1,27 @@
 
 import React, { useEffect, useState } from "react";
 import { Download } from "lucide-react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
 import api from "../api"; // your axios instance
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 export default function CloseLooping() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const { callId } = useParams();
+  const [searchParams] = useSearchParams();
+
+  const urlClientId = searchParams.get("client_id");
+
   const [fields, setFields] = useState([]);
   const [labels, setLabels] = useState([]);
   const [storedClientId, setStoredClientId] = useState(null);
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [apiRecord, setApiRecord] = useState(null);
 
   const dynamicFields = fields;   // 👈 this fixes the undefined error
 
-  const rowFromState = location.state?.row ?? null;
 
-  // Labels for SR Details
-  // const labels = [
-  //   "Mobile Number",
-  //   "First Name",
-  //   "Last Name",
-  //   "Address",
-  //   "State",
-  //   "District/Area",
-  //   "Pin Code",
-  //   "Customer type",
-  //   "Date of Purchase",
-  //   "Dealer contact number",
-  //   "Dealer shop Name",
-  //   "Product Model Name",
-  //   "Not Serviceable Area PIN Code",
-  //   "Remark",
-  //   "CRM Issue",
-  //   "19 digit Sr. NO.",
-  //   "Invoice Date",
-  //   "Invoice No.",
-  //   "Email ID",
-  // ];
 
   // Labels for Call Details
   const callLabels = [
@@ -134,26 +115,26 @@ const includeCurrentValue = (value, list) => {
 
 
 const fetchData = async () => {
-  if (!rowFromState) return;
 
-let companyId = localStorage.getItem("company_id");
-if (companyId === "null" || companyId === "undefined") companyId = null;
 
-const rawClientId = location.state?.client_id;
-const clientId =
-  (rawClientId && rawClientId !== "null" && rawClientId !== "undefined"
-    ? rawClientId
-    : null) ||
-  companyId ||
-  rowFromState?.ClientId ||
-  rowFromState?.client_id;
+  let companyId = localStorage.getItem("company_id");
+  if (companyId === "null" || companyId === "undefined") companyId = null;
 
-  const callId = rowFromState?.callId || rowFromState?.id;
+  const clientId =
+    urlClientId ||
+    companyId;
+
+
+    const finalCallId =
+      callId;
+
+
+
 
   console.log("clientId in fetchData:", clientId);
-  console.log("rowFromState:", rowFromState);
+  
 
-  if (!clientId) return;
+  // if (!clientId) return;
   
   if (clientId && !storedClientId) {
     setStoredClientId(clientId); 
@@ -167,31 +148,54 @@ const clientId =
       .then((res) => res.data || [])
       .catch(() => []);
 
-    // 2️⃣ Load call record
-    const res = callId
-      ? await api.get(`/call/call-master/${clientId}`, { params: { call_id: callId } })
-      : await api.get(`/call/call-master/${clientId}`);
+
+
+    const res = await api.get(
+      `/call/call-master/${clientId}`,
+      { params: { call_id: finalCallId } }
+    );
+
 
     if (!res.data) return null;
     const record = Array.isArray(res.data) ? res.data[0] : res.data;
-
-//     if (labels.length === 0) {
-//   const dynamicLabels = Object.keys(record)
-//     .filter(k =>
-//       !["callId","CallDate","CallFrom","TAT","Due Date","Call Created","Category1","Category2","Category3","Category4","Category5"].includes(k)
-//     );
-  
-//   setLabels(dynamicLabels);
-// }
 
     // 3️⃣ Prefill form
     const copy = { ...initialForm };
     labels.forEach((key) => {
       copy[key] = record[key] ?? record[key.replace(/\s+/g, "_")] ?? record[key.toLowerCase()] ?? "";
     });
+    // callLabels.forEach((key) => {
+    //   copy[key] = record[key] ?? record[key.replace(/\s+/g, "_")] ?? record[key.toLowerCase()] ?? "";
+    // });
+
     callLabels.forEach((key) => {
-      copy[key] = record[key] ?? record[key.replace(/\s+/g, "_")] ?? record[key.toLowerCase()] ?? "";
+      switch(key) {
+        case "IN CALL ID":
+          copy[key] = record.callId ?? record.id ?? "";
+          break;
+        case "CALL DATE":
+          copy[key] = record.CallDate?.replace("T", " ") ?? "";
+          break;
+        case "CALL FROM":
+          copy[key] = record.CallFrom ?? "";
+          break;
+        case "TAT":
+          copy[key] = record.TAT ?? "";
+          break;
+        case "DUE DATE":
+          copy[key] = record["Due Date"] ?? "";
+          break;
+        case "CALL CREATED":
+          copy[key] = record["Call Created"] ?? "";
+          break;
+        default:
+          copy[key] = record[key] ?? "";
+      }
     });
+
+    
+
+
 
     // 4️⃣ Scenario/Sub-scenario mapping
     // Map Scenario
@@ -251,6 +255,7 @@ const clientId =
 
     // 6️⃣ Set form state
     setForm(copy);
+    setApiRecord(record)
 
     // 7️⃣ Logs for debugging
     console.log("🔹 fetchData - form state:", copy);
@@ -285,7 +290,7 @@ const handleChange = async (e) => {
     ...(name === "Sub-scenario3" ? { "Sub-scenario4": "" } : {}),
   }));
 
-  const clientId = localStorage.getItem("company_id") || rowFromState?.ClientId || rowFromState?.client_id;
+  const clientId = localStorage.getItem("company_id");
 
   try {
     if (name === "Scenario") {
@@ -354,16 +359,11 @@ const handleChange = async (e) => {
 
 
   const loadDynamicFields = async () => {
+    if (!urlClientId) return;
+
     try {
-      const client_id =
-        location.state?.client_id ||
-        localStorage.getItem("company_id") ||
-        rowFromState?.ClientId;
-
-      if (!client_id) return;
-
       const res = await api.get(`/fields`, {
-        params: { client_id }
+        params: { client_id: urlClientId  }
       });
 
       const fieldList = res.data || [];
@@ -411,21 +411,14 @@ const handleChange = async (e) => {
 
 
 const handleSubmit = async () => {
-  // const clientId = localStorage.getItem("company_id") || rowFromState?.ClientId || rowFromState?.client_id;
-  let companyId = localStorage.getItem("company_id");
-if (companyId === "null" || companyId === "undefined") companyId = null;
+  if (!urlClientId || !callId) {
+    alert("Client ID or Call ID not found.");
+    return;
+  }
 
-const rawClientId = location.state?.client_id;
-const clientId =
-  (rawClientId && rawClientId !== "null" && rawClientId !== "undefined"
-    ? rawClientId
-    : null) ||
-  companyId ||
-  rowFromState?.ClientId ||
-  rowFromState?.client_id;
+  const clientId = urlClientId;
+  const recordId = callId;
 
-  const recordId = rowFromState?.id || rowFromState?.callId;
-  if (!clientId || !recordId) return alert("Client ID or Record ID not found.");
 
   setLoading(true);
   try {
@@ -500,17 +493,11 @@ const clientId =
     let companyId = localStorage.getItem("company_id");
     if (companyId === "null" || companyId === "undefined") companyId = null;
 
-    const rawClientId = location.state?.client_id;
     const clientId =
-      (rawClientId && rawClientId !== "null" && rawClientId !== "undefined"
-        ? rawClientId
-        : null) ||
-      companyId ||
-      rowFromState?.ClientId ||
-      rowFromState?.client_id;
+      urlClientId ||
+      companyId;
 
-    // --- SAME RECORD ID LOGIC ---
-    const recordId = rowFromState?.id || rowFromState?.callId;
+    const recordId = callId;
 
     if (!clientId || !recordId) {
       return alert("Client ID or Record ID not found.");
@@ -525,8 +512,6 @@ const clientId =
        CloseLoopCate1:
         !action || action === "Select CALL ACTION"
           ? null
-          : action === "Closed"
-          ? "Close By System"
           : action,
 
       CloseLoopCate2:
@@ -546,6 +531,15 @@ const clientId =
       }
     });
 
+    // 🔥 Sync local apiRecord state
+    setApiRecord(prev => ({
+      ...prev,
+      "Call Action": payload.CloseLoopCate1,
+      "Call Sub Action": payload.CloseLoopCate2,
+      "Call Action Remarks": payload.closelooping_remarks,
+      "Followup Date": payload.FollowupDate
+    }));
+
     alert("Call closed successfully!");
 
     // reload page or details if needed
@@ -564,10 +558,10 @@ const clientId =
 // Load data on mount / row change
 // ----------------------------
 useEffect(() => {
-  if (location.state && labels.length > 0) {
+  if (callId && urlClientId && labels.length > 0) {
     fetchData();
   }
-}, [location.state, labels]);
+}, [callId, urlClientId, labels]);
 
 
   // ----------------------------
@@ -582,14 +576,14 @@ useEffect(() => {
   // Flatten form for Excel, override scenario fields with names
   const dataToExport = {
     ...form, // form fields (IDs)
-    "IN CALL ID": rowFromState?.callId || form.callId || "",
-    "CALL DATE": rowFromState?.CallDate || form.CallDate || "",
-    "CALL FROM": rowFromState?.CallFrom || form.CallFrom || "",
-    "DUE DATE": rowFromState?.["Due Date"] || form?.["Due Date"] || "",
-    "CALL CREATED": rowFromState?.["Call Created"] || form?.["Call Created"] || "",
-    "CALL ACTION": rowFromState?.["Call Action"] || form?.["Call Action"] || "",
-    "CALL SUB ACTION": rowFromState?.["Call Sub Action"] || form?.["Call Sub Action"] || "",
-    "REMARKS": rowFromState?.["Call Action Remarks"] || form?.["Call Action Remarks"] || "",
+    "IN CALL ID": form["IN CALL ID"] || "",
+    "CALL DATE": form["CALL DATE"] || "",
+    "CALL FROM": form["CALL FROM"] || "",
+    "DUE DATE": form["DUE DATE"] || "",
+    "CALL CREATED": form["CALL CREATED"] || "",
+    "CALL ACTION": apiRecord?.["Call Action"] || "",
+    "CALL SUB ACTION": apiRecord?.["Call Sub Action"] || "",
+    "REMARKS": apiRecord?.["Call Action Remarks"] || "",
     Scenario: scenarioList.find(opt => opt.id.toString() === (form.Scenario || "").toString())?.ecrName || form.Scenario,
     "Sub-scenario1": subScenarioList1.find(opt => opt.id.toString() === (form["Sub-scenario1"] || "").toString())?.ecrName || form["Sub-scenario1"],
     "Sub-scenario2": subScenarioList2.find(opt => opt.id.toString() === (form["Sub-scenario2"] || "").toString())?.ecrName || form["Sub-scenario2"],
@@ -603,7 +597,7 @@ useEffect(() => {
 
   const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
   const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-  saveAs(file, `Call-${form.callId || "record"}.xlsx`);
+  saveAs(file, `Call-${form["IN CALL ID"] || "record"}.xlsx`);
 
   showToast("Excel download started!", "success");
 };
@@ -613,33 +607,7 @@ useEffect(() => {
   const srDetails = labels.map((label) => [label, form[label]]);
   const callDetails = [
   ...callLabels.map((label) => {
-    let value = form[label] || "";
-
-    // For IN CALL ID, show backend 'id' from rowFromState
-    if (label === "IN CALL ID") {
-      value = rowFromState?.callId || value;
-    }
-    if (label === "CALL DATE") {
-      value = rowFromState?.CallDate.replace("T"," ") || value;
-    }
-    if (label === "CALL FROM") {
-      value = rowFromState?.CallFrom || value;
-    }
-    if (label === "TAT") {
-      value = rowFromState?.TAT || value;
-    }
-    if (label === "DUE DATE") {
-      value = rowFromState?.["Due Date"] || value;
-    }
-    if (label === "CALL CREATED") {
-      value = rowFromState?.["Call Created"] || value;
-    }
-
-    // Fallback for other fields if missing
-    if (!value) {
-      value = rowFromState?.[label] ?? "";
-    }
-
+    const value = form[label] || ""; // Always take from form populated by fetchData
     return [label, value];
   }),
     [
@@ -689,7 +657,7 @@ useEffect(() => {
     {
       label: "CALL ACTION",
       type: "select",
-      options: ["Select CALL ACTION", "Open", "Closed"],
+      options: ["Select CALL ACTION"],
     },
     {
       label: "CALL SUB ACTION",
@@ -702,6 +670,42 @@ useEffect(() => {
     },
     { label: "REMARKS", type: "textarea" },
   ]);
+
+
+  // 🔥 ADD THIS RIGHT HERE
+  useEffect(() => {
+    const fetchCallActions = async () => {
+      try {
+        let companyId = localStorage.getItem("company_id");
+        if (companyId === "null" || companyId === "undefined") companyId = null;
+
+        const clientId = urlClientId || companyId;
+
+        if (!clientId) return;
+
+        const res = await api.get(`/close-looping/actions`, {
+          params: { client_id: clientId },
+        });
+
+        const options = res.data || [];
+
+        setCloseFields((prev) =>
+          prev.map((field) =>
+            field.label === "CALL ACTION"
+              ? {
+                  ...field,
+                  options: ["Select CALL ACTION", ...options],
+                }
+              : field
+          )
+        );
+      } catch (err) {
+        console.error("Failed to load call actions:", err);
+      }
+    };
+
+    fetchCallActions();
+  }, [urlClientId]);
 
 
 
@@ -721,16 +725,9 @@ useEffect(() => {
       let companyId = localStorage.getItem("company_id");
       if (companyId === "null" || companyId === "undefined") companyId = null;
 
-      const rawClientId = location.state?.client_id;
       const clientId =
-        (rawClientId &&
-        rawClientId !== "null" &&
-        rawClientId !== "undefined"
-          ? rawClientId
-          : null) ||
-        companyId ||
-        rowFromState?.ClientId ||
-        rowFromState?.client_id;
+      urlClientId ||
+      companyId;
 
       if (!clientId) {
         console.error("Client ID not found.");
@@ -777,16 +774,23 @@ useEffect(() => {
 
 
   const handleUploadImage = async () => {
-    if (!rowFromState) return alert("Call ID not found");
-    if (!uploadFile) return alert("Please select an image");
+    
+    // 🔥 SAME CLIENT + CALL ID LOGIC AS fetchData
+    let companyId = localStorage.getItem("company_id");
+    if (companyId === "null" || companyId === "undefined") companyId = null;
 
-    const clientId = storedClientId;
-    const callId = rowFromState?.callId || rowFromState?.id;
+    const clientId =
+      urlClientId ||
+      companyId;
 
-    if (!clientId || !callId) return alert("Client ID or Call ID missing");
+    const recordId =
+      callId;
+
+    if (!clientId || !recordId)
+      return alert("Client ID or Call ID missing");
 
     const formData = new FormData();
-    formData.append("call_id", callId);
+    formData.append("call_id", recordId);
     formData.append("image", uploadFile);
 
     try {

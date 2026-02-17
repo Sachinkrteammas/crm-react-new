@@ -16,6 +16,7 @@ function CallDetails() {
   const [endDate, setEndDate] = useState(null);
   const [inCallAction, setInCallAction] = useState(""); // default empty or "In Call Action"
   const [call_id, setCallId] = useState(null); // default empty 
+  const [inCallActionList, setInCallActionList] = useState([]);
 
   const [scenarioList, setScenarioList] = useState([]); // Level 1
   const [scenario1List, setScenario1List] = useState([]); // Level 2
@@ -96,6 +97,26 @@ function CallDetails() {
 
   const navigate = useNavigate();
 
+
+  useEffect(() => {
+    if (!activeCompanyId || activeCompanyId === "null") return;
+
+    const fetchInCallActions = async () => {
+      try {
+        const res = await api.get(`/close-looping/actions`, {
+          params: { client_id: activeCompanyId },
+        });
+
+        setInCallActionList(res.data || []);
+        setInCallAction("");
+      } catch (err) {
+        console.error("Error fetching In Call Actions:", err);
+      }
+    };
+
+    fetchInCallActions();
+  }, [activeCompanyId]);
+
   // useEffect(() => {
   //   // fetch scenario map
   //   if (!activeCompanyId) return;
@@ -112,6 +133,24 @@ function CallDetails() {
   // load level1 scenarios
   useEffect(() => {
     if (!activeCompanyId || selectedClient === "null") return;
+
+    // 🔥 RESET ALL SCENARIOS WHEN CLIENT CHANGES
+    setSelectedScenario("");
+    setSelectedScenario1("");
+    setSelectedScenario2("");
+    setSelectedScenario3("");
+
+    setScenarioName("");
+    setScenario1Name("");
+    setScenario2Name("");
+    setScenario3Name("");
+    setScenario4Name("");
+
+    setScenario1List([]);
+    setScenario2List([]);
+    setScenario3List([]);
+    setScenario4List([]);
+
     api
       .get(`/core_api/categories/level1?client_id=${activeCompanyId}`)
       .then((res) => setScenarioList(res.data))
@@ -281,6 +320,23 @@ const handleViewClick = async () => {
       alert("No data to export.");
       return;
     }
+
+    const formattedStart = startDate ? format(startDate, "yyyy-MM-dd") : "";
+    const formattedEnd = endDate ? format(endDate, "yyyy-MM-dd") : "";
+
+    // 🔹 Determine company name
+    let exportCompanyName = "";
+
+    if (userType === "Client") {
+      const storedUserData = JSON.parse(localStorage.getItem("userData"));
+      exportCompanyName = storedUserData?.auth_person || "Your Company";
+    } else {
+      const selected = clients.find(
+        (c) => c.company_id == selectedClient
+      );
+      exportCompanyName = selected?.company_name || "Company";
+    }
+
     const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
@@ -289,7 +345,10 @@ const handleViewClick = async () => {
       type: "array",
     });
     const file = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(file, "report.xlsx");
+
+    // 🔹 Dynamic file name
+    const fileName = `${exportCompanyName}_In_Call_Details${formattedStart}_to_${formattedEnd}.xlsx`;
+    saveAs(file, fileName);
   };
 
   const tableColumns = [
@@ -406,10 +465,11 @@ const handleViewClick = async () => {
                     onChange={(e) => setInCallAction(e.target.value)}
                   >
                     <option value="">In Call Action</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Open">Open</option>
-                    <option value="Closed">Closed</option>
-                    <option value="Close By System">Close By System</option>
+                    {inCallActionList.map((action, index) => (
+                      <option key={index} value={action}>
+                        {action}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -591,7 +651,11 @@ const handleViewClick = async () => {
                                     title="View"
                                     onClick={() => {
                                       const companyId = activeCompanyId || localStorage.getItem("company_id");
-                                      navigate("/view_close_looping", { state: { row, client_id: companyId } });
+                                      // navigate("/view_close_looping", { state: { row, client_id: companyId } });
+                                      window.open(
+                                        `/view_close_looping/${row.callId}?client_id=${companyId}`,
+                                        "_blank"
+                                      );
                                     }}
                                   >
                                     <Eye size={16} />
