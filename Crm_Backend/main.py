@@ -61,6 +61,7 @@ from skilled_reports import router as skilled_reports_router
 from Agent_Apr import router as Agent_Apr_router
 from anestwatta import router as anest_dashboard_router
 
+from dialer_api import router as dialer_router
 
 
 
@@ -127,6 +128,8 @@ app.include_router(SLA_client_wise_router, tags=["SLA Client Wise"])
 app.include_router(skilled_reports_router, tags=["Skilled Reports"])
 app.include_router(Agent_Apr_router, tags=["Agent APR"])
 app.include_router(anest_dashboard_router)
+
+app.include_router(dialer_router, prefix="/api")
 
 
 
