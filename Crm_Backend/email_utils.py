@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def send_email(to_email, subject, html_content):
+def send_email(to_emails, subject, html_content, cc_emails=None):
     sender = os.getenv("EMAIL_USER")
     password = os.getenv("EMAIL_PASSWORD")
     smtp_server = os.getenv("SMTP_SERVER")
@@ -14,14 +14,31 @@ def send_email(to_email, subject, html_content):
 
     msg = MIMEMultipart()
     msg["From"] = sender
-    msg["To"] = to_email
+
+    if isinstance(to_emails, list):
+        msg["To"] = ", ".join(to_emails)
+    else:
+        msg["To"] = to_emails
+        to_emails = [to_emails]
+
+    if cc_emails:
+        if isinstance(cc_emails, list):
+            msg["Cc"] = ", ".join(cc_emails)
+        else:
+            msg["Cc"] = cc_emails
+            cc_emails = [cc_emails]
+    else:
+        cc_emails = []
+
     msg["Subject"] = subject
     msg.attach(MIMEText(html_content, "html"))
 
     with smtplib.SMTP(smtp_server, smtp_port) as server:
         server.starttls()
         server.login(sender, password)
-        server.send_message(msg)
+
+        all_recipients = to_emails + cc_emails
+        server.sendmail(sender, all_recipients, msg.as_string())
 
 
 

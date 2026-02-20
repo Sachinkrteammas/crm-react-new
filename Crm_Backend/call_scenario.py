@@ -5,10 +5,24 @@ from datetime import date
 from database import get_db4, get_db2
 from email_utils import send_email
 import os, html
+from datetime import datetime
 
 
 router = APIRouter()
 
+
+
+
+def format_date_with_suffix(date_obj):
+    day = date_obj.day
+
+    # Get suffix
+    if 11 <= day <= 13:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+
+    return f"{day}{suffix}{date_obj.strftime('%b')}'{date_obj.strftime('%Y')}"
 
 
 @router.get("/send-call-summary")
@@ -389,18 +403,23 @@ def send_call_summary(
 
         # 📧 Send email
         recipient = os.getenv("EMAIL_RECEIVER")
+        cc_recipient = os.getenv("EMAIL_CC")
+
         if not recipient:
             raise HTTPException(status_code=500, detail="EMAIL_RECEIVER not set in .env")
-        
-        # Split multiple emails by comma and strip spaces
-        recipient_list = [email.strip() for email in recipient.split(",") if email.strip()]
 
-        for recipient in recipient_list:
-            send_email(
-                to_email=recipient,
-                subject=f"Call Summary Report - {report_date}, For Client-ID: {client_id}",
-                html_content=html_content
-            )
+        recipient_list = [email.strip() for email in recipient.split(",") if email.strip()]
+        cc_list = [email.strip() for email in cc_recipient.split(",") if email.strip()] if cc_recipient else []
+
+        formatted_date = format_date_with_suffix(report_date)
+
+        # ✅ Send ONCE (No loop needed)
+        send_email(
+            to_emails=recipient_list,
+            cc_emails=cc_list,
+            subject=f"CL Crystal EOD Report_{formatted_date}",
+            html_content=html_content
+        )
 
         # send_email(
         #     to_email=recipient,
@@ -410,7 +429,8 @@ def send_call_summary(
 
         # Sends message for multiple emails.
         return {
-            "message": f"Email sent successfully to {', '.join(recipient_list)}",
+            "message": f"Email sent successfully to {', '.join(recipient_list)}"
+               + (f" with CC to {', '.join(cc_list)}" if cc_list else ""),
             "client_id": client_id,
             "report_date": str(report_date),
             "sections": sections
