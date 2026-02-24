@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 const RLReport = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [reportType, setReportType] = useState("company"); // company | entry
   const [showTable, setShowTable] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sampleData, setSampleData] = useState([]);
@@ -31,16 +32,17 @@ const RLReport = () => {
   const handleEndDateChange = (date) => setEndDate(formatDate(date));
 
   // ===============================
-  // RL API CALL (FIXED)
+  // RL API CALL
   // ===============================
   const fetchRLReport = async () => {
     const res = await api.post(
       "/report/rl_internal_report",
-      {}, // empty body
+      {},
       {
         params: {
           from_date: startDate,
           to_date: endDate,
+          report_type: reportType, // send dropdown value
         },
       }
     );
@@ -61,7 +63,6 @@ const RLReport = () => {
 
     try {
       const data = await fetchRLReport();
-
       setSampleData(data || []);
       setShowTable(true);
     } catch (err) {
@@ -73,7 +74,7 @@ const RLReport = () => {
   };
 
   // ===============================
-  // EXPORT BUTTON (NO TABLE VIEW)
+  // EXPORT BUTTON
   // ===============================
   const handleExport = async () => {
     if (!startDate || !endDate) {
@@ -91,7 +92,6 @@ const RLReport = () => {
         return;
       }
 
-      // Create Excel
       const worksheet = XLSX.utils.json_to_sheet(data);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "RL Report");
@@ -107,10 +107,9 @@ const RLReport = () => {
 
       saveAs(
         file,
-        `RL_Internal_Report_${startDate}_to_${endDate}.xlsx`
+        `RL_Internal_${reportType}_Report_${startDate}_to_${endDate}.xlsx`
       );
 
-      // Don't show table on export
       setShowTable(false);
     } catch (err) {
       console.error(err);
@@ -138,7 +137,18 @@ const RLReport = () => {
         <div className="card p-4 mb-4">
           <h5>RL INTERNAL REPORT</h5>
 
-          <div className="d-flex gap-2">
+          <div className="d-flex gap-2 flex-wrap">
+          {/* Report Type Dropdown */}
+            <select
+              className="form-control w-25"
+              value={reportType}
+              onChange={(e) => setReportType(e.target.value)}
+            >
+              <option value="company">Company Wise</option>
+              <option value="entry">Date Wise</option>
+            </select>
+
+            {/* Start Date */}
             <DatePicker
               selected={startDate ? new Date(startDate) : null}
               onChange={handleStartDateChange}
@@ -147,6 +157,7 @@ const RLReport = () => {
               dateFormat="dd-MM-yyyy"
             />
 
+            {/* End Date */}
             <DatePicker
               selected={endDate ? new Date(endDate) : null}
               onChange={handleEndDateChange}
@@ -159,7 +170,7 @@ const RLReport = () => {
               VIEW
             </button>
 
-            <button className="btn btn-primary" onClick={handleExport}>
+            <button className="btn btn-success" onClick={handleExport}>
               EXPORT
             </button>
 
@@ -167,7 +178,7 @@ const RLReport = () => {
               className="btn btn-outline-primary"
               onClick={() => navigate(-1)}
             >
-              ← Back
+               Back
             </button>
           </div>
         </div>
@@ -183,61 +194,65 @@ const RLReport = () => {
                 maxHeight: "600px",
                 overflowY: "auto",
                 overflowX: "auto",
-                position: "relative",
               }}
             >
               <table className="table table-bordered">
                 <thead>
-                  <tr>
-                    {[
-                      "Company Name",
-                      "Abandon Unique",
-                      "Called Back",
-                      "Connected",
-                      "Not Connected",
-                      "Failed to Attempt",
-                    ].map((title, index) => (
-                      <th
-                        key={index}
-                        style={{
-                          position: "sticky",
-                          top: 0,
-                          background: "#fff",
-                          zIndex: 1000,
-                          borderBottom: "2px solid #dee2e6",
-                        }}
-                      >
-                        {title}
-                      </th>
-                    ))}
-                  </tr>
+                <tr>
+                  {reportType === "company" ? (
+                    <>
+                      <th>Company Name</th>
+                      <th>Total Abandon</th>
+                      <th>Abandon Unique</th>
+                      <th>Callback</th>
+                      <th>Connected</th>
+                      <th>Not Connected</th>
+                      <th>Failed Attempt</th>
+                    </>
+                  ) : (
+                    <>
+                      <th>Date</th>
+                      <th>Total Abandon</th>
+                      <th>Abandon Unique</th>
+                      <th>Callback</th>
+                      <th>Connected</th>
+                      <th>Not Connected</th>
+                      <th>Failed Attempt</th>
+                    </>
+                  )}
+                </tr>
                 </thead>
 
                 <tbody>
-                  {sampleData.length > 0 ? (
-                    sampleData.map((row, i) => (
-                      <tr key={i}>
-                        <td>{row.company_name}</td>
-                        <td>{row.Abandon_Unique}</td>
-                        <td>{row.Called_Back}</td>
-                        <td>{row.Connected}</td>
-                        <td>{row.Not_Connected}</td>
-                        <td>{row.Failed_to_attempt}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="7" className="text-center">
-                        No data available
+                {sampleData.length > 0 ? (
+                  sampleData.map((row, i) => (
+                    <tr key={i}>
+                      <td>
+                        {reportType === "company"
+                          ? row.CompanyName
+                          : row.EntryDate}
                       </td>
+
+                      <td>{row.Total_Abandon}</td>
+                      <td>{row.Abandon_Unique}</td>
+                      <td>{row.callback}</td>
+                      <td>{row.Connected}</td>
+                      <td>{row.NcConnected}</td>
+                      <td>{row.faild_attempt}</td>
                     </tr>
-                  )}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="text-center">
+                      No data available
+                    </td>
+                  </tr>
+                )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
-
       </div>
     </>
   );

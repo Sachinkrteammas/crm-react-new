@@ -1061,92 +1061,54 @@ def get_after_hours_calls(
     }
 
 
-
 @router.post("/rl_internal_report")
 def rl_internal_report(
     from_date: date,
     to_date: date,
-    db: Session = Depends(get_db2),       # vicidial DB
-    db_main: Session = Depends(get_db4)   # main DB
+    report_type: str = "company",   # company OR entry
+    db_main: Session = Depends(get_db4)
 ):
 
-    # 1. Get all active clients
-    companies = db_main.execute(text("""
-        SELECT company_id, company_name, campaignid
-        FROM registration_master
-        WHERE status = 'A'
-    """)).mappings().fetchall()
+    if report_type == "company":
 
-    if not companies:
-        raise HTTPException(404, "No active companies found")
-
-    final_response = []
-
-    # 2. Loop each company
-    for company in companies:
-
-        company_id = company["company_id"]
-        company_name = company["company_name"]
-        camp = company["campaignid"]
-
-        if not camp:
-            continue
-
-        campaign_list = [c.strip().strip("'") for c in camp.split(",")]
-
-        params = {
-            "cids": tuple(campaign_list),
-            "from_date": from_date,
-            "to_date": to_date
-        }
-
-        # 3. Vicidial summary
-        sql = text("""
-            SELECT
-                COUNT(DISTINCT CASE WHEN t2.user='VDCL' THEN t2.phone_number END) AS abandon_unique,
-                SUM(IF(t2.user <> 'VDCL',1,0)) AS connected,
-                SUM(IF(t2.user = 'VDCL',1,0)) AS not_connected,
-                COUNT(*) AS total_calls
-            FROM asterisk.vicidial_closer_log t2
-            WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
-            AND t2.campaign_id IN :cids
-            AND t2.term_reason <> 'AFTERHOURS'
-            AND t2.lead_id IS NOT NULL
-        """)
-
-        result = db.execute(sql, params).mappings().fetchone()
-
-        abandon_unique = result["abandon_unique"] or 0
-        connected = result["connected"] or 0
-        not_connected = result["not_connected"] or 0
-        total_calls = result["total_calls"] or 0
-
-        # 4. Called Back
-        cb_sql = text("""
-            SELECT COUNT(Id)
+        query = text("""
+            SELECT 
+                CompanyName,
+                COUNT(PhoneNo) AS Total_Abandon,
+                COUNT(DISTINCT PhoneNo) AS Abandon_Unique,
+                SUM(IF(Callbackdate IS NULL,0,1)) AS callback,
+                SUM(IF(call_status='Answer',1,0)) AS Connected,
+                SUM(IF(call_status IS NULL AND Callbackdate IS NOT NULL,1,0)) AS NcConnected,
+                COUNT(PhoneNo) - SUM(IF(Callbackdate IS NULL,0,1)) AS faild_attempt
             FROM aband_call_master
-            WHERE ClientId=:cid
-            AND DATE(Callbackdate) BETWEEN :from_date AND :to_date
-            AND (TagStatus='yes' OR TagStatus='1')
+            WHERE DATE(EntryDate) BETWEEN :from_date AND :to_date
+            GROUP BY CompanyName
+            ORDER BY CompanyName
         """)
 
-        called_back = db_main.execute(cb_sql, {
-            "cid": company_id,
-            "from_date": from_date,
-            "to_date": to_date
-        }).scalar() or 0
+    elif report_type == "entry":
 
-        # 5. Failed attempt
-        failed_attempt = total_calls - connected - called_back
+        query = text("""
+            SELECT 
+                DATE(EntryDate) AS EntryDate,
+                COUNT(PhoneNo) AS Total_Abandon,
+                COUNT(DISTINCT PhoneNo) AS Abandon_Unique,
+                SUM(IF(Callbackdate IS NULL,0,1)) AS callback,
+                SUM(IF(call_status='Answer',1,0)) AS Connected,
+                SUM(IF(call_status IS NULL AND Callbackdate IS NOT NULL,1,0)) AS NcConnected,
+                COUNT(PhoneNo) - SUM(IF(Callbackdate IS NULL,0,1)) AS faild_attempt
+            FROM aband_call_master
+            WHERE DATE(EntryDate) BETWEEN :from_date AND :to_date
+            GROUP BY DATE(EntryDate)
+            ORDER BY EntryDate
+        """)
 
-        final_response.append({
-            "company_id": company_id,
-            "company_name": company_name,
-            "Abandon_Unique": abandon_unique,
-            "Called_Back": called_back,
-            "Connected": connected,
-            "Not_Connected": not_connected,
-            "Failed_to_attempt": max(0, failed_attempt)
-        })
+    else:
+        raise HTTPException(400, "report_type must be 'company' or 'entry'")
 
-    return final_response
+    result = db_main.execute(query, {
+        "from_date": from_date,
+        "to_date": to_date
+    }).mappings().all()
+
+    return result
