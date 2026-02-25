@@ -55,6 +55,14 @@ const Dashboard = () => {
 
   const [ticketSourceData, setTicketSourceData] = useState([]);
 
+  const [rlReportData, setRlReportData] = useState({
+      Connected: 0,
+      NcConnected: 0,
+    });
+
+const [rlChartData, setRlChartData] = useState([]);
+
+
   useEffect(() => {
     const today = new Date();
     const format = (date) => date.toISOString().split("T")[0];
@@ -149,6 +157,7 @@ const Dashboard = () => {
           fetchCallDistribution(),
           fetchData(),
           fetchTicketBySource(),
+          fetchRLInternalReport(),
         ]);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -244,6 +253,36 @@ const Dashboard = () => {
     }
   };
 
+  const fetchRLInternalReport = async () => {
+  if (!selectedClient || !fromDate || !toDate) return;
+
+  try {
+    const res = await api.post(
+      `/report/rl_internal_report?from_date=${fromDate}&to_date=${toDate}&report_type=company&company_id=${selectedClient}`
+    );
+
+    const data = res.data;
+
+    if (data && data.length > 0) {
+      const item = data[0];
+
+      // set card values
+      setRlReportData({
+        Connected: item.Connected || 0,
+        NcConnected: item.NcConnected || 0,
+      });
+
+      // set graph values
+      setRlChartData([
+        { name: "Connected", value: item.Connected || 0 },
+        { name: "Not Connected", value: item.NcConnected || 0 },
+      ]);
+    }
+  } catch (err) {
+    console.error("RL Internal Report Error:", err);
+  }
+};
+
   //   useEffect(() => {
   //   const fetchClients = async () => {
   //     try {
@@ -330,6 +369,7 @@ const Dashboard = () => {
         fetchCallDistribution(),
         fetchData(),
         fetchTicketBySource(),
+        fetchRLInternalReport(),
       ]);
     } catch (error) {
       console.error("Error during submission data fetch:", error);
@@ -699,38 +739,29 @@ const Dashboard = () => {
                 <div className="card h-100">
                   <div className="card-header d-flex justify-content-between pb-4">
                     <div className="card-title mb-0">
-                      <h5 className="mb-1">Call Analysis</h5>
-                      <p className="card-subtitle">Answered vs Abandon</p>
+                      <h5 className="mb-1">Call Connection Status</h5>
+                      <p className="card-subtitle">Connected vs Not Connected</p>
                     </div>
+
                     <div className="dropdown">
                       <button
-                        className="btn btn-text-secondary rounded-pill text-body-secondary border-0 p-2 me-n1"
+                        className="btn btn-text-secondary rounded-pill border-0 p-2 me-n1"
                         type="button"
-                        id="callAnalysisMenu"
                         data-bs-toggle="dropdown"
-                        aria-haspopup="true"
-                        aria-expanded="false"
                       >
-                        <i className="icon-base ti tabler-dots-vertical icon-md text-body-secondary"></i>
+                        <i className="icon-base ti tabler-dots-vertical icon-md"></i>
                       </button>
-                      <div
-                        className="dropdown-menu dropdown-menu-end"
-                        aria-labelledby="callAnalysisMenu"
-                      >
-                        <a className="dropdown-item" href="#">
-                          View More
-                        </a>
-                        <a className="dropdown-item" href="#">
-                          Delete
-                        </a>
+                      <div className="dropdown-menu dropdown-menu-end">
+                        <a className="dropdown-item" href="#">View More</a>
                       </div>
                     </div>
                   </div>
+
                   <div className="card-body">
                     <ResponsiveContainer width="100%" height={250}>
                       <PieChart>
                         <Pie
-                          data={data}
+                          data={rlChartData}
                           cx="50%"
                           cy="50%"
                           labelLine={false}
@@ -739,21 +770,18 @@ const Dashboard = () => {
                           startAngle={90}
                           endAngle={-270}
                         >
-                          {data.map((entry, index) => (
+                          {rlChartData.map((entry, index) => (
                             <Cell
-                              key={`cell-${index}`}
+                              key={index}
                               fill={COLORS[index]}
                               stroke="#fff"
                               strokeWidth={2}
                             />
                           ))}
                         </Pie>
+
                         <Tooltip />
-                        <Legend
-                          verticalAlign="top"
-                          iconType="circle"
-                          align="center"
-                        />
+                        <Legend verticalAlign="top" iconType="circle" align="center" />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
@@ -827,7 +855,9 @@ const Dashboard = () => {
                 </div>
               </div>
               {/* Last Transaction */}
-              <div className="col-xxl-8 col-lg-6 col-md-12">
+              {/* ===== Ticket By Source + New Graph Row ===== */}
+
+              <div className="col-xxl-4 col-lg-6 col-md-12">
                 <div className="card h-100 shadow-sm rounded-2xl">
                   <div className="card-header d-flex justify-between items-center border-b border-gray-200 p-4">
                     <h5 className="text-lg font-semibold flex items-center gap-2">
@@ -908,6 +938,74 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
+
+              {/* ===== NEW GRAPH (HALF WIDTH) ===== */}
+              <div className="col-xxl-4 col-lg-6 col-md-12">
+                <div className="card h-100">
+                  <div className="card-header d-flex justify-content-between pb-4">
+                    <div className="card-title mb-0">
+                      <h5 className="mb-1">Call Analysis</h5>
+                      <p className="card-subtitle">Answered vs Abandon</p>
+                    </div>
+                    <div className="dropdown">
+                      <button
+                        className="btn btn-text-secondary rounded-pill text-body-secondary border-0 p-2 me-n1"
+                        type="button"
+                        id="callAnalysisMenu"
+                        data-bs-toggle="dropdown"
+                        aria-haspopup="true"
+                        aria-expanded="false"
+                      >
+                        <i className="icon-base ti tabler-dots-vertical icon-md text-body-secondary"></i>
+                      </button>
+                      <div
+                        className="dropdown-menu dropdown-menu-end"
+                        aria-labelledby="callAnalysisMenu"
+                      >
+                        <a className="dropdown-item" href="#">
+                          View More
+                        </a>
+                        <a className="dropdown-item" href="#">
+                          Delete
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="card-body">
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={data}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          outerRadius={80}
+                          dataKey="value"
+                          startAngle={90}
+                          endAngle={-270}
+                        >
+                          {data.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index]}
+                              stroke="#fff"
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend
+                          verticalAlign="top"
+                          iconType="circle"
+                          align="center"
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+
               {/*/ Last Transaction */}
 
               {/* Activity Timeline */}
