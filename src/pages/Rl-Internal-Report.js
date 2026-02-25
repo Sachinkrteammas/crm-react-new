@@ -10,7 +10,13 @@ import { useNavigate } from "react-router-dom";
 const RLReport = () => {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [reportType, setReportType] = useState("company"); // company | entry
+
+  // dropdown value (temporary)
+  const [reportType, setReportType] = useState("company");
+
+  // applied report (used for table + API)
+  const [appliedReportType, setAppliedReportType] = useState("company");
+
   const [showTable, setShowTable] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sampleData, setSampleData] = useState([]);
@@ -34,7 +40,7 @@ const RLReport = () => {
   // ===============================
   // RL API CALL
   // ===============================
-  const fetchRLReport = async () => {
+  const fetchRLReport = async (type) => {
     const res = await api.post(
       "/report/rl_internal_report",
       {},
@@ -42,7 +48,7 @@ const RLReport = () => {
         params: {
           from_date: startDate,
           to_date: endDate,
-          report_type: reportType, // send dropdown value
+          report_type: type,
         },
       }
     );
@@ -62,7 +68,10 @@ const RLReport = () => {
     setLoading(true);
 
     try {
-      const data = await fetchRLReport();
+      // apply selected report type
+      setAppliedReportType(reportType);
+
+      const data = await fetchRLReport(reportType);
       setSampleData(data || []);
       setShowTable(true);
     } catch (err) {
@@ -85,7 +94,10 @@ const RLReport = () => {
     setLoading(true);
 
     try {
-      const data = await fetchRLReport();
+      // apply selected report type
+      setAppliedReportType(reportType);
+
+      const data = await fetchRLReport(reportType);
 
       if (!data || data.length === 0) {
         alert("No data available");
@@ -138,7 +150,7 @@ const RLReport = () => {
           <h5>RL INTERNAL REPORT</h5>
 
           <div className="d-flex gap-2 flex-wrap">
-          {/* Report Type Dropdown */}
+            {/* Report Type Dropdown */}
             <select
               className="form-control w-25"
               value={reportType}
@@ -178,7 +190,7 @@ const RLReport = () => {
               className="btn btn-outline-primary"
               onClick={() => navigate(-1)}
             >
-               Back
+              Back
             </button>
           </div>
         </div>
@@ -198,56 +210,56 @@ const RLReport = () => {
             >
               <table className="table table-bordered">
                 <thead>
-                <tr>
-                  {reportType === "company" ? (
-                    <>
-                      <th>Company Name</th>
-                      <th>Total Abandon</th>
-                      <th>Abandon Unique</th>
-                      <th>Callback</th>
-                      <th>Connected</th>
-                      <th>Not Connected</th>
-                      <th>Failed Attempt</th>
-                    </>
-                  ) : (
-                    <>
-                      <th>Date</th>
-                      <th>Total Abandon</th>
-                      <th>Abandon Unique</th>
-                      <th>Callback</th>
-                      <th>Connected</th>
-                      <th>Not Connected</th>
-                      <th>Failed Attempt</th>
-                    </>
-                  )}
-                </tr>
+                  <tr>
+                    {appliedReportType === "company" ? (
+                      <>
+                        <th>Company Name</th>
+                        <th>Total Abandon</th>
+                        <th>Abandon Unique</th>
+                        <th>Callback</th>
+                        <th>Connected</th>
+                        <th>Not Connected</th>
+                        <th>Failed Attempt</th>
+                      </>
+                    ) : (
+                      <>
+                        <th>Date</th>
+                        <th>Total Abandon</th>
+                        <th>Abandon Unique</th>
+                        <th>Callback</th>
+                        <th>Connected</th>
+                        <th>Not Connected</th>
+                        <th>Failed Attempt</th>
+                      </>
+                    )}
+                  </tr>
                 </thead>
 
                 <tbody>
-                {sampleData.length > 0 ? (
-                  sampleData.map((row, i) => (
-                    <tr key={i}>
-                      <td>
-                        {reportType === "company"
-                          ? row.CompanyName
-                          : row.EntryDate}
-                      </td>
+                  {sampleData.length > 0 ? (
+                    sampleData.map((row, i) => (
+                      <tr key={i}>
+                        <td>
+                          {appliedReportType === "company"
+                            ? row.CompanyName
+                            : row.EntryDate}
+                        </td>
 
-                      <td>{row.Total_Abandon}</td>
-                      <td>{row.Abandon_Unique}</td>
-                      <td>{row.callback}</td>
-                      <td>{row.Connected}</td>
-                      <td>{row.NcConnected}</td>
-                      <td>{row.faild_attempt}</td>
+                        <td>{row.Total_Abandon}</td>
+                        <td>{row.Abandon_Unique}</td>
+                        <td>{row.callback}</td>
+                        <td>{row.Connected}</td>
+                        <td>{row.NcConnected}</td>
+                        <td>{row.faild_attempt}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="text-center">
+                        No data available
+                      </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="7" className="text-center">
-                      No data available
-                    </td>
-                  </tr>
-                )}
+                  )}
                 </tbody>
               </table>
             </div>
