@@ -58,6 +58,7 @@ const Dashboard = () => {
   const [rlReportData, setRlReportData] = useState({
       Connected: 0,
       NcConnected: 0,
+      Abandon_Unique: 0,
     });
 
 const [rlChartData, setRlChartData] = useState([]);
@@ -269,13 +270,15 @@ const [rlChartData, setRlChartData] = useState([]);
       // set card values
       setRlReportData({
         Connected: item.Connected || 0,
-        NcConnected: item.NcConnected || 0,
+        NcConnected: item.Not_Connected || 0,
+        Abandon_Unique: item.Abandon_Unique || 0,
       });
 
       // set graph values
       setRlChartData([
         { name: "Connected", value: item.Connected || 0 },
-        { name: "Not Connected", value: item.NcConnected || 0 },
+        { name: "Not Connected", value: item.Not_Connected || 0 },
+        { name: "Abandon Unique", value: item.Abandon_Unique || 0 },
       ]);
     }
   } catch (err) {
@@ -739,7 +742,7 @@ const [rlChartData, setRlChartData] = useState([]);
                 <div className="card h-100">
                   <div className="card-header d-flex justify-content-between pb-4">
                     <div className="card-title mb-0">
-                      <h5 className="mb-1">RL Analysis</h5>
+                      <h5 className="mb-1">Call Back Analysis</h5>
                       <p className="card-subtitle">Connected vs Not Connected</p>
                     </div>
 

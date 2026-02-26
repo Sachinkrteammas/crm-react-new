@@ -106,42 +106,76 @@ const RLReport = () => {
   // ===============================
   // EXPORT
   // ===============================
+
+  // Convert yyyy-mm-dd → dd-mm-yyyy
+const formatDisplayDate = (dateStr) => {
+  if (!dateStr) return "";
+
+  const [year, month, day] = dateStr.split("-");
+  return `${day}-${month}-${year}`;
+};
+
+
   const handleExport = async () => {
-    if (!startDate || !endDate) {
-      alert("Select date range");
+  if (!startDate || !endDate) {
+    alert("Select date range");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const data = await fetchRLReport(reportType);
+
+    if (!data?.length) {
+      alert("No data available");
       return;
     }
 
-    setLoading(true);
+    // Report Type Label
+    const reportLabel = reportType === "company" ? "Client" : "Date";
 
-    try {
-      const data = await fetchRLReport(reportType);
+    // Get selected client name
+    const selectedClientObj = clients.find(
+      (c) => String(c.company_id) === String(selectedClient)
+    );
 
-      if (!data?.length) {
-        alert("No data available");
-        return;
-      }
+    const clientLabel = selectedClientObj
+      ? selectedClientObj.company_name
+      : "All Clients";
 
-      const worksheet = XLSX.utils.json_to_sheet(data);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "RL Report");
+    // Header rows
+    const headerRows = [
+      [
+        "RL Report",
+        `Client: ${clientLabel}`,
+        `Date Range: ${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`,
+      ],
+      [],
+    ];
 
-      const buffer = XLSX.write(workbook, {
-        bookType: "xlsx",
-        type: "array",
-      });
+    const worksheet = XLSX.utils.json_to_sheet(data, { origin: "A3" });
+    XLSX.utils.sheet_add_aoa(worksheet, headerRows, { origin: "A1" });
 
-      saveAs(
-        new Blob([buffer]),
-        `RL_${reportType}_${startDate}_to_${endDate}.xlsx`
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Export failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "RL Report");
+
+    const buffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    saveAs(
+      new Blob([buffer]),
+      `RL_Report_${formatDisplayDate(startDate)}_to_${formatDisplayDate(endDate)}.xlsx`
+    );
+  } catch (err) {
+    console.error(err);
+    alert("Export failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
@@ -272,10 +306,10 @@ const RLReport = () => {
                         </td>
                         <td>{row.Total_Abandon}</td>
                         <td>{row.Abandon_Unique}</td>
-                        <td>{row.callback}</td>
+                        <td>{row.Total_Callback}</td>
                         <td>{row.Connected}</td>
-                        <td>{row.NcConnected}</td>
-                        <td>{row.faild_attempt}</td>
+                        <td>{row.Not_Connected}</td>
+                        <td>{row.Failed_Attempt}</td>
                       </tr>
                     ))
                   ) : (
