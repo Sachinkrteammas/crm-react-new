@@ -739,7 +739,7 @@ const [rlChartData, setRlChartData] = useState([]);
                 <div className="card h-100">
                   <div className="card-header d-flex justify-content-between pb-4">
                     <div className="card-title mb-0">
-                      <h5 className="mb-1">Call Connection Status</h5>
+                      <h5 className="mb-1">RL Analysis</h5>
                       <p className="card-subtitle">Connected vs Not Connected</p>
                     </div>
 

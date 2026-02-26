@@ -133,7 +133,7 @@ const RLReport = () => {
 
       saveAs(
         new Blob([buffer]),
-        `RL_Internal_${reportType}_${startDate}_to_${endDate}.xlsx`
+        `RL_${reportType}_${startDate}_to_${endDate}.xlsx`
       );
     } catch (err) {
       console.error(err);
