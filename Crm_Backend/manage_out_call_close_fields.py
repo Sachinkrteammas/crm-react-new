@@ -160,12 +160,12 @@ def update_close_field(client_id: int, field_id: int, data: Dict[str, Any], db: 
 @router.delete("/close_fields/{client_id}/{field_id}")
 def delete_close_field(client_id: int, field_id: int, db: Session = Depends(get_db4)):
     # Delete dropdown values first
-    db.execute("DELETE FROM ob_close_master_value WHERE FieldId = :fid AND ClientId = :cid",
+    db.execute(text("DELETE FROM ob_close_master_value WHERE FieldId = :fid AND ClientId = :cid"),
                {"fid": field_id, "cid": client_id})
     db.commit()
 
     # Delete main field
-    result = db.execute("DELETE FROM ob_close_master WHERE id = :fid AND ClientId = :cid",
+    result = db.execute(text("DELETE FROM ob_close_master WHERE id = :fid AND ClientId = :cid"),
                         {"fid": field_id, "cid": client_id})
     db.commit()
 

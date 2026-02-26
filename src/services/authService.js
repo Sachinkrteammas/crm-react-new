@@ -315,3 +315,11 @@ export const deleteTrainingDoc = async (id) => {
     throw error.response?.data?.detail || "Failed to delete training doc";
   }
 };
+
+
+export const getClientCampaignTypes = async (companyId, outboundAccessId) => {
+  const res = await api.get(
+    `/call/campaign-types-for-client?CLIENT_ID=${companyId}&id=${outboundAccessId}`
+  );
+  return res.data;
+};

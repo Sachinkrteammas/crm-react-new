@@ -22,6 +22,7 @@ class LoginResponse(BaseModel):
     user_type: str
     company_id: Optional[int] = None   # Super-Admin has no company, Clients/Admins do
     auth_person: Optional[str] = None
+    outbound_access: Optional[str] = None
 
 
 class CallMasterRecord(BaseModel):

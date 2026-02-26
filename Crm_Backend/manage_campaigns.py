@@ -1,23 +1,36 @@
 # Manage Campaign Api routes..
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends, Form, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional, List
 from datetime import datetime
 from database import get_db4
+from pydantic import BaseModel
+
+
 
 router = APIRouter(prefix="/campaign", tags=["Manage Campaigns"])
+
+
+
+
+class UpdateCampaignStatusRequest(BaseModel):
+    id: int
+    update_user: str
+
+
+
 
 # ✅ 1. Get Campaign Type Dropdown
 @router.get("/types")
 def get_campaign_types(ClientId: Optional[int] = None, db: Session = Depends(get_db4)):
-    query = "SELECT Id, CampaignType FROM ob_campaign_type"
+    query = "SELECT DISTINCT CampaignType FROM ob_campaign_type"
     params = {}
     if ClientId:
         query += " WHERE ClientId = :ClientId"
         params["ClientId"] = ClientId
     result = db.execute(text(query), params).mappings().all()
-    return [{"id": row["Id"], "name": row["CampaignType"]} for row in result]
+    return [{"name": row["CampaignType"]} for row in result]
 
 
 # ✅ 2. Create a New Campaign
@@ -26,16 +39,16 @@ def create_campaign(
     ClientId: int = Form(...),
     CampaignName: str = Form(...),
     campaign_description: Optional[str] = Form(None),
-    CampaignTypeId: int = Form(...),
+    CampaignTypeId: str = Form(...),
     fields: Optional[List[str]] = Form(None),
     db: Session = Depends(get_db4)
 ):
     creation_date = datetime.now()
 
-    # ✅ Fetch CampaignType name from ob_campaign_type
-    type_query = text("SELECT CampaignType FROM ob_campaign_type WHERE Id = :id")
-    type_result = db.execute(type_query, {"id": CampaignTypeId}).fetchone()
-    CampaignParentName = type_result[0] if type_result else None
+    # # ✅ Fetch CampaignType name from ob_campaign_type
+    # type_query = text("SELECT CampaignType FROM ob_campaign_type WHERE Id = :id")
+    # type_result = db.execute(type_query, {"id": CampaignTypeId}).fetchone()
+    # CampaignParentName = type_result[0] if type_result else None
 
     # ✅ Prepare dynamic field columns
     field_data = {}
@@ -82,13 +95,13 @@ def create_campaign(
         "campaign_id": CampaignTypeId,
         "CreationDate": creation_date,
         "TotalCount": total_count,
-        "CampaignParentName": CampaignParentName,  
+        "CampaignParentName": CampaignTypeId,  
         **field_data
     }
 
     db.execute(query, params)
     db.commit()
-    return {"message": "Campaign created successfully", "TotalCount": total_count, "CampaignParentName": CampaignParentName}
+    return {"message": "Campaign created successfully", "TotalCount": total_count, "CampaignParentName": CampaignTypeId}
 
 
 # ✅ 3. List All Campaigns (with Type Name)
@@ -100,10 +113,11 @@ def list_campaigns(ClientId: Optional[int] = None, db: Session = Depends(get_db4
             c.ClientId, 
             c.campaign_id,
             c.CampaignName, 
+            c.CampaignParentName AS Type, 
             c.campaign_description, 
             c.CreationDate, 
             c.CampaignStatus,
-            ct.CampaignType AS Type,
+            ct.CampaignType AS Type1,
             c.Field1, c.Field2, c.Field3, c.Field4, c.Field5,
             c.Field6, c.Field7, c.Field8, c.Field9, c.Field10,
             c.Field11, c.Field12, c.Field13, c.Field14, c.Field15,
@@ -115,7 +129,7 @@ def list_campaigns(ClientId: Optional[int] = None, db: Session = Depends(get_db4
 
     params = {}
     if ClientId:
-        query += " WHERE c.ClientId = :ClientId"
+        query += " WHERE c.ClientId = :ClientId AND c.CampaignStatus = 'A'"
         params["ClientId"] = ClientId
 
     query += " ORDER BY c.CreationDate DESC"
@@ -147,20 +161,62 @@ def list_campaigns(ClientId: Optional[int] = None, db: Session = Depends(get_db4
     return campaigns
 
 
-# ✅ 4. Delete Campaign
-@router.delete("/delete/{campaign_id}")
-def delete_campaign(campaign_id: int, db: Session = Depends(get_db4)):
-    # Check if campaign exists
+# # ✅ 4. Delete Campaign
+# @router.delete("/delete/{campaign_id}")
+# def delete_campaign(campaign_id: int, db: Session = Depends(get_db4)):
+#     # Check if campaign exists
+#     check_query = text("SELECT id FROM ob_campaign WHERE id = :id")
+#     exists = db.execute(check_query, {"id": campaign_id}).fetchone()
+
+#     if not exists:
+#         return {"error": f"Campaign ID {campaign_id} not found."}
+
+#     # Delete the campaign
+#     delete_query = text("DELETE FROM ob_campaign WHERE id = :id")
+#     db.execute(delete_query, {"id": campaign_id})
+#     db.commit()
+
+#     return {"message": f"Campaign ID {campaign_id} deleted successfully."}
+
+
+
+@router.put("/update-status")
+def update_campaign_status(
+    payload: UpdateCampaignStatusRequest,
+    db: Session = Depends(get_db4)
+):
+    # 1️⃣ Check if campaign exists
     check_query = text("SELECT id FROM ob_campaign WHERE id = :id")
-    exists = db.execute(check_query, {"id": campaign_id}).fetchone()
+    exists = db.execute(check_query, {"id": payload.id}).fetchone()
 
     if not exists:
-        return {"error": f"Campaign ID {campaign_id} not found."}
+        raise HTTPException(
+            status_code=404,
+            detail=f"Campaign ID {payload.id} not found."
+        )
 
-    # Delete the campaign
-    delete_query = text("DELETE FROM ob_campaign WHERE id = :id")
-    db.execute(delete_query, {"id": campaign_id})
+    # 2️⃣ Update only required fields
+    update_query = text("""
+        UPDATE ob_campaign
+        SET CampaignStatus = 'D',
+            update_user = :update_user,
+            update_date = :update_date
+        WHERE id = :id
+    """)
+
+    db.execute(
+        update_query,
+        {
+            "update_user": payload.update_user,
+            "update_date": datetime.now(),
+            "id": payload.id
+        }
+    )
+
     db.commit()
 
-    return {"message": f"Campaign ID {campaign_id} deleted successfully."}
+    return {
+        "message": f"Campaign ID {payload.id} updated successfully.",
+        "updated_by": payload.update_user
+    }
 

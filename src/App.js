@@ -140,6 +140,8 @@ import AgentAprExport from "./pages/Agent_apr";
 import DashboardAnest from "./pages/DashboardAnest";
 import AfterHoursCalls from "./pages/After_hour_call";
 import RLReport from "./pages/Rl-Internal-Report";
+import ObCampaignDetails from "./pages/Create_manual_OB_call";
+import CampaignListUI from "./pages/List_id";
 
 
 
@@ -392,6 +394,8 @@ function App() {
               <Route path="/DashboardAnest" element={<DashboardAnest />} />
               <Route path="/after_hour_calls" element={<AfterHoursCalls />} />
               <Route path="/RLReport" element={<RLReport />} />
+              <Route path="/ManualOutbounds" element={<ObCampaignDetails />} />
+              <Route path="/Outbounds/addcampaignlistid" element={<CampaignListUI />} />
               <></>
           </Route>
       </Route>

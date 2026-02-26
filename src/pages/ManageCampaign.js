@@ -1,182 +1,6 @@
-// import React, { useState } from "react";
-
-// const ManageCampaign = () => {
-//   const [form, setForm] = useState({
-//     type: "",
-//     campaignType: "",
-//     cost: "",
-//     utilization: "",
-//     campaignName: "",
-//     fieldName: "",
-//   });
-
-//   const handleSubmit = () => {
-
-//   };
-
-//   return (
-//     <div className="row">
-//     <div className="col-12">
-//         <div className="mb-4">
-//           <h4>Manage Campaigns</h4>
-//        </div>
-
-//       <div className="card p-4 mb-4">
-//           <h6 className="mb-3">CREATE CAMPAIGNS</h6>
-
-//           <div className="row">
-//             <div className="col-md-3">
-//               <label className="form-label text-muted">Select Type</label>
-//               <select
-//                 className="form-control mb-3"
-//                 value={form.type}
-//                 onChange={(e) => setForm({ ...form, type: e.target.value })}
-//               >
-//                 <option value="">Select Type</option>
-//               </select>
-//             </div>
-
-//             <div className="col-md-3">
-//               <label className="form-label text-muted">Campaign Type</label>
-//               <select
-//                 className="form-control mb-3"
-//                 value={form.campaignType}
-//                 onChange={(e) =>
-//                   setForm({ ...form, campaignType: e.target.value })
-//                 }
-//               >
-//                 <option value="">Campaign Type</option>
-//               </select>
-//             </div>
-
-//             <div className="col-md-3">
-//               <label className="form-label text-muted">Select Cost</label>
-//               <select
-//                 className="form-control mb-3"
-//                 value={form.cost}
-//                 onChange={(e) => setForm({ ...form, cost: e.target.value })}
-//               >
-//                 <option value="">Select Cost</option>
-//                 <option value="Low">Low</option>
-//                 <option value="Medium">Medium</option>
-//                 <option value="High">High</option>
-//               </select>
-//             </div>
-
-//             <div className="col-md-3">
-//               <label className="form-label text-muted">Select Utilization</label>
-//               <select
-//                 className="form-control mb-3"
-//                 value={form.utilization}
-//                 onChange={(e) =>
-//                   setForm({ ...form, utilization: e.target.value })
-//                 }
-//               >
-//                 <option value="">Select Utilization</option>
-//                 <option value="Full">Full</option>
-//                 <option value="Partial">Partial</option>
-//                 <option value="None">None</option>
-//               </select>
-//             </div>
-
-//             <div className="col-md-3">
-//               <label className="form-label text-muted">Campaign Name</label>
-//               <input
-//                 className="form-control mb-3"
-//                 placeholder="Campaign Name"
-//                 value={form.campaignName}
-//                 onChange={(e) =>
-//                   setForm({ ...form, campaignName: e.target.value })
-//                 }
-//               />
-//             </div>
-
-//             <div className="col-md-3">
-//               <label className="form-label text-muted">Field Name</label>
-//               <input
-//                 className="form-control mb-3"
-//                 placeholder="Field Name"
-//                 value={form.fieldName}
-//                 onChange={(e) =>
-//                   setForm({ ...form, fieldName: e.target.value })
-//                 }
-//               />
-//             </div>
-
-//             <div className="col-12">
-//               <button className="btn btn-primary" onClick={handleSubmit}>
-//                 SUBMIT
-//               </button>
-//             </div>
-//           </div>
-//         </div>
-
-//       <div className="card">
-//         <h6 className="card-header">VIEW CAMPAIGN</h6>
-//         <div className="card-body">
-//           <div className="d-flex justify-content-between align-items-center mb-2">
-//             <div>
-//               <select className="form-select form-select-sm w-auto">
-//                 <option value="10">10</option>
-//                 <option value="25">25</option>
-//                 <option value="50">50</option>
-//               </select>
-//             </div>
-//             <div>
-//               <input
-//                 type="text"
-//                 className="form-control form-control-sm"
-//                 style={{ width: '200px' }}
-//                 placeholder="Search..."
-//               />
-//             </div>
-//           </div>
-
-//           <div className="table-responsive">
-//             <table className="table table-bordered">
-//               <thead className="table-light">
-//                 <tr>
-//                   <th>S.N</th>
-//                   <th>CAMPAIGN TYPE</th>
-//                   <th>COST</th>
-//                   <th>UTILIZATION</th>
-//                   <th>FIELD</th>
-//                   <th>ACTION</th>
-//                 </tr>
-//               </thead>
-//               <tbody>
-//                   <tr>
-//                     <td colSpan="8" className="text-center">No data available in table</td>
-//                   </tr>
-//               </tbody>
-//             </table>
-//           </div>
-
-//           {/* Pagination (static) */}
-//           <div className="d-flex justify-content-between align-items-center mt-3">
-//             <small>Showing 0 to 0 of 0 entries</small>
-//             <ul className="pagination pagination-sm mb-0">
-//               <li className="page-item disabled"><span className="page-link">Previous</span></li>
-//               <li className="page-item active"><span className="page-link">1</span></li>
-//               <li className="page-item disabled"><span className="page-link">Next</span></li>
-//             </ul>
-//           </div>
-//         </div>
-//       </div>
-//     </div>
-//     </div>
-//   );
-// };
-
-// export default ManageCampaign;
-
-
-
-
-
-// Updated Manage Campaigns for Out Call Management..
 import React, { useState, useEffect } from "react";
 import api from "../api";
+import { Trash2, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const ManageCampaign = () => {
@@ -271,7 +95,7 @@ const ManageCampaign = () => {
 
   // -------------------- HANDLE FIELDS --------------------
   const handleFieldChange = (index, value) => {
-    if (index === 0) return;
+    // if (index === 0) return;
     const updated = [...fields];
     updated[index] = value;
     setFields(updated);
@@ -320,9 +144,26 @@ const ManageCampaign = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this campaign?"))
       return;
+
     try {
-      await api.delete(`/campaign/delete/${id}`);
-      setCampaigns(campaigns.filter((c) => c.id !== id));
+      const storedUserData = JSON.parse(localStorage.getItem("userData"));
+      const updateUser = storedUserData?.auth_person;
+
+      if (!updateUser) {
+        alert("❌ User not found in localStorage (auth_person)");
+        return;
+      }
+
+      await api.put("/campaign/update-status", {
+        id: id,
+        update_user: updateUser,
+      });
+
+      // Remove from UI after soft delete
+      setCampaigns((prev) => prev.filter((c) => c.id !== id));
+
+      alert("✅ Campaign deleted successfully");
+
     } catch (err) {
       console.error(err);
       alert("❌ Failed to delete campaign");
@@ -330,33 +171,21 @@ const ManageCampaign = () => {
   };
 
   // -------------------- DOWNLOAD CSV --------------------
-  const handleDownload = () => {
-    if (!campaigns.length) return;
+  const handleDownload = (id) => {
+    const campaign = campaigns.find((c) => c.id === id);
+    if (!campaign) return;
 
-    const headers = [
-      "Campaign Name",
-      "Description",
-      "Type",
-      "Fields",
-      "Created",
-    ];
-    const rows = campaigns.map((c) => [
-      c.CampaignName,
-      c.Description,
-      c.Type,
-      c.Fields?.join("; "),
-      new Date(c.CreationDate).toLocaleDateString("en-IN"),
-    ]);
 
+    // Export all fields in one single row (horizontal)
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      [headers, ...rows]
-        .map((r) => r.map((v) => `"${v}"`).join(","))
-        .join("\n");
+      campaign.Fields
+        .map((field) => `"${field ?? ""}"`)
+        .join(",");
 
     const link = document.createElement("a");
     link.href = encodeURI(csvContent);
-    link.download = `campaigns_${Date.now()}.csv`;
+    link.download = `Import_Format.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -451,7 +280,7 @@ const ManageCampaign = () => {
                       }
                       value={f}
                       onChange={(e) => handleFieldChange(i, e.target.value)}
-                      readOnly={i === 0} // First field locked
+                      
                     />
                   </div>
 
@@ -482,7 +311,7 @@ const ManageCampaign = () => {
             <div className="col-12 mt-3">
               <button
                 type="button"
-                className="btn btn-outline-primary rounded-3 me-2"
+                className="btn btn-outline-primary me-2"
                 onClick={() => navigate(-1)}
               >
                 ← Back
@@ -498,7 +327,7 @@ const ManageCampaign = () => {
       {/* Campaigns Table */}
       <div className="card shadow-sm mt-10">
         {/* Header with Download */}
-        <div
+        {/* <div
           className="d-flex justify-content-between align-items-center px-3"
           style={{
             backgroundColor: "#e9ecef",
@@ -513,12 +342,12 @@ const ManageCampaign = () => {
           <button className="btn btn-sm btn-success" onClick={handleDownload}>
             Download CSV
           </button>
-        </div>
+        </div> */}
 
         {/* Search & Rows per page */}
         <div className="d-flex justify-content-between align-items-center p-2">
           <div>
-            Show{" "}
+            {" "}
             <select
               className="form-select form-select-sm d-inline-block"
               style={{ width: "70px" }}
@@ -529,7 +358,7 @@ const ManageCampaign = () => {
               <option value={25}>25</option>
               <option value={50}>50</option>
             </select>{" "}
-            entries
+            
           </div>
           <div>
             <input
@@ -550,10 +379,10 @@ const ManageCampaign = () => {
               <thead className="table-secondary">
                 <tr>
                   <th>S.NO</th>
-                  <th>Campaign Name</th>
-                  <th>Campaign ID</th>
-                  <th>Campaign Description</th>
                   <th>Campaign Type</th>
+                  <th>Campaign ID</th>
+                  <th>Campaign Name</th>                  
+                  <th>Campaign Desc</th>                  
                   <th>Fields</th>
                   <th>Action</th>
                 </tr>
@@ -569,18 +398,28 @@ const ManageCampaign = () => {
                   displayData.map((c, i) => (
                     <tr key={c.id}>
                       <td>{(currentPage - 1) * rowsPerPage + i + 1}</td>
-                      <td>{c.CampaignName}</td>
-                      <td>{c.campaign_id}</td>
-                      <td>{c.Description}</td>
                       <td>{c.Type}</td>
+                      <td>{c.campaign_id}</td>
+                      <td>{c.CampaignName}</td>                      
+                      <td>{c.Description}</td>                      
                       <td>{c.Fields?.join(", ")}</td>
                       <td>
-                        <button
-                          className="btn btn-sm btn-danger"
-                          onClick={() => handleDelete(c.id)}
-                        >
-                          Delete
-                        </button>
+                        <div style={{ display: "flex", gap: "5px", justifyContent: "center" }}>
+                          <button
+                            className="btn btn-sm btn-success d-flex align-items-center justify-content-center"
+                            style={{ padding: "0.25rem 0.5rem" }}
+                            onClick={() => handleDownload(c.id)}
+                          >
+                            <Download size={16} />
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm d-flex align-items-center justify-content-center"
+                            style={{ padding: "0.25rem 0.5rem" }}
+                            onClick={() => handleDelete(c.id)}
+                          >
+                            <Trash2 size={16} />
+                          </button>                                                  
+                        </div>
                       </td>
                     </tr>
                   ))

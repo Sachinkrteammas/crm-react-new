@@ -6,6 +6,7 @@ import {
   getCampaigns,
   getAllocations,
   getScenarios,
+  getClientCampaignTypes,
 } from "../services/authService";
 import { Eye } from "lucide-react";
 import * as XLSX from "xlsx";
@@ -32,6 +33,11 @@ export default function OutCallDetails() {
     startDate: today,
     endDate: today,
   });
+  const [closeLoopForm, setCloseLoopForm] = useState({
+    CloseLoopCate1: "",
+    CloseLoopCate2: "",
+    closelooping_remarks: "",
+  });
 
   const [types, setTypes] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
@@ -51,6 +57,9 @@ export default function OutCallDetails() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [searchTriggered, setSearchTriggered] = useState(false);
+  const columns =
+    tableData.length > 0 ? Object.keys(tableData[0]) : [];
+
 
   const SCENARIO_KEYS = [
     "scenario",
@@ -94,13 +103,51 @@ export default function OutCallDetails() {
   }, []);
 
 
+  // useEffect(() => {
+  //   if (!activeCompanyId) return;
+  //   (async () => {
+  //     const t = await getCampaignTypes(activeCompanyId);
+  //     setTypes(t || []);
+  //   })();
+  // }, [activeCompanyId]);
+
+
   useEffect(() => {
     if (!activeCompanyId) return;
-    (async () => {
-      const t = await getCampaignTypes(activeCompanyId);
-      setTypes(t || []);
-    })();
-  }, [activeCompanyId]);
+
+    const fetchCampaignTypes = async () => {
+      try {
+
+        if (userType === "Client") {
+          const outboundAccess = localStorage.getItem("outbound_access");
+
+          if (!outboundAccess) {
+            console.warn("No outbound_access found in localStorage");
+            setTypes([]);
+            return;
+          }
+
+          const clientTypes = await getClientCampaignTypes(
+            activeCompanyId,
+            outboundAccess
+          );
+
+          setTypes(clientTypes || []);
+
+        } else {
+          const adminTypes = await getCampaignTypes(activeCompanyId);
+          setTypes(adminTypes || []);
+        }
+
+      } catch (err) {
+        console.error("Error fetching campaign types:", err);
+        setTypes([]);
+      }
+    };
+
+    fetchCampaignTypes();
+
+  }, [activeCompanyId, userType]);
 
   const updateForm = (name, value) =>
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -159,52 +206,25 @@ export default function OutCallDetails() {
     return result;
   };
 
-  // const handleView = async (e) => {
-  //   e?.preventDefault();
-  //   if (!activeCompanyId) return;
-
-  //   if (!form.startDate || !form.endDate) {
-  //     setDateError("Please select both Start Date and End Date.");
-  //     setTableData([]);
-  //     setCounts({});
-  //     setBreadcrumb([]);
-  //     return;
-  //   }
-  //   if (new Date(form.startDate) > new Date(form.endDate)) {
-  //     setDateError("Start Date cannot be after End Date.");
-  //     setTableData([]);
-  //     setCounts({});
-  //     setBreadcrumb([]);
-  //     return;
-  //   }
-  //   setDateError("");
-
-  //   const filters = Object.fromEntries(
-  //     Object.entries(form).filter(
-  //       ([_, value]) => value !== "" && value !== null && value !== undefined
-  //     )
-  //   );
-
-  //   setLoading(true);
-  //   try {
-  //     const res = await getOutCallDetails(activeCompanyId, filters);
-  //     setTableData(res.data || []);
-  //     setCounts(calculateCounts(res.data || []));
-  //     setBreadcrumb(res.breadcrumb || []);
-  //     setCurrentPage(1);
-  //   } catch (err) {
-  //     console.error(err);
-  //     setTableData([]);
-  //     setCounts({});
-  //     setBreadcrumb([]);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const handleView = async (e) => {
     e?.preventDefault();
     if (!activeCompanyId) return;
+
+    if(!form.campaignType) {
+      alert("Please select Campaign Type.")
+      return;
+    }
+
+    if(!form.campaign) {
+      alert("Please select Campaign.")
+      return;
+    }
+
+    if(!form.allocation) {
+      alert("Please select Allocation.")
+      return;
+    }
 
     if (!form.startDate || !form.endDate) {
       setDateError("Please select both Start Date and End Date.");
@@ -248,223 +268,120 @@ export default function OutCallDetails() {
     }
   };
 
-  // --- Excel Export ---
-  // const handleExport = async () => {
-  //   if (!form.startDate || !form.endDate) return alert("Please select Start Date and End Date.");
 
-  //   setLoading(true);
-  //   try {
-  //     const filters = Object.fromEntries(
-  //       Object.entries(form).filter(([_, value]) => value !== "" && value !== null && value !== undefined)
-  //     );
-  //     const res = await getOutCallDetails(activeCompanyId, filters);
-  //     const data = res.data || [];
-  //     if (!data.length) return alert("No data available for the selected filters.");
-
-  //     const countsExport = calculateCounts(data);
-
-  //     const workbook = XLSX.utils.book_new();
-
-  //     // --- Sheet1: Raw Data ---
-  //     const sheet1 = XLSX.utils.json_to_sheet(data);
-  //     XLSX.utils.book_append_sheet(workbook, sheet1, "Raw Data");
-
-  //     // --- Sheet2: Counts ---
-  //     let countsData = [];
-  //     let merges = [];
-  //     let rowIndex = 0;
-
-  //     countsData.push([`Report: Out Call Details`]);
-  //     merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
-  //     rowIndex++;
-
-  //     countsData.push([`Start Date: ${form.startDate}`, `End Date: ${form.endDate}`]);
-  //     merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
-  //     rowIndex++;
-  //     countsData.push([]);
-  //     rowIndex++;
-
-  //     SCENARIO_KEYS.forEach((key) => {
-  //       if (countsExport[key]?.length) {
-  //         countsData.push([`${key.toUpperCase()} COUNTS`]);
-  //         merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
-  //         rowIndex++;
-  //         countsData.push(["Name", "Total"]);
-  //         rowIndex++;
-  //         countsExport[key].forEach((c) => countsData.push([c.name, c.total]));
-  //         rowIndex += countsExport[key].length;
-  //         countsData.push([]);
-  //         rowIndex++;
-  //       }
-  //     });
-
-  //     if (countsExport.total) countsData.push(["Grand Total", countsExport.total]);
-
-  //     const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
-  //     sheet2["!merges"] = merges;
-  //     XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
-
-  //     // --- Sheet3: Filters / Breadcrumb ---
-  //     if (res.breadcrumb?.length) {
-  //       let filtersData = [["Level", "Value"]];
-  //       res.breadcrumb.forEach((b) => filtersData.push([b.level, b.value]));
-  //       const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
-  //       XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
-  //     }
-
-  //     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  //     saveAs(new Blob([excelBuffer], { type: "application/octet-stream" }), "out_call_details.xlsx");
-  //   } catch (err) {
-  //     console.error(err);
-  //     alert("Error exporting Excel.");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
-  const handleExport = async () => {
-    const Username = localStorage.getItem("username"); // ✅ get username
-    const ClientId = activeCompanyId || "Unknown Client"; // ✅ get client ID
-    if (!form.startDate || !form.endDate) {
-      return alert("Please select Start Date and End Date.");
-    }
-
-    setLoading(true);
+  const handleCloseLoopSubmit = async () => {
+    if (!selectedRow) return;
 
     try {
-      // -----------------------------
-      // 1️⃣ Prepare filters
-      // -----------------------------
-      const filters = Object.fromEntries(
-        Object.entries(form).filter(
-          ([_, value]) => value !== "" && value !== null && value !== undefined
-        )
-      );
+      setLoading(true);
 
-      // -----------------------------
-      // 2️⃣ Fetch main outcall details
-      // -----------------------------
-      const res = await getOutCallDetails(activeCompanyId, filters);
-      const data = Array.isArray(res?.data) ? res.data : [];
-      if (!data.length) {
-        return alert("No data available for selected filters.");
+      await api.put("/call/update-close-loop", {
+        ClientId: activeCompanyId,
+        SrNo: selectedRow["Out Call Id"],  // 👈 IMPORTANT
+        CloseLoopCate1: closeLoopForm.CloseLoopCate1,
+        CloseLoopCate2: closeLoopForm.CloseLoopCate2,
+        closelooping_remarks: closeLoopForm.closelooping_remarks,
+      });
+
+      alert("Close Loop Updated Successfully ✅");
+
+      // Refresh table
+      handleView();
+
+      // Close modal
+      setIsModalOpen(false);
+      setSelectedRow(null);
+
+    } catch (error) {
+      console.error(error);
+      alert("Error updating close loop ❌");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+
+  const handleExport = async () => {
+    try {
+      setLoading(true);
+
+      let dataToExport = [];
+
+      // ✅ Case 1: If table already loaded
+      if (tableData && tableData.length > 0) {
+        dataToExport = filteredRows;
+      } 
+      // ✅ Case 2: Export before View
+      else {
+        if (!activeCompanyId) {
+          alert("Please select a client.");
+          return;
+        }
+
+        if (!form.startDate || !form.endDate) {
+          alert("Please select Start Date and End Date.");
+          return;
+        }
+
+        const filters = Object.fromEntries(
+          Object.entries(form).filter(
+            ([_, value]) =>
+              value !== "" && value !== null && value !== undefined
+          )
+        );
+
+        const res = await getOutCallDetails(activeCompanyId, filters);
+        dataToExport = Array.isArray(res?.data) ? res.data : [];
       }
 
-      // -----------------------------
-      // 3️⃣ Calculate counts
-      // -----------------------------
-      const countsExport = calculateCounts(data) || {};
+      if (!dataToExport.length) {
+        alert("No data available to export.");
+        return;
+      }
+
+      // ✅ Create Excel sheet
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
       const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Out Call Details");
 
-      // -----------------------------
-      // 4️⃣ Sheet 1: Raw Data
-      // -----------------------------
-      const rawSheet = XLSX.utils.json_to_sheet([]);
-      XLSX.utils.sheet_add_aoa(
-        rawSheet,
-        [
-          ["Out Call Details Report"],
-          [`Client: ${Username}`],
-          [`Client ID: ${ClientId}`], // ✅ client ID here
-          [`Start Date: ${form.startDate}`, `End Date: ${form.endDate}`],
-          [],
-        ],
-        { origin: 0 }
-      );
-      XLSX.utils.sheet_add_json(rawSheet, data, {
-        origin: -1,
-        skipHeader: false,
-      });
-      XLSX.utils.book_append_sheet(workbook, rawSheet, "Raw Data");
-
-      // -----------------------------
-      // 5️⃣ Sheet 2: Counts
-      // -----------------------------
-      const countsData = [];
-      const merges = [];
-      let rowIndex = 0;
-
-      countsData.push(["Out Call Details Report"]);
-      merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
-      rowIndex++;
-
-      countsData.push([`Client: ${Username}`]);
-      rowIndex++;
-
-      countsData.push([`Client ID: ${ClientId}`]); // ✅ client ID here
-      rowIndex++;
-
-      countsData.push([
-        `Start Date: ${form.startDate}`,
-        `End Date: ${form.endDate}`,
-      ]);
-      rowIndex++;
-
-      countsData.push([]);
-      rowIndex++;
-
-      const scenarioKeys = Array.isArray(SCENARIO_KEYS)
-        ? SCENARIO_KEYS
-        : Object.keys(countsExport);
-
-      scenarioKeys.forEach((key) => {
-        if (countsExport[key]?.length) {
-          countsData.push([`${key.toUpperCase()} COUNTS`]);
-          merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: 1 } });
-          rowIndex++;
-
-          countsData.push(["Name", "Total"]);
-          rowIndex++;
-
-          countsExport[key].forEach((c) => {
-            countsData.push([c.name || "-", c.total || 0]);
-            rowIndex++;
-          });
-
-          countsData.push([]);
-          rowIndex++;
-        }
-      });
-
-      if (countsExport.total != null)
-        countsData.push(["Grand Total", countsExport.total]);
-
-      const sheet2 = XLSX.utils.aoa_to_sheet(countsData);
-      sheet2["!merges"] = merges;
-      XLSX.utils.book_append_sheet(workbook, sheet2, "Counts");
-
-      // -----------------------------
-      // 6️⃣ Sheet 3: Filters
-      // -----------------------------
-      // const filtersData = [["Level", "Value"]];
-      // if (Array.isArray(res?.breadcrumb)) {
-      //   res.breadcrumb.forEach((b) =>
-      //     filtersData.push([b.level || "-", b.value || "-"])
-      //   );
-      // }
-
-      // filtersData.push(["User", Username]);
-      // filtersData.push(["Client ID", ClientId]);          // ✅ client ID here
-      // filtersData.push(["Start Date", form.startDate]);
-      // filtersData.push(["End Date", form.endDate]);
-
-      // const sheet3 = XLSX.utils.aoa_to_sheet(filtersData);
-      // XLSX.utils.book_append_sheet(workbook, sheet3, "Filters");
-
-      // -----------------------------
-      // 7️⃣ Save Excel
-      // -----------------------------
       const excelBuffer = XLSX.write(workbook, {
         bookType: "xlsx",
         type: "array",
       });
+
+      // ==========================
+      // ✅ Determine Company Name
+      // ==========================
+      let companyName = "Company";
+
+      if (userType === "Client") {
+        const storedUserData = JSON.parse(localStorage.getItem("userData"));
+        companyName = storedUserData?.auth_person || companyName;
+      } else {
+        const selected = clients.find(
+          (c) => String(c.company_id) === String(selectedClient)
+        );
+        companyName = selected?.company_name || companyName;
+      }
+
+
+      // ==========================
+      // ✅ Create Filename
+      // ==========================
+      const start = form.startDate || "NA";
+      const end = form.endDate || "NA";
+
+      const fileName = `${companyName}_OutCallDetails_${start}_to_${end}.xlsx`;
+
+      // ✅ Save file
       saveAs(
         new Blob([excelBuffer], { type: "application/octet-stream" }),
-        "out_call_details.xlsx"
+        fileName
       );
     } catch (err) {
       console.error("Export error:", err);
-      alert("Error exporting Excel. Please try again.");
+      alert("Error exporting Excel.");
     } finally {
       setLoading(false);
     }
@@ -741,54 +658,47 @@ export default function OutCallDetails() {
                         <thead className="table-light">
                           <tr>
                             <th>View</th>
-                            {/* <th>Recording</th> */}
-                            <th>Out Call ID</th>
-                            <th>Campaign Type</th>
-                            <th>Campaign Name</th>
-                            <th>Allocation Name</th>
-                            <th>Scenarios</th>
-                            <th>Sub Scenarios 1</th>
-                            <th>Call Date</th>
-                            <th>Contact Number</th>
-                            <th>Call Created</th>
+                            {columns.map((col) => (
+                              <th key={col}>{col}</th>
+                            ))}
                           </tr>
                         </thead>
+
                         <tbody>
-                          {tableData
-                            .slice(indexOfFirstRow, indexOfLastRow)
-                            .map((row, idx) => (
-                              <tr key={idx}>
-                                <td>
-                                  <button
-                                    className="btn btn-sm btn-primary d-flex align-items-center justify-content-center"
-                                    onClick={() => {
-                                      setSelectedRow(row);
-                                      setIsModalOpen(true);
-                                    }}
-                                    title="View"
-                                  >
-                                    <Eye size={16} />{" "}
-                                    {/* 👈 Eye icon instead of text */}
-                                  </button>
+                          {visibleRows.map((row, idx) => (
+                            <tr key={idx}>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-primary d-flex align-items-center justify-content-center"
+                                  onClick={() => {
+                                    setSelectedRow(row);
+                                    setCloseLoopForm({
+                                      CloseLoopCate1: row["Call Action"] || "",
+                                      CloseLoopCate2: row["Call Sub Action"] || "",
+                                      closelooping_remarks: row["Call Action Remarks"] || "",
+                                    });
+
+                                    setIsModalOpen(true);
+                                  }}
+                                  title="View"
+                                >
+                                  <Eye size={16} />
+                                </button>
+                              </td>
+
+                              {columns.map((col) => (
+                                <td key={col}>
+                                  {col === "Call Date" ||
+                                  col === "Follow Up Date" ||
+                                  col === "Closer Date"
+                                    ? row[col]
+                                      ? row[col].replace("T", " ")
+                                      : "-"
+                                    : row[col] ?? "-"}
                                 </td>
-                                {/* <td>
-                                  <button className="btn btn-sm btn-outline-secondary">
-                                    ⏬
-                                  </button>
-                                </td> */}
-                                <td>{row.id}</td>
-                                <td>{row.campaignType}</td>
-                                <td>{row.campaignName}</td>
-                                <td>{row.allocationName}</td>
-                                <td>{row.scenario}</td>
-                                <td>{row.subScenario1}</td>
-                                <td>
-                                  {new Date(row.CallDate).toLocaleString()}
-                                </td>
-                                <td>{row.contactNumber}</td>
-                                <td>{row.callcreated}</td>
-                              </tr>
-                            ))}
+                              ))}
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
                     </div>
@@ -796,7 +706,7 @@ export default function OutCallDetails() {
                     {/* --- Pagination --- */}
                     <div className="d-flex justify-content-between align-items-center mt-2 flex-wrap">
                       <button
-                        className="btn btn-sm btn-outline-secondary mb-2"
+                        className="btn btn-sm btn-outline-primary mb-2"
                         onClick={() =>
                           setCurrentPage((p) => Math.max(p - 1, 1))
                         }
@@ -810,7 +720,7 @@ export default function OutCallDetails() {
                         {tableData.length}
                       </span>
                       <button
-                        className="btn btn-sm btn-outline-secondary mb-2"
+                        className="btn btn-sm btn-outline-primary mb-2"
                         onClick={() =>
                           setCurrentPage((p) => Math.min(p + 1, totalPages))
                         }
@@ -831,62 +741,162 @@ export default function OutCallDetails() {
               </>
             )}
 
-            {/* --- Modal --- */}
             {isModalOpen && selectedRow && (
-              <div
-                className="relative bg-white rounded-2xl shadow-2xl mx-auto p-6 md:p-8 animate-fadeIn"
-                style={{ width: "700px", maxHeight: "500px", overflow: "auto" }}
-              >
-                {/* Background overlay */}
+            <div
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              width: "100vw",
+              height: "100vh",
+              backgroundColor: "rgba(0,0,0,0.4)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 9999,
+              }}
+            >
+
+            {/* Modal Box */}
+            <div
+              className="bg-white rounded shadow-lg w-100"
+              style={{
+                width: "90vw",
+                maxWidth: "1400px",
+                height: "85vh",
+                display: "flex",
+                flexDirection: "column",
+              }}
+            >
+              {/* Body */}
+              <div className="d-flex flex-grow-1 overflow-hidden">
+
+                {/* LEFT PANEL */}
                 <div
-                  className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                  onClick={() => {
-                    setSelectedRow(null);
-                    setIsModalOpen(false);
-                  }}
-                ></div>
+                  className="p-4 border-end"
+                  style={{ width: "60%", overflowY: "auto" }}
+                >
+                  <h6 className="fw-bold mb-3 text-secondary">
+                    OUT CALL CLOSE LOOPING
+                  </h6>
 
-                {/* Modal container */}
-                <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-auto p-6 md:p-8 animate-fadeIn">
-                  {/* Header + Close */}
-                  <div className="flex items-center justify-between ">
-                    <h2 className="text-xl md:text-xl font-bold text-indigo-700 flex items-center gap-2">
-                      Out Call Details
-                    </h2>
+                  <table className="table table-bordered table-sm">
+                    <thead className="table-secondary">
+                      <tr>
+                        <th style={{ width: "45%" }}>FIELD</th>
+                        <th>VALUE</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(selectedRow).map(([key, value]) => (
+                        <tr key={key}>
+                          <td className="fw-semibold">{key}</td>
+                          <td>
+                            {typeof value === "string"
+                              ? value.replace("T", " ")
+                              : value ?? " "}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* RIGHT PANEL */}
+                <div
+                  className="p-9"
+                  style={{ width: "50%", display: "flex", flexDirection: "column" }}
+                >
+                  <div className="d-flex justify-content-between align-items-center mb-3">
+                    <h6 className="fw-bold text-secondary mb-0">
+                      CLOSE FIELDS
+                    </h6>            
                   </div>
 
-                  {/* Row data */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {Object.entries(selectedRow).map(([key, val]) => (
-                      <div
-                        key={key}
-                        className="p-4 border rounded-xl bg-gradient-to-r from-gray-50 to-gray-100 shadow-sm hover:shadow-md transition flex flex-col"
+                  <hr />
+
+                  <div style={{ maxWidth: "350px" }}>
+                    {/* Call Action */}
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold small">
+                        CALL ACTION
+                      </label>
+                      <select
+                        className="form-select"
+                        value={closeLoopForm.CloseLoopCate1}
+                        onChange={(e) =>
+                          setCloseLoopForm({
+                            ...closeLoopForm,
+                            CloseLoopCate1: e.target.value,
+                          })
+                        }
                       >
-                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-                          {key}
-                        </span>
-                        <span className="text-lg font-medium mt-1 text-gray-800 break-words">
-                          {val || "-"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                        <option value="">Select Call Action</option>
+                      </select>
+                    </div>
 
-                  {/* Footer */}
-                  <div className="mt-6 flex justify-center">
+                    {/* Call Sub Action */}
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold small">
+                        CALL SUB ACTION
+                      </label>
+                      <select
+                        className="form-select"
+                        value={closeLoopForm.CloseLoopCate2}
+                        onChange={(e) =>
+                          setCloseLoopForm({
+                            ...closeLoopForm,
+                            CloseLoopCate2: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="">Select Call Sub Action</option>
+                      </select>
+                    </div>
+
+                    {/* Remarks */}
+                    <div className="mb-3">
+                      <label className="form-label fw-semibold small">
+                        REMARKS
+                      </label>
+                      <textarea
+                        className="form-control"
+                        rows="4"
+                        value={closeLoopForm.closelooping_remarks}
+                        onChange={(e) =>
+                          setCloseLoopForm({
+                            ...closeLoopForm,
+                            closelooping_remarks: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
                     <button
-                      onClick={() => {
-                        setSelectedRow(null);
-                        setIsModalOpen(false);
-                      }}
-                      className="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+                      className="btn btn-sm btn-primary"
+                      onClick={handleCloseLoopSubmit}
                     >
-                      Close
+                      SUBMIT
                     </button>
                   </div>
                 </div>
               </div>
-            )}
+
+              {/* Footer */}
+              <div className="border-top text-center py-3 bg-light">
+                <button
+                  className="btn btn-outline-primary"
+                  onClick={() => {
+                    setSelectedRow(null);
+                    setIsModalOpen(false);
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
           </>
         )}
       </div>

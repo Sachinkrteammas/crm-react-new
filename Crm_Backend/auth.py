@@ -75,7 +75,8 @@ def login(request: LoginRequest, db: Session = Depends(get_db4)):
             "company_id": login_user["create_id"],
             "auth_person": login_user["name"],
             "user_type": "Client",
-            "name": login_user["name"] 
+            "name": login_user["name"],
+            "outbound_access": login_user["outbound_access"] 
         }
     
     # 🔹 2. If not found, try registration_master

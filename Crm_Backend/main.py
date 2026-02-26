@@ -64,6 +64,11 @@ from anestwatta import router as anest_dashboard_router
 from dialer_api import router as dialer_router
 
 
+from month_wise_statement_summary import router as month_wise_statement_summary_router
+from process_update import router as process_update_router
+from call_flow import router as call_flow_router
+from create_manual_ob_call import router as create_manual_ob_call_router
+from list_id import router as list_id_router
 
 
 
@@ -128,6 +133,11 @@ app.include_router(SLA_client_wise_router, tags=["SLA Client Wise"])
 app.include_router(skilled_reports_router, tags=["Skilled Reports"])
 app.include_router(Agent_Apr_router, tags=["Agent APR"])
 app.include_router(anest_dashboard_router)
+app.include_router(month_wise_statement_summary_router, tags=["Month wise statement"])
+app.include_router(process_update_router, tags=["Process Update"])
+app.include_router(call_flow_router, tags=["Call Flow"])
+app.include_router(create_manual_ob_call_router, tags=["Create Manual OB Call"])
+app.include_router(list_id_router, tags=["List ID"])
 
 app.include_router(dialer_router, prefix="/api")
 

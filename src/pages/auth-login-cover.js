@@ -37,6 +37,7 @@ const AuthLoginCover = () => {
       localStorage.setItem("username", response.auth_person);
       localStorage.setItem("company_id", response.company_id);
       localStorage.setItem("user_type", response.user_type);
+      localStorage.setItem("outbound_access", response.outbound_access);
 
       localStorage.setItem("userData", JSON.stringify(response));
 

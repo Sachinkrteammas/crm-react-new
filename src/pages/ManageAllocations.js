@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import api from "../api";
 import { useNavigate } from "react-router-dom";
+import { Trash2 } from "lucide-react";
 
 const ManageAllocations = () => {
   // -------------------- User Info --------------------
@@ -16,16 +17,19 @@ const ManageAllocations = () => {
   const [form, setForm] = useState({
     campaignId: "",
     type: "",
+    list_id: "",
     allocationName: "",
     file: null,
   });
 
   const [campaigns, setCampaigns] = useState([]);
-  const [types, setTypes] = useState([]);
+  const [listIds, setListIds] = useState([]);
+  // const [types, setTypes] = useState([]);
   const [allocations, setAllocations] = useState([]);
   const [search, setSearch] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [dialerPage, setDialerPage] = useState("");
 
   const activeClientId =
     userType === "Super-Admin" || userType === "Admin"
@@ -51,6 +55,30 @@ const ManageAllocations = () => {
     fetchClients();
   }, [userType]);
 
+
+  useEffect(() => {
+    if (!activeClientId || form.type !== "pd") {
+      setListIds([]);
+      return;
+    }
+
+    const fetchListIds = async () => {
+      try {
+        const res = await api.get("/list-master", {
+          params: {
+            client_id: activeClientId
+          },
+        });
+
+        setListIds(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch list ids:", err);
+      }
+    };
+
+    fetchListIds();
+  }, [activeClientId, form.type]);
+
   // -------------------- Fetch Campaigns, Types, Allocations --------------------
   useEffect(() => {
     if (!activeClientId) return;
@@ -66,14 +94,16 @@ const ManageAllocations = () => {
       }
     };
 
-    const fetchTypes = async () => {
-      try {
-        const res = await api.get("/allocations/types");
-        setTypes(res.data.map((t) => t.name));
-      } catch (err) {
-        console.error("Failed to fetch allocation types:", err);
-      }
-    };
+ 
+
+    // const fetchTypes = async () => {
+    //   try {
+    //     const res = await api.get("/allocations/types");
+    //     setTypes(res.data.map((t) => t.name));
+    //   } catch (err) {
+    //     console.error("Failed to fetch allocation types:", err);
+    //   }
+    // };
 
     const fetchAllocations = async () => {
       try {
@@ -87,9 +117,27 @@ const ManageAllocations = () => {
     };
 
     fetchCampaigns();
-    fetchTypes();
+    // fetchTypes();
     fetchAllocations();
   }, [activeClientId]);
+
+  useEffect(() => {
+      if (!activeClientId) return;
+
+      const fetchDialerPage = async () => {
+        try {
+          const res = await api.get(
+            "/allocations/dialer-connection-page",
+            { params: { company_id: activeClientId } }
+          );
+          setDialerPage(res.data?.DialerConnectionPage || "");
+        } catch (err) {
+          console.error("Failed to fetch dialer page", err);
+        }
+      };
+
+      fetchDialerPage();
+    }, [activeClientId]);
 
   // -------------------- Handle Submit --------------------
   const handleSubmit = async (e) => {
@@ -98,17 +146,23 @@ const ManageAllocations = () => {
       return alert("Please fill all required fields");
     }
 
+    if (form.type === "pd" && !form.list_id) {
+      return alert("Please select List Id for PD type");
+    }
+
     const payload = new FormData();
     payload.append("ClientId", activeClientId);
     payload.append("CampaignId", form.campaignId);
     payload.append("AllocationName", form.allocationName);
+    payload.append("list_id", form.list_id);
     payload.append("upload_type", form.type);
+    payload.append("DialerConnectionPage", dialerPage);
     if (form.file) payload.append("file", form.file);
 
     try {
       await api.post("/allocations/create", payload);
       alert("✅ Allocation created successfully!");
-      setForm({ campaignId: "", type: "", allocationName: "", file: null });
+      setForm({ campaignId: "", type: "", allocationName: "", list_id: "", file: null });
 
       const res = await api.get("/allocations/list", {
         params: { ClientId: activeClientId },
@@ -116,17 +170,37 @@ const ManageAllocations = () => {
       setAllocations(res.data || []);
     } catch (err) {
       console.error(err);
-      alert("❌ Failed to create allocation");
+
+      const message =
+        err.response?.data?.detail ||
+        "Failed to create allocation";
+
+      alert(`❌ ${message}`);
     }
   };
 
-  // -------------------- Handle Delete --------------------
+  // -------------------- Handle Soft Delete --------------------
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this allocation?"))
       return;
+
     try {
-      await api.delete(`/allocations/delete/${id}`);
-      setAllocations(allocations.filter((a) => a.id !== id));
+      const storedUserData = JSON.parse(localStorage.getItem("userData"));
+      const updateUser = storedUserData?.auth_person;
+
+      if (!updateUser) {
+        alert("❌ User not found in localStorage (auth_person)");
+        return;
+      }
+
+      await api.put(`/allocations/allocation/${id}`, {
+        update_user: updateUser,
+      });
+
+      // Remove from UI after soft delete
+      setAllocations((prev) => prev.filter((a) => a.id !== id));
+
+      alert("✅ Allocation deleted successfully");
     } catch (err) {
       console.error(err);
       alert("❌ Failed to delete allocation");
@@ -159,6 +233,35 @@ const ManageAllocations = () => {
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
+
+  const getPaginationNumbers = () => {
+    const pages = [];
+    const delta = 1; // how many pages to show around current page
+
+    const left = Math.max(2, currentPage - delta);
+    const right = Math.min(totalPages - 1, currentPage + delta);
+
+    pages.push(1); // always show first page
+
+    if (left > 2) {
+      pages.push("...");
+    }
+
+    for (let i = left; i <= right; i++) {
+      pages.push(i);
+    }
+
+    if (right < totalPages - 1) {
+      pages.push("...");
+    }
+
+    if (totalPages > 1) {
+      pages.push(totalPages); // always show last page
+    }
+
+    return pages;
+  };
+
 
   // -------------------- Render --------------------
   return (
@@ -212,7 +315,7 @@ const ManageAllocations = () => {
               </select>
             </div>
 
-            <div className="col-md-3">
+            {/* <div className="col-md-3">
               <label className="form-label text-muted">Select Type</label>
               <select
                 className="form-select mb-3"
@@ -229,7 +332,44 @@ const ManageAllocations = () => {
                   </option>
                 ))}
               </select>
+            </div> */}
+
+            <div className="col-md-3">
+              <label className="form-label text-muted">Select Type</label>
+              <select
+                className="form-select mb-3"
+                value={form.type}
+                onChange={(e) =>
+                  setForm({ ...form, type: e.target.value })
+                }
+                required
+              >
+                <option value="">Select Type</option>
+                <option value="manual">Manual</option>
+                <option value="pd">PD</option>
+              </select>
             </div>
+ 
+            {form.type === "pd" &&  (
+            <div className="col-md-3">
+              <label className="form-label text-muted">Select List Id</label>
+              <select
+                className="form-select mb-3"
+                value={form.list_id}
+                onChange={(e) =>
+                  setForm({ ...form, list_id: e.target.value })
+                }
+                required
+              >
+                <option value="">Select List Id</option>
+                {listIds.map((item) => (
+                  <option key={item.id} value={item.list_id}>
+                    {item.list_id}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
             <div className="col-md-3">
               <label className="form-label text-muted">Allocation Name</label>
@@ -280,7 +420,6 @@ const ManageAllocations = () => {
         <div className="card-header d-flex justify-content-between align-items-center">
           <h6 className="mb-0">View Allocations</h6>
           <div className="d-flex align-items-center">
-            <label className="me-2">Show</label>
             <select
               className="form-select form-select-sm me-2"
               style={{ width: "70px" }}
@@ -292,7 +431,6 @@ const ManageAllocations = () => {
               <option value={50}>50</option>
               <option value={100}>100</option>
             </select>
-            <label className="me-3">entries</label>
 
             <input
               type="text"
@@ -335,15 +473,18 @@ const ManageAllocations = () => {
                     <td>{a.AllocationName}</td>
                     <td>{a.upload_type}</td>
                     <td>
-                      {new Date(a.CreateDate).toLocaleDateString("en-IN")}
+                      {a.CreateDate.replace("T", " ")}
                     </td>
                     <td>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDelete(a.id)}
-                      >
-                        Delete
-                      </button>
+                      <div style={{ display: "flex", gap: "5px", justifyContent: "center" }}>
+                        <button
+                          className="btn btn-sm btn-danger d-flex align-items-center justify-content-center"
+                          style={{ padding: "0.25rem 0.5rem" }}
+                          onClick={() => handleDelete(a.id)}
+                        >
+                          <Trash2 size={16} />
+                        </button>  
+                      </div>                                          
                     </td>
                   </tr>
                 ))
@@ -364,16 +505,18 @@ const ManageAllocations = () => {
               </button>
             </li>
 
-            {Array.from({ length: totalPages }, (_, i) => (
+            {getPaginationNumbers().map((page, index) => (
               <li
-                key={i}
-                className={`page-item ${currentPage === i + 1 ? "active" : ""}`}
+                key={index}
+                className={`page-item ${currentPage === page ? "active" : ""} ${
+                  page === "..." ? "disabled" : ""
+                }`}
               >
                 <button
                   className="page-link"
-                  onClick={() => setCurrentPage(i + 1)}
+                  onClick={() => page !== "..." && setCurrentPage(page)}
                 >
-                  {i + 1}
+                  {page}
                 </button>
               </li>
             ))}
