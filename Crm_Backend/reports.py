@@ -1194,10 +1194,10 @@ def rl_internal_report(
             ("CompanyName" if report_type == "company" else "EntryDate"): group,
             "Total_Abandon": stats["TotalAbandon"],
             "Abandon_Unique": len(stats["UniquePhones"]),
-            "callback": stats["Callback"],
+            "Total_Callback": stats["Callback"],
             "Connected": stats["Connected"],
-            "NcConnected": stats["NotConnected"],
-            "faild_attempt": stats["FailedAttempt"]
+            "Not_Connected": stats["NotConnected"],
+            "Failed_Attempt": stats["FailedAttempt"]
         }
         result.append(row)
 
