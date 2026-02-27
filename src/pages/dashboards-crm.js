@@ -395,6 +395,25 @@ const [rlChartData, setRlChartData] = useState([]);
     "#3B82F6", "#8B5CF6", "#F472B6", "#FBBF24", "#22D3EE"
   ];
 
+  useEffect(() => {
+    if (!selectedClient) return;
+
+    setDashboardData({
+    total: 0,
+    unique: 0,
+    answered: 0,
+    abandon: 0,
+    Unique_abandon: 0,
+    tagged: 0,
+    abandon_callback: 0,
+  });
+    setData([{ name: "Answered", value: 0 }, { name: "Abandon", value: 0 }]);
+    setCallData([]);
+    setTicketCaseData([]);
+    setTicketSourceData([]);
+    setRlChartData([]);
+  }, [selectedClient]);
+
 
   const navigate = useNavigate();
 
