@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Query, Depends, HTTPException
 from sqlalchemy import text
 from datetime import date, datetime
-from database import get_db2, get_db4, get_db6
+from database import get_db2, get_db4
 from math import ceil
 import math
 from decimal import Decimal

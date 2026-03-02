@@ -1,3 +1,4 @@
+import math
 from typing import List, Dict, Any
 from sqlalchemy import bindparam
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -1202,3 +1203,141 @@ def rl_internal_report(
         result.append(row)
 
     return result
+
+
+
+@router.post("/company_consumption_range")
+def company_consumption_range(
+    request: dict,
+    db: Session = Depends(get_db4),
+    db2: Session = Depends(get_db2)
+):
+    company_id = request.get("company_id")  # can be None
+    from_date = request.get("from_date")
+    to_date = request.get("to_date")
+
+    if not from_date or not to_date:
+        raise HTTPException(status_code=400, detail="from_date and to_date required")
+
+    # --------------------------------------------------
+    # 1️⃣ GET COMPANY LIST
+    # --------------------------------------------------
+    if company_id:
+        company_q = text("""
+            SELECT company_id, campaignid, company_name
+            FROM registration_master
+            WHERE company_id = :company_id
+            AND status = 'A'
+        """)
+        companies = db.execute(
+            company_q, {"company_id": company_id}
+        ).mappings().fetchall()
+
+    else:
+        # ALL ACTIVE CLIENTS
+        company_q = text("""
+            SELECT company_id, campaignid, company_name
+            FROM registration_master
+            WHERE status = 'A'
+        """)
+        companies = db.execute(company_q).mappings().fetchall()
+
+    if not companies:
+        raise HTTPException(status_code=404, detail="No active companies found")
+
+    final_result = []
+
+    # --------------------------------------------------
+    # 2️⃣ LOOP EACH COMPANY
+    # --------------------------------------------------
+    for comp in companies:
+        comp_id = comp["company_id"]
+        company_name = comp["company_name"]
+        raw_campaign = comp.get("campaignid")
+
+        if not raw_campaign:
+            print(f"No campaign found for company_id={comp['company_id']}")
+            continue
+
+        campaign_list = [
+            c.strip().strip("'") for c in str(raw_campaign).split(",") if c.strip()
+        ]
+
+        if not campaign_list:
+            continue
+
+        # --------------------------------------------------
+        # 3️⃣ GET PLAN + PULSE RATE
+        # --------------------------------------------------
+        bal_q = text("""
+            SELECT PlanId
+            FROM balance_master
+            WHERE clientId = :client_id
+            LIMIT 1
+        """)
+        bal_row = db.execute(bal_q, {"client_id": comp_id}).mappings().fetchone()
+
+        if not bal_row or not bal_row.get("PlanId"):
+            continue
+
+        plan_q = text("""
+            SELECT rate_per_pulse_day_shift, rate_per_pulse_night_shift
+            FROM plan_master
+            WHERE Id = :plan_id
+        """)
+        plan_row = db.execute(
+            plan_q, {"plan_id": bal_row["PlanId"]}
+        ).mappings().fetchone()
+
+        if not plan_row:
+            continue
+
+        try:
+            day_rate = round(float(Decimal(plan_row.get("rate_per_pulse_day_shift") or 0)), 4)
+        except:
+            day_rate = 0
+
+        try:
+            night_rate = round(float(Decimal(plan_row.get("rate_per_pulse_night_shift") or 0)), 4)
+        except:
+            night_rate = 0
+
+        # --------------------------------------------------
+        # 4️⃣ BILLING CONSUME (DATE RANGE)
+        # --------------------------------------------------
+        consume_q = text("""
+            SELECT
+                DATE_FORMAT(cm_date, '%Y-%m') as month_key,
+                DATE_FORMAT(cm_date, '%M %Y') as month_name,
+                COALESCE(SUM(ib_total + ibn_total), 0) AS total_consume,
+                COALESCE(SUM(ib_pulse + ibn_pulse), 0) AS total_talktime
+            FROM billing_consume_daily_new
+            WHERE client_id = :company_id
+            AND DATE(cm_date) BETWEEN :from_date AND :to_date
+            GROUP BY YEAR(cm_date), MONTH(cm_date)
+            ORDER BY YEAR(cm_date), MONTH(cm_date)
+        """)
+
+        consume_rows = db.execute(
+            consume_q,
+            {
+                "company_id": comp_id,
+                "from_date": from_date,
+                "to_date": to_date
+            }
+        ).fetchall()
+
+        for row in consume_rows:
+            final_result.append({
+                "Company_Name": company_name,
+                "Month": row.month_name,  # January 2026, February 2026
+                "Total_Consume": round((row.total_consume or 0),2),
+                "Total_Talk_Minutes": float(row.total_talktime or 0),
+                "Call_Rate": day_rate
+            })
+
+    return {
+        "From_Date": from_date,
+        "To_Date": to_date,
+        "data": final_result
+    }
