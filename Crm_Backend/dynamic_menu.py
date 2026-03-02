@@ -48,7 +48,7 @@ def get_dynamic_menu(company_id: int, name: Optional[str] = Query(None, descript
     if company_id == 0:
         query = text("""
             SELECT id, page_name, page_url, parent_id, priority
-            FROM pages_master
+            FROM pages_master2
             ORDER BY priority ASC
         """)
         rows = db.execute(query).mappings().all()
@@ -87,7 +87,7 @@ def get_dynamic_menu(company_id: int, name: Optional[str] = Query(None, descript
 
     query = text("""
         SELECT id, page_name, page_url, parent_id, priority
-        FROM pages_master
+        FROM pages_master2
         WHERE id IN :ids
         ORDER BY priority ASC
     """)
@@ -131,7 +131,7 @@ def get_dynamic_menu(company_id: int, name: Optional[str] = Query(None, descript
 #     if company_id == 0:
 #         query = text("""
 #             SELECT id, page_name, page_url, parent_id, priority
-#             FROM pages_master
+#             FROM pages_master2
 #             ORDER BY priority ASC
 #         """)
 #         rows = db.execute(query).mappings().all()
@@ -161,7 +161,7 @@ def get_dynamic_menu(company_id: int, name: Optional[str] = Query(None, descript
 
 #     query = text("""
 #         SELECT id, page_name, page_url, parent_id, priority
-#         FROM pages_master
+#         FROM pages_master2
 #         WHERE id IN :ids
 #         ORDER BY priority ASC
 #     """)

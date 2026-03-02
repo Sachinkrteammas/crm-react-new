@@ -253,7 +253,7 @@ def get_dynamic_menu(db: Session = Depends(get_db4)):
 
     query = text("""
         SELECT id, page_name, page_url, parent_id, priority
-        FROM pages_master
+        FROM pages_master2
         ORDER BY priority ASC
     """)
     rows = db.execute(query).mappings().all()
