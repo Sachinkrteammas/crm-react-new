@@ -1228,6 +1228,7 @@ def company_consumption_range(
             FROM registration_master
             WHERE company_id = :company_id
             AND status = 'A'
+            ORDER BY company_name ASC
         """)
         companies = db.execute(
             company_q, {"company_id": company_id}
@@ -1239,6 +1240,7 @@ def company_consumption_range(
             SELECT company_id, campaignid, company_name
             FROM registration_master
             WHERE status = 'A'
+            ORDER BY company_name ASC
         """)
         companies = db.execute(company_q).mappings().fetchall()
 
