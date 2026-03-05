@@ -807,7 +807,7 @@ def download_excel_raw(
 
     # Step 2: Call log data from vicidial DB
     call_data = db2.execute(text(f"""
-        SELECT s
+        SELECT
             IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
             t2.phone_number,
             t2.call_date,
