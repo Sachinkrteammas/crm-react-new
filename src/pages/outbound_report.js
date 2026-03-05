@@ -174,15 +174,13 @@ const OutboundReport = () => {
     /* ---------------- AUTO DIAL ---------------- */
 
     titleRows.push(rows.length);
-    rows.push(["Auto Dial Summary"]);
+    rows.push(["Drop Calls"]);
 
     headerRows.push(rows.length);
-    rows.push(["Connected", "Not Connected", "Total Calls"]);
+    rows.push(["Not Connected"]);
 
     rows.push([
-    data.obAutoDial.connected,
-    data.obAutoDial.notConnected,
-    data.obAutoDial.totalCalls
+    data.obAutoDial.notConnected
     ]);
 
     rows.push([]);

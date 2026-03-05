@@ -30,62 +30,155 @@ def fetch_calls(client_id: int, start: datetime, end: datetime, db: Session):
 
 
 
-# --- POST endpoint ---
+# # --- POST endpoint ---
+# @router.post("/corrective_report")
+# def corrective_report(
+#     request: CorrectiveReportRequest,
+#     db: Session = Depends(get_db4)
+# ):
+#     # 1. Validate dates
+#     try:
+#         start = datetime.strptime(request.start_date, "%Y-%m-%d").date()
+#         end = datetime.strptime(request.end_date, "%Y-%m-%d").date()
+#     except Exception:
+#         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+#     if end < start:
+#         raise HTTPException(status_code=400, detail="end_date must be >= start_date")
+
+#     # 2. Fetch calls from DB
+#     try:
+#         calls = fetch_calls(request.client_id, start, end, db)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"DB query failed: {str(e)}")
+
+#     # 3. Process and group data
+#     data_arr: Dict[str, Dict[str, Dict[str, Any]]] = {}
+
+#     for call in calls:
+#         c3 = call.get("Category3") or "Undefined"
+#         c2 = call.get("Category2") or "Undefined"
+#         status = call.get("CloseLoopCate1")
+
+#         if c3 not in data_arr:
+#             data_arr[c3] = {}
+#         if c2 not in data_arr[c3]:
+#             data_arr[c3][c2] = {"open": 0, "close": 0, "data": []}                
+
+#         if status == "Open":
+#             data_arr[c3][c2]["open"] += 1
+#         else:  # closed
+#             data_arr[c3][c2]["close"] += 1
+
+#         data_arr[c3][c2]["data"].append(call)
+
+#     # 4. Compute totals per site/category (optional, similar to PHP export)
+#     grand_total_open = sum(d["open"] for c in data_arr.values() for d in c.values())
+#     grand_total_close = sum(d["close"] for c in data_arr.values() for d in c.values())
+#     grand_total_corr = grand_total_open + grand_total_close
+
+#     return {
+#         "client_id": request.client_id,
+#         "start_date": request.start_date,
+#         "end_date": request.end_date,
+#         "grand_total": {
+#             "total_corrections": grand_total_corr,
+#             "open": grand_total_open,
+#             "close": grand_total_close,
+#             "phase_total": round(grand_total_close / grand_total_corr, 2) if grand_total_corr else 0
+#         },
+#         "data": data_arr
+#     }
+
+
+
+
+
 @router.post("/corrective_report")
 def corrective_report(
     request: CorrectiveReportRequest,
     db: Session = Depends(get_db4)
 ):
-    # 1. Validate dates
+
+    # 1️⃣ Validate Dates
     try:
         start = datetime.strptime(request.start_date, "%Y-%m-%d").date()
         end = datetime.strptime(request.end_date, "%Y-%m-%d").date()
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
-    
+
     if end < start:
         raise HTTPException(status_code=400, detail="end_date must be >= start_date")
 
-    # 2. Fetch calls from DB
+    # 2️⃣ Fetch Data
     try:
         calls = fetch_calls(request.client_id, start, end, db)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DB query failed: {str(e)}")
 
-    # 3. Process and group data
-    data_arr: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    # 3️⃣ Group Data → Category → Phase
+    data_arr: Dict[str, Dict[str, Dict[str, int]]] = {}
 
     for call in calls:
-        c3 = call.get("Category3") or "Undefined"
-        c2 = call.get("Category2") or "Undefined"
+        category = call.get("Category2") or "Undefined"
+        phase = call.get("Category3") or "Undefined"
         status = call.get("CloseLoopCate1")
 
-        if c3 not in data_arr:
-            data_arr[c3] = {}
-        if c2 not in data_arr[c3]:
-            data_arr[c3][c2] = {"open": 0, "close": 0, "data": []}                
+        if category not in data_arr:
+            data_arr[category] = {}
+
+        if phase not in data_arr[category]:
+            data_arr[category][phase] = {
+                "open": 0,
+                "close": 0,
+                "total": 0
+            }
 
         if status == "Open":
-            data_arr[c3][c2]["open"] += 1
-        else:  # closed
-            data_arr[c3][c2]["close"] += 1
+            data_arr[category][phase]["open"] += 1
+        else:
+            data_arr[category][phase]["close"] += 1
 
-        data_arr[c3][c2]["data"].append(call)
+        data_arr[category][phase]["total"] += 1
 
-    # 4. Compute totals per site/category (optional, similar to PHP export)
-    grand_total_open = sum(d["open"] for c in data_arr.values() for d in c.values())
-    grand_total_close = sum(d["close"] for c in data_arr.values() for d in c.values())
-    grand_total_corr = grand_total_open + grand_total_close
+    # 4️⃣ Calculate Category Totals + Grand Total
+    final_data = {}
+    grand_open = 0
+    grand_close = 0
+    grand_total = 0
 
+    for category, phases in data_arr.items():
+        cat_open = 0
+        cat_close = 0
+        cat_total = 0
+
+        for phase, values in phases.items():
+            cat_open += values["open"]
+            cat_close += values["close"]
+            cat_total += values["total"]
+
+        final_data[category] = {
+            "phases": phases,
+            "category_total": {
+                "open": cat_open,
+                "close": cat_close,
+                "total": cat_total
+            }
+        }
+
+        grand_open += cat_open
+        grand_close += cat_close
+        grand_total += cat_total
+
+    # 5️⃣ Final Response
     return {
         "client_id": request.client_id,
         "start_date": request.start_date,
         "end_date": request.end_date,
         "grand_total": {
-            "total_corrections": grand_total_corr,
-            "open": grand_total_open,
-            "close": grand_total_close,
-            "phase_total": round(grand_total_close / grand_total_corr, 2) if grand_total_corr else 0
+            "open": grand_open,
+            "close": grand_close,
+            "total": grand_total
         },
-        "data": data_arr
+        "data": final_data
     }
