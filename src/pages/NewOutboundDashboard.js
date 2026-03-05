@@ -586,7 +586,7 @@ const NewOutboundDashboard = () => {
         <Kpi
           label="Total Data Assigned"
           value={kpi?.totalDataAssigned?.toLocaleString() || "—"}
-          trend="+8%"
+          // trend="+8%"
           icon={<Users size={18} />}
           color="#2563eb"
         />
@@ -595,24 +595,24 @@ const NewOutboundDashboard = () => {
           value={kpi?.uniqueNumbersDialed?.toLocaleString() || "—"}
           sub={
               kpi
-                ? `${Math.round((kpi.uniqueNumbersDialed * 100) / kpi.totalDataAssigned)}% of total`
+                ? `${((kpi.uniqueNumbersDialed * 100) / kpi.totalDataAssigned).toFixed(1)}% of total`
                 : ""
           }
-          trend="+5%"
+          // trend="+5%"
           icon={<Phone size={18} />}
           color="#06b6d4"
         />
         <Kpi
           label="Total Attempts"
           value={kpi?.totalAttempts?.toLocaleString() || "—"}
-          trend="+12%"
+          // trend="+12%"
           icon={<Hash size={18} />}
           color="#00b894"
         />
         <Kpi
           label="Avg Attempts / Number"
           value={kpi?.avgAttemptsPerNumber || "—"}
-          trend="-3%"
+          // trend="-3%"
           down
           icon={<BarChart3 size={18} />}
           color="#f59e0b"
@@ -625,21 +625,21 @@ const NewOutboundDashboard = () => {
           label="Connected Calls"
           value={kpi?.connectedCalls?.toLocaleString() || "—"}
           sub={kpi ? `${kpi.connectionRate}% connection rate` : ""}
-          trend="+7%"
+          // trend="+7%"
           icon={<PhoneCall size={18} />}
           color="#00b894"
         />
         <Kpi
           label="Connection Rate"
           value={kpi ? `${kpi.connectionRate}%` : "—"}
-          trend="+4%"
+          // trend="+4%"
           icon={<TrendingUp size={18} />}
           color="#2563eb"
         />
         <Kpi
           label="Qualified Leads"
           value={kpi?.qualifiedLeads?.toLocaleString() || "—"}
-          trend="+15%"
+          // trend="+15%"
           icon={<Target size={18} />}
           color="#06b6d4"
         />
@@ -647,11 +647,11 @@ const NewOutboundDashboard = () => {
           label="Outcome Conversion"
           value={
               kpi
-                ? `${Math.round((kpi.qualifiedLeads * 100) / kpi.connectedCalls)}%`
+                ? `${((kpi.qualifiedLeads * 100) / kpi.connectedCalls).toFixed(1)}%`
                 : "—"
           }
           sub="Of connected calls"
-          trend="+9%"
+          // trend="+9%"
           icon={<CheckCircle size={18} />}
           color="#00b894"
         />
@@ -666,8 +666,10 @@ const NewOutboundDashboard = () => {
               <div style={{ fontWeight: 600, marginBottom: 18 }}>Call Funnel</div>
 
               {[
-                { label: "Unique Dialed", val: funnel?.uniqueDialed || "—", pct: 100 },
-                { label: "Total Attempts", val: funnel?.totalAttempts || "—", pct: funnel?.dialRate },
+                // { label: "Unique Dialed", val: funnel?.uniqueDialed || "—", pct: 100 },
+                { label: "Total Assigned", val: funnel?.totaldata || "—", pct: 100 },
+                // { label: "Total Attempts", val: funnel?.totalAttempts || "—", pct: funnel?.dialRate },
+                { label: "Unique Dialed", val: funnel?.uniqueDialed || "—", pct: funnel?.dialRate },
                 { label: "Connected Calls", val: funnel?.connectedCalls || "—", pct: funnel?.connectRate },
                 { label: "Qualified Leads", val: funnel?.qualifiedLeads || "—", pct: funnel?.outcomeRate },
               ].map((f, i) => (
@@ -1106,9 +1108,16 @@ const NewOutboundDashboard = () => {
                         <td align="left">{a.calls.toLocaleString()}</td>
 
                         {/* Connection */}
-                        <td align="left" style={{ color: "#16a34a" }}>
+                        <td
+                          align="left"
+                          style={{ color: a.connection >= 50 ? "#16a34a" : "#dc2626" }}
+                        >
                           {a.connection}%{" "}
-                          <TrendingUp size={14} style={{ verticalAlign: "middle" }} />
+                          {a.connection >= 50 ? (
+                            <TrendingUp size={14} style={{ verticalAlign: "middle" }} />
+                          ) : (
+                            <TrendingDown size={14} style={{ verticalAlign: "middle" }} />
+                          )}
                         </td>
 
                         {/* Outcome */}
@@ -1196,7 +1205,7 @@ const NewOutboundDashboard = () => {
 
 
       {/* CLIENT COMPARISON */}
-      <div style={{ marginBottom: 28 }}>
+      {/* <div style={{ marginBottom: 28 }}>
           <div
             style={{
               display: "flex",
@@ -1219,7 +1228,7 @@ const NewOutboundDashboard = () => {
               <ClientComparisonCard key={idx} client={client} />
             ))}
           </div>
-      </div>
+      </div> */}
     </div>
   );
 };
