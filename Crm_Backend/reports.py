@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from auth_utils import get_current_user
 from sqlalchemy import text
 from urllib.parse import quote_plus
-
+from new_outbound_dashboard import get_campaign_in_clause
 router = APIRouter()
 
 
@@ -1342,4 +1342,245 @@ def company_consumption_range(
         "From_Date": from_date,
         "To_Date": to_date,
         "data": final_result
+    }
+
+
+
+
+
+
+
+
+@router.post("/outbound/Report")
+def outbound_Report(
+    company_id: int,
+    start_date: date,
+    end_date: date,
+    db=Depends(get_db4),     # call_master_out DB
+    db2=Depends(get_db2)     # vicidial DB
+):
+    campaign_in = get_campaign_in_clause(db, company_id)
+
+    start_dt = f"{start_date} 00:00:00"
+    end_dt = f"{end_date} 23:59:59"
+
+    # ---------------------------------------
+    # 1️⃣ Total Calls (Aggregated)
+    # ---------------------------------------
+    total_query = text(f"""
+        SELECT 
+            vl.user,
+            vu.full_name,
+            COUNT(*) AS total_calls
+        FROM vicidial_log vl
+        LEFT JOIN vicidial_users vu 
+            ON vl.user = vu.user
+        WHERE vl.call_date BETWEEN :start AND :end
+        AND vl.campaign_id IN ({campaign_in})
+        AND vl.lead_id IS NOT NULL
+        GROUP BY vl.user, vu.full_name
+    """)
+
+    total_rows = db2.execute(
+        total_query,
+        {"start": start_dt, "end": end_dt}
+    ).mappings().all()
+
+    # ---------------------------------------
+    # 2️⃣ Connected Calls (STRICT)
+    # ---------------------------------------
+    connected_query = text(f"""
+        SELECT v.user, COUNT(*) AS connected
+        FROM vicidial_log v
+        INNER JOIN vicidial_agent_log va
+            ON v.uniqueid = va.uniqueid
+        WHERE v.call_date BETWEEN :start AND :end
+        AND v.campaign_id IN ({campaign_in})
+        AND v.length_in_sec > 0
+        AND v.user != 'VDAD'
+        GROUP BY v.user
+    """)
+
+    connected_rows = db2.execute(
+        connected_query,
+        {"start": start_dt, "end": end_dt}
+    ).mappings().all()
+
+    connected_map = {r["user"]: int(r["connected"]) for r in connected_rows}
+
+    # ---------------------------------------
+    # 3️⃣ Get CONNECTED uniqueids ONLY
+    # ---------------------------------------
+    connected_uid_query = text(f"""
+        SELECT v.uniqueid
+        FROM vicidial_log v
+        INNER JOIN vicidial_agent_log va
+            ON v.uniqueid = va.uniqueid
+        WHERE v.call_date BETWEEN :start AND :end
+        AND v.campaign_id IN ({campaign_in})
+        AND v.length_in_sec > 0
+        AND v.user != 'VDAD'
+    """)
+
+    uid_rows = db2.execute(
+        connected_uid_query,
+        {"start": start_dt, "end": end_dt}
+    ).fetchall()
+
+    connected_uniqueids = [row[0] for row in uid_rows]
+
+    status_summary = {}
+    total_connected = len(connected_uniqueids)
+    matched_count = 0
+
+    # ---------------------------------------
+    # 4️⃣ Fetch Category2 for Connected Calls
+    # ---------------------------------------
+    if connected_uniqueids:
+
+        chunk_size = 1000
+
+        for i in range(0, len(connected_uniqueids), chunk_size):
+            chunk = connected_uniqueids[i:i + chunk_size]
+
+            status_query = text("""
+                SELECT 
+                    Category2,
+                    COUNT(*) AS count
+                FROM call_master_out
+                WHERE LiveUniqueId IN :uids
+                GROUP BY Category2
+            """)
+
+            rows = db.execute(
+                status_query,
+                {"uids": tuple(chunk)}
+            ).mappings().all()
+
+            for r in rows:
+                key = r["Category2"] if r["Category2"] else "Blank"
+                count = int(r["count"])
+
+                status_summary[key] = status_summary.get(key, 0) + count
+                matched_count += count
+
+    # ---------------------------------------
+    # 5️⃣ Add Missing as Blank
+    # ---------------------------------------
+    blank_missing = total_connected - matched_count
+
+    if blank_missing > 0:
+        status_summary["Blank"] = status_summary.get("Blank", 0) + blank_missing
+    # ---------------------------------------
+    # 5️⃣ Build Final Response
+    # ---------------------------------------
+    overall = {"connected": 0, "notConnected": 0, "totalCalls": 0}
+    agents = {}
+    ob_auto = {"connected": 0, "notConnected": 0, "totalCalls": 0}
+
+    for r in total_rows:
+        user = r["user"]
+        full_name = r["full_name"] if r["full_name"] else user
+
+        total = int(r["total_calls"])
+        connected = connected_map.get(user, 0)
+        not_connected = total - connected
+
+        overall["connected"] += connected
+        overall["notConnected"] += not_connected
+        overall["totalCalls"] += total
+
+        if user == "VDAD":
+            ob_auto["connected"] += connected
+            ob_auto["notConnected"] += not_connected
+            ob_auto["totalCalls"] += total
+        else:
+            agents[full_name] = {
+                "connected": connected,
+                "notConnected": not_connected,
+                "totalCalls": total
+            }
+
+    
+    # ---------------------------------------
+    # 6️⃣ Demo Booked Data
+    # ---------------------------------------
+    demo_query = text("""
+        SELECT 
+            Field1 AS `Name`,
+            Field2 AS `Contact Number`,
+            Field3 AS `Email Address`,
+            Field4,
+            Field6 AS `App Installation Done`,
+            Field5 AS `Meeting Arrange Date`,            
+            Field7 AS `Location`,
+            callcreated,
+            CallDate AS `Call Date`
+        FROM call_master_out
+        WHERE ClientId = :client_id
+        AND DATE(CallDate) BETWEEN :start AND :end
+        AND Category2 = 'Demo Booked'
+    """)
+
+    demo_rows = db.execute(
+        demo_query,
+        {
+            "client_id": company_id,
+            "start": start_date,
+            "end": end_date
+        }
+    ).mappings().all()
+
+    demo_rows = [dict(r) for r in demo_rows]
+
+    # ---------------------------------------
+    # Fetch Agent Names from vicidial_users
+    # ---------------------------------------
+
+    # extract agent id from "DialDesk - IDC60654"
+    users = list({
+        r["callcreated"].split("-")[-1].strip()
+        for r in demo_rows if r["callcreated"]
+    })
+
+    agent_map = {}
+
+    if users:
+        user_query = text("""
+            SELECT user, full_name
+            FROM vicidial_users
+            WHERE user IN :users
+        """)
+
+        user_rows = db2.execute(
+            user_query,
+            {"users": tuple(users)}
+        ).mappings().all()
+
+        agent_map = {r["user"]: r["full_name"] for r in user_rows}
+
+
+    # ---------------------------------------
+    # Replace Agent username with full name
+    # ---------------------------------------
+    for r in demo_rows:
+
+        raw_agent = r["callcreated"]
+
+        if raw_agent and "-" in raw_agent:
+            username = raw_agent.split("-")[-1].strip()
+        else:
+            username = raw_agent
+
+        r["Agent"] = agent_map.get(username, username)
+        del r["callcreated"]
+
+    demo_booked_calls = demo_rows
+
+    return {
+        "overall": overall,
+        "agents": agents,
+        "obAutoDial": ob_auto,
+        "statusBreakdown_From_SubScenario2": status_summary,
+        "demoBookedCalls": demo_booked_calls
     }

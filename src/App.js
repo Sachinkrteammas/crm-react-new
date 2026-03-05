@@ -143,6 +143,7 @@ import RLReport from "./pages/Rl-Internal-Report";
 import ObCampaignDetails from "./pages/Create_manual_OB_call";
 import CampaignListUI from "./pages/List_id";
 import MonthConsumption from "./pages/Month_consumption";
+import OutboundReport from "./pages/outbound_report";
 
 
 
@@ -398,6 +399,7 @@ function App() {
               <Route path="/ManualOutbounds" element={<ObCampaignDetails />} />
               <Route path="/Outbounds/addcampaignlistid" element={<CampaignListUI />} />
               <Route path="/MonthConsumption" element={<MonthConsumption />} />
+              <Route path="/Outbound-report" element={<OutboundReport />} />
               <></>
           </Route>
       </Route>
