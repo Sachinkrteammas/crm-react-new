@@ -293,22 +293,80 @@ const [callActionList, setCallActionList] = useState([]);
   // ---------------------------
   // 📤 EXPORT REPORT
   // ---------------------------
-  const handleExportToExcel = () => {
-    if (tableData.length === 0) {
-      alert("No data to export.");
+  const handleExportToExcel = async () => {
+    if ((userType === "Super-Admin" || userType === "Admin") && (!selectedClient || selectedClient === "null")) {
+      alert("Please select a client.");
       return;
     }
-    const worksheet = XLSX.utils.json_to_sheet(tableData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
-    const file = new Blob([excelBuffer], {
-      type: "application/octet-stream",
-    });
-    saveAs(file, "in_call_details.xlsx");
+
+    if (!startDate || !endDate) {
+      alert("Please select both Start Date and End Date.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const formattedStart = format(startDate, "yyyy-MM-dd");
+      const formattedEnd = format(endDate, "yyyy-MM-dd");
+
+      const response = await api.get("/call-details", {
+        params: {
+          client_id: activeCompanyId,
+          startdate: formattedStart,
+          enddate: formattedEnd,
+          call_id: callId || null,
+          call_action: callAction || "",
+          scenario: scenarioName || "",
+          scenario1: scenario1Name || "",
+          scenario2: scenario2Name || "",
+          scenario3: scenario3Name || "",
+          scenario4: scenario4Name || "",
+        },
+      });
+
+      const exportData = response.data || [];
+
+      if (exportData.length === 0) {
+        alert("No data found for export.");
+        setLoading(false);
+        return;
+      }
+
+      // Determine company name
+      let companyName = "Company";
+
+      if (userType === "Client") {
+        const storedUserData = JSON.parse(localStorage.getItem("userData"));
+        companyName = storedUserData?.auth_person || "Company";
+      } else {
+        const selected = clients.find((c) => c.company_id == selectedClient);
+        companyName = selected?.company_name || "Company";
+      }
+
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Auto Tagging");
+
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+
+      const file = new Blob([excelBuffer], {
+        type: "application/octet-stream",
+      });
+
+      const fileName = `${companyName}_Auto_Tagging_${formattedStart}_to_${formattedEnd}.xlsx`;
+
+      saveAs(file, fileName);
+
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("Failed to export data.");
+    } finally {
+      setLoading(false);
+    }
   };
 
 

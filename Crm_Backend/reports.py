@@ -798,14 +798,14 @@ def get_ivr_report(
 
         # Rename keys to match report table
         formatted = {
-            "date": r["date"],
-            "call_type": r["call_type"],
-            "from": r["from"],
-            "start_time": r["start_time"],
-            "end_time": r["end_time"],
-            "duration": r["duration"],
-            "outcome": r["outcome"],
-            "opt": r.get("opt", "")
+            "Date": r["date"],
+            "Call Type": r["call_type"],
+            "From": r["from"],
+            "Start Time": r["start_time"],
+            "End Time": r["end_time"],
+            "Duration(Sec.)": r["duration"],
+            "Outcome": r["outcome"],
+            "Option Chosen": r.get("opt", "")
         }
         result.append(formatted)
 

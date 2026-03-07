@@ -92,8 +92,13 @@ const IVRReport = () => {
 
 
   const handleExport = async () => {
-    if (ivrData.length === 0) {
-      alert("No data to export.");
+    if (!activeCompanyId || activeCompanyId === "null") {
+      alert("Client not Selected!");
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      alert("Please Select Start and End Dates");
       return;
     }
     // ✅ Decide company name (NO return here)
@@ -112,15 +117,27 @@ const IVRReport = () => {
     setLoading(true);
 
     try {
-      // Allow React to render the loader
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      const payload = {
+        company_id: activeCompanyId,
+        from_date: format(startDate, "yyyy-MM-dd"),
+        to_date: format(endDate, "yyyy-MM-dd"),
+      };
+
+      // ✅ Fetch fresh data directly for export
+      const data = await getIVRReport(payload);
+
+      if (!data || data.length === 0) {
+        alert("No data found for export.");
+        setLoading(false);
+        return;
+      }
 
       // Create a worksheet
-      const worksheet = XLSX.utils.json_to_sheet(ivrData);
+      const worksheet = XLSX.utils.json_to_sheet(data);
 
       // Create a new workbook and append the worksheet
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "IVRReport");
 
       // Generate a buffer
       const excelBuffer = XLSX.write(workbook, {
@@ -249,14 +266,14 @@ const IVRReport = () => {
               {ivrData.length > 0 ? (
                 ivrData.map((row, idx) => (
                   <tr key={idx}>
-                    <td>{row.date}</td>
-                    <td>{row.call_type}</td>
-                    <td>{row.from}</td>
-                    <td>{row.start_time}</td>
-                    <td>{row.end_time}</td>
-                    <td>{row.duration}</td>
-                    <td>{row.outcome}</td>
-                    <td>{row.opt}</td>
+                    <td>{row.Date}</td>
+                    <td>{row["Call Type"]}</td>
+                    <td>{row.From}</td>
+                    <td>{row["Start Time"]}</td>
+                    <td>{row["End Time"]}</td>
+                    <td>{row["Duration(Sec.)"]}</td>
+                    <td>{row.Outcome}</td>
+                    <td>{row["Option Chosen"]}</td>
                   </tr>
                 ))
               ) : (

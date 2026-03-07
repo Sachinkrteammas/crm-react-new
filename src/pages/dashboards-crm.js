@@ -627,7 +627,11 @@ const [rlChartData, setRlChartData] = useState([]);
                           <select className="form-select"
                           onChange={(e) => {
                             if (e.target.value === "outbounds") {
-                              navigate(`/outbound_dashboard`);
+                              navigate("/outbound_dashboard", {
+                                state: {
+                                  client: selectedClient
+                                },
+                              });
                             }
                           }}
                           >

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   Phone,
   PhoneCall,
@@ -341,12 +342,17 @@ const PageLoader = () => (
 /* ---------------- COMPONENT ---------------- */
 const NewOutboundDashboard = () => {
 
+  const location = useLocation();
+  const navState = location.state;
+
   const today = new Date().toISOString().split("T")[0];
   const userType = localStorage.getItem("user_type");
   const companyId = localStorage.getItem("company_id");
 
   const [clients, setClients] = React.useState([]);
-  const [selectedClient, setSelectedClient] = React.useState(companyId);
+  const [selectedClient, setSelectedClient] = useState(
+    navState?.client || companyId
+  );
   const [startDate, setStartDate] = React.useState(today);
   const [endDate, setEndDate] = React.useState(today);
   const [loading, setLoading] = React.useState(false);
@@ -453,6 +459,12 @@ const NewOutboundDashboard = () => {
         }
     };
 
+    
+  useEffect(() => {
+    if (navState) {
+      handleViewClick();
+    }
+  }, []);
 
 
 

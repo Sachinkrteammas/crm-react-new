@@ -173,6 +173,19 @@ export default function CustomerDateWiseDensity() {
       .reduce((sum, r) => sum + r[key], 0);
 
 
+  const getHourSLA = (rows, campaign, hour) => {
+    const row = rows.find(
+      (r) => r.campaign === campaign && r.ghour === Number(hour)
+    );
+    return row ? row.SLA : "";
+  };
+
+  const calcSLAPercent = (sla, total) => {
+    if (!total || total === 0) return "0";
+    return ((sla / total) * 100).toFixed(2) + "%";
+  };
+
+
   const renderSlotTable = (mode) => {
     if (!reportData) return null;
 
@@ -218,6 +231,7 @@ export default function CustomerDateWiseDensity() {
             <tr>
               <th style={{ color: "#fff" }}>SLOT ({mode})</th>
               <th style={{ color: "#fff" }}>AL%</th>
+              <th style={{ color: "#fff" }}>SLA</th>
               {/* Column order */}
               {isAbandon ? (
                 <>
@@ -249,6 +263,11 @@ export default function CustomerDateWiseDensity() {
                 <tr key={al.campaign}>
                   <td className="fw-bold text-start">{al.campaign}</td>
                   <td>{alPercent}</td>
+                  <td>
+                    {rows
+                      .filter((r) => r.campaign === al.campaign)
+                      .reduce((s, r) => s + (r.SLA || 0), 0)}
+                  </td>
 
                   {isAbandon ? (
                   <>
@@ -291,6 +310,9 @@ export default function CustomerDateWiseDensity() {
             <tr className="fw-bold">
               <td className="text-start">GRAND TOTAL</td>
               <td>{grandALPercent}</td>
+              <td>
+                {rows.reduce((s, r) => s + (r.SLA || 0), 0)}
+              </td>
               {isAbandon ? (
               <>
                 <td>{alRows.reduce((s, r) => s + getValueForMode(r, "main"), 0)}</td>
@@ -353,6 +375,7 @@ export default function CustomerDateWiseDensity() {
               <th style={{ color: "#fff" }}>{isAnswered ? "ANSWERED" : "ABANDON"}</th>
               <th style={{ color: "#fff" }}>OFFERED</th>
               <th style={{ color: "#fff" }}>{mode}</th>
+              <th style={{ color: "#fff" }}>SLA%</th>
               {HOURS.map((h) => (
                 <th key={h} style={{ color: "#fff" }}>{h}</th>
               ))}
@@ -365,6 +388,14 @@ export default function CustomerDateWiseDensity() {
                 <td>{isAnswered ? al.Answered : al.Abandon}</td>
                 <td>{al.Total}</td>
                 <td>{getValueForMode(al)}</td>
+                <td>
+                  {calcSLAPercent(
+                    rows
+                      .filter((r) => r.campaign === al.campaign)
+                      .reduce((s, r) => s + (r.SLA || 0), 0),
+                    al.Total
+                  )}
+                </td>
                 {HOURS.map((h) => {
                   const row = rows.find(
                     (r) => r.campaign === al.campaign && r.ghour === Number(h)
@@ -398,6 +429,12 @@ export default function CustomerDateWiseDensity() {
                 {isAnswered
                   ? ((alRows.reduce((s, r) => s + r.Answered, 0) / alRows.reduce((s, r) => s + r.Total, 0)) * 100).toFixed(2) + "%"
                   : ((alRows.reduce((s, r) => s + r.Abandon, 0) / alRows.reduce((s, r) => s + r.Total, 0)) * 100).toFixed(2) + "%"}
+              </td>
+              <td>
+                {calcSLAPercent(
+                  rows.reduce((s, r) => s + (r.SLA || 0), 0),
+                  rows.reduce((s, r) => s + r.Total, 0)
+                )}
               </td>
               {HOURS.map((h) => {
                 // Filter rows for this hour
@@ -644,6 +681,7 @@ export default function CustomerDateWiseDensity() {
               <th style={{ color: "#fff" }}>{isAnswered ? "ANSWERED" : "ABANDON"}</th>
               <th style={{ color: "#fff" }}>OFFERED</th>
               <th style={{ color: "#fff" }}>{mode}</th>
+              <th style={{ color: "#fff" }}>SLA%</th>
               {HOURS.map((h) => (
                 <th key={h} style={{ color: "#fff" }}>{h}</th>
               ))}
@@ -670,6 +708,12 @@ export default function CustomerDateWiseDensity() {
                   <td>{isAnswered ? answered : abandon}</td>
                   <td>{total}</td>
                   <td>{calcPercent(isAnswered ? answered : abandon, total)}</td>
+                  <td>
+                    {calcSLAPercent(
+                      dateRows.reduce((s, r) => s + (r.SLA || 0), 0),
+                      total
+                    )}
+                  </td>
 
                   {HOURS.map((h) => {
                     const hourRows = dateRows.filter(
@@ -721,6 +765,12 @@ export default function CustomerDateWiseDensity() {
                       {calcPercent(
                         isAnswered ? answered : abandon,
                         total
+                      )}
+                    </td>
+                    <td>
+                      {calcSLAPercent(
+                        rows.reduce((s, r) => s + (r.SLA || 0), 0),
+                        rows.reduce((s, r) => s + r.Total, 0)
                       )}
                     </td>
 

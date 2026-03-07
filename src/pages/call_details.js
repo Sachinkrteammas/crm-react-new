@@ -315,14 +315,51 @@ const handleViewClick = async () => {
   }
 };
 
-  const handleExportToExcel = () => {
-    if (data.length === 0) {
-      alert("No data to export.");
+  const handleExportToExcel = async () => {
+  if (!activeCompanyId || activeCompanyId === "null") {
+    alert("Please select Client.");
+    return;
+  }
+
+  if (!startDate || !endDate) {
+    alert("Please select both start and end dates.");
+    return;
+  }
+
+  setLoading(true);
+
+  const formattedStart = format(startDate, "yyyy-MM-dd");
+  const formattedEnd = format(endDate, "yyyy-MM-dd");
+
+  try {
+    const response = await api.get(`/call/call-master/${activeCompanyId}`, {
+      params: {
+        client_id: activeCompanyId,
+        from_date: formattedStart,
+        to_date: formattedEnd,
+        call_id: call_id || null,
+        in_call_action: inCallAction,
+        Category1: scenarioName?.trim(),
+        Category2: scenario1Name?.trim(),
+        Category3: scenario2Name?.trim(),
+        Category4: scenario3Name?.trim(),
+        Category5: "",
+      },
+    });
+
+    const cleanedData = response.data.map((row) => {
+      const cleaned = {};
+      for (let key in row) {
+        cleaned[key.trim()] = row[key];
+      }
+      return cleaned;
+    });
+
+    if (!cleanedData || cleanedData.length === 0) {
+      alert("No data found for export.");
+      setLoading(false);
       return;
     }
-
-    const formattedStart = startDate ? format(startDate, "yyyy-MM-dd") : "";
-    const formattedEnd = endDate ? format(endDate, "yyyy-MM-dd") : "";
 
     // 🔹 Determine company name
     let exportCompanyName = "";
@@ -337,19 +374,29 @@ const handleViewClick = async () => {
       exportCompanyName = selected?.company_name || "Company";
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    const worksheet = XLSX.utils.json_to_sheet(cleanedData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "In Call Details");
+
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
       type: "array",
     });
-    const file = new Blob([excelBuffer], { type: "application/octet-stream" });
 
-    // 🔹 Dynamic file name
-    const fileName = `${exportCompanyName}_In_Call_Details${formattedStart}_to_${formattedEnd}.xlsx`;
+    const file = new Blob([excelBuffer], {
+      type: "application/octet-stream",
+    });
+
+    const fileName = `${exportCompanyName}_In_Call_Details_${formattedStart}_to_${formattedEnd}.xlsx`;
+
     saveAs(file, fileName);
-  };
+  } catch (error) {
+    console.error("Export failed:", error);
+    alert("Export failed. Check console.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const tableColumns = [
     "View",

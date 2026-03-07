@@ -30,6 +30,7 @@ class HourlyCampaignRow(BaseModel):
     gdate: Optional[str] = None
     ghour: int
     campaign: Optional[str] = None
+    SLA : Optional[int] = None
 
 class HourlyCampaignALRow(BaseModel):
     Total: int
@@ -191,7 +192,8 @@ def get_hourly_campaign_report(
             SUM(IF(t2.user <> 'VDCL',1,0))   AS Answered,
             SUM(IF(t2.user = 'VDCL',1,0))    AS Abandon,
             HOUR(t2.call_date)               AS ghour,
-            t2.campaign_id                   AS campaign
+            t2.campaign_id                   AS campaign,
+            SUM(IF(t2.`user` !='VDCL' AND t2.queue_seconds<=20,1,0)) `SLA`
         FROM asterisk.vicidial_closer_log t2
         LEFT JOIN asterisk.vicidial_agent_log t3
                ON t2.uniqueid = t3.uniqueid
@@ -220,6 +222,7 @@ def get_hourly_campaign_report(
             gdate=None,
             ghour=r["ghour"],
             campaign=r["campaign"],
+            SLA=r["SLA"]
         )
         for r in rows
     ]
