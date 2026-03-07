@@ -17,6 +17,26 @@ const Layout = () => {
   const [activeMenu, setActiveMenu] = useState(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+  const checkAuth = () => {
+    const userData = localStorage.getItem("userData");
+
+    if (!userData) {
+      navigate("/", { replace: true });
+    }
+  };
+
+  checkAuth();
+
+  // also detect browser back button
+  window.addEventListener("popstate", checkAuth);
+
+  return () => {
+    window.removeEventListener("popstate", checkAuth);
+  };
+}, [navigate, location.pathname]);
 
   const user = {
     name: storedUsername || "John Doe",
@@ -189,7 +209,7 @@ useEffect(() => {
     }
   }, []);
 
-  const location = useLocation();
+  
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSidebarHovered, setIsSidebarHovered] = useState(false);
 
@@ -267,6 +287,12 @@ useEffect(() => {
     if (window.innerWidth < 1200) {
       setIsSidebarOpen(false);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    navigate("/logout", { replace: true });
   };
 
   return (
@@ -595,7 +621,8 @@ useEffect(() => {
                     <li>
                       <div className="d-grid px-2 pt-2 pb-1">
                         <Link
-                          to="/logout"
+                          to="#"
+                          onClick={handleLogout}
                           className="btn btn-sm btn-danger d-flex"
                         >
                           <small className="align-middle">Logout</small>

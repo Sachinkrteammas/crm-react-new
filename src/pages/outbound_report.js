@@ -6,6 +6,7 @@ import api from "../api";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx-js-style";
 import { saveAs } from "file-saver";
+import { getOBCDRReport } from '../services/authService';
 
 const OutboundReport = () => {
 
@@ -331,10 +332,28 @@ const OutboundReport = () => {
     });
 
     });
+
+    /* =============================
+       ADD OBCDR EXPORT (NEW SHEET)
+    ============================== */
+
+    const payload = {
+      company_id: activeClientId,
+      from_date: formattedStart,
+      to_date: formattedEnd,
+    };
+
+    const obResponse = await getOBCDRReport(payload);
+    const obExportData = Array.isArray(obResponse) ? obResponse : [];
+
+    const obSheet = XLSX.utils.json_to_sheet(obExportData);
    
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Outbound Report");
+
+    // ✅ OBCdr SHEET
+    XLSX.utils.book_append_sheet(workbook, obSheet, "OB CDR Report");
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
