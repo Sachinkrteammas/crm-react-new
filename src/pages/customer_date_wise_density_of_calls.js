@@ -93,56 +93,68 @@ export default function CustomerDateWiseDensity() {
 
   /* ------------------ VIEW / EXPORT ------------------ */
   const handleAction = async (action) => {
-    if (action === "VIEW") {
-      // Check all required filters
-      const missingFields = [];
-      if (!filters.type) missingFields.push("Select Type");
-      if (!filters.client) missingFields.push("Select Client");
-      if (!filters.clientCategory) missingFields.push("Client Category");
-      if (!filters.selectType) missingFields.push("Select Type");
-      if (!filters.startDate) missingFields.push("From Date");
-      if (!filters.endDate) missingFields.push("To Date");
-      if (!viewMode) missingFields.push("Client Wise");
 
-      if (missingFields.length > 0) {
-        alert(
-          `Please select the following before viewing the report:\n- ${missingFields.join(
-            "\n- "
-          )}`
-        );
-        return;
-      }
+  // Check required filters
+  const missingFields = [];
+  if (!filters.type) missingFields.push("Select Type");
+  if (!filters.client) missingFields.push("Select Client");
+  if (!filters.clientCategory) missingFields.push("Client Category");
+  if (!filters.selectType) missingFields.push("Select Type");
+  if (!filters.startDate) missingFields.push("From Date");
+  if (!filters.endDate) missingFields.push("To Date");
+  if (!viewMode) missingFields.push("Client Wise");
 
-      setLoading(true);
-      try {
-        const payload = {
-          company_id: filters.client,
-          from_date: formatDateForApi(filters.startDate),
-          to_date: formatDateForApi(filters.endDate),
-          category: filters.clientCategory || null,
-          sd_type: filters.type === "" ? "ALL" : filters.type,
-        };
+  if (missingFields.length > 0) {
+    alert(
+      `Please select the following before continuing:\n- ${missingFields.join(
+        "\n- "
+      )}`
+    );
+    return;
+  }
 
-        const url =
-          viewMode === "Date Wise"
-            ? "/hourly_date_wise_report"
-            : "/hourly_campaign_report";
-
-        const res = await api.post(url, payload);
-        setReportData(res.data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (action === "EXPORT") {
-      exportAllTablesToCSV(
-        `Customer_DateWise_${viewMode || "Report"}_${formatDateForApi(filters.startDate)}_to_${formatDateForApi(filters.endDate)}.csv`
-      );
-    }
+  // move here so both VIEW and EXPORT can use
+  const payload = {
+    company_id: filters.client,
+    from_date: formatDateForApi(filters.startDate),
+    to_date: formatDateForApi(filters.endDate),
+    category: filters.clientCategory || null,
+    sd_type: filters.type === "" ? "ALL" : filters.type,
   };
+
+  const url =
+    viewMode === "Date Wise"
+      ? "/hourly_date_wise_report"
+      : "/hourly_campaign_report";
+
+  if (action === "VIEW") {
+    setLoading(true);
+    try {
+      const res = await api.post(url, payload);
+      setReportData(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (action === "EXPORT") {
+    setLoading(true);
+    try {
+      const res = await api.post(url, payload);
+      setReportData(res.data);
+
+      exportAllTablesToCSV(
+        `Customer_DateWise_${viewMode}_${payload.from_date}_to_${payload.to_date}.csv`
+      );
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+};
 
   const HOURS = Array.from({ length: 24 }, (_, i) =>
     i.toString().padStart(2, "0")
