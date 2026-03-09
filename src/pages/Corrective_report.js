@@ -237,34 +237,34 @@ const CorrectiveReport = () => {
         flattenedData.push({
           Category: i === 0 ? (cat.category !== "null" ? cat.category : "") : "",
           Phase: phase.phase !== "null" ? phase.phase : "",
-          "Total Corrections": phase.total,
+          "Total Tickets": phase.total,
           Open: phase.open !== 0 ? phase.open : "",
           Close: phase.close,
-          Remarks: ""
+          "Ticket Closure %": ""
         });
       });
 
       flattenedData.push({
         Category: "",
         Phase: "Total",
-        "Total Corrections": cat.category_total.total,
+        "Total Tickets": cat.category_total.total,
         Open: cat.category_total.open,
         Close: cat.category_total.close,
-        Remarks: cat.category_total.close
-          ? (cat.category_total.close / cat.category_total.total).toFixed(2)
-          : "0.00",
+         "Ticket Closure %": cat.category_total.close
+          ? ((cat.category_total.close / cat.category_total.total).toFixed(2) * 100) + " %"
+          : "0.0 %",
       });
     });
 
     flattenedData.push({
       Category: "",
       Phase: "GRAND TOTAL",
-      "Total Corrections": exportTotals.total,
+      "Total Tickets": exportTotals.total,
       Open: exportTotals.open,
       Close: exportTotals.close,
-      Remarks: exportTotals.close
-        ? (exportTotals.close / exportTotals.total).toFixed(2)
-        : "0.00",
+      "Ticket Closure %": exportTotals.close
+        ? ((exportTotals.close / exportTotals.total).toFixed(2) * 100) + " %"
+        : "0.0 %",
     });
 
     const worksheet = XLSX.utils.json_to_sheet(flattenedData);
@@ -473,10 +473,10 @@ const CorrectiveReport = () => {
                 <thead className="table-dark text-white">
                   <tr>
                     <th rowSpan={2} style={{ verticalAlign: "top" }}>CATEGORY</th>
-                    <th rowSpan={2} style={{ verticalAlign: "top" }}>SITE</th>
-                    <th rowSpan={2} style={{ verticalAlign: "top" }}>TOTAL CORRECTIONS</th>
+                    <th rowSpan={2} style={{ verticalAlign: "top" }}>PHASE</th>
+                    <th rowSpan={2} style={{ verticalAlign: "top" }}>TOTAL TICKETS</th>
                     <th colSpan={2} className="text-center">STATUS</th>
-                    <th rowSpan={2} style={{ verticalAlign: "top" }}>REMARKS</th>
+                    <th rowSpan={2} style={{ verticalAlign: "top" }}>TICKETS CLOSURE %</th>
                   </tr>
                   <tr className="bg-secondary text-white">
                     <th>OPEN</th>
@@ -509,8 +509,8 @@ const CorrectiveReport = () => {
                       <td>{cat.category_total.close}</td>
                       <td>
                         {cat.category_total.close
-                          ? (cat.category_total.close / cat.category_total.total).toFixed(2)
-                          : "0.00"}
+                          ? ((cat.category_total.close / cat.category_total.total).toFixed(2) * 100) + " %"
+                          : "0.0 %"}
                       </td>
                     </tr>
                   </React.Fragment>
@@ -524,8 +524,8 @@ const CorrectiveReport = () => {
                   <td>{grandTotals.close}</td>
                   <td>
                     {grandTotals.close
-                      ? (grandTotals.close / grandTotals.total).toFixed(2)
-                      : "0.00"}
+                      ? ((grandTotals.close / grandTotals.total).toFixed(2) * 100)  + " %"
+                      : "0.0 %"}
                   </td>
                 </tr>
               </tbody>
