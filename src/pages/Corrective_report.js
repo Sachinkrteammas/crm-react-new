@@ -251,7 +251,7 @@ const CorrectiveReport = () => {
         Open: cat.category_total.open,
         Close: cat.category_total.close,
          "Ticket Closure %": cat.category_total.close
-          ? ((cat.category_total.close / cat.category_total.total).toFixed(2) * 100) + " %"
+          ? ((cat.category_total.close / cat.category_total.total) * 100).toFixed(0) + " %"
           : "0.0 %",
       });
     });
@@ -263,7 +263,7 @@ const CorrectiveReport = () => {
       Open: exportTotals.open,
       Close: exportTotals.close,
       "Ticket Closure %": exportTotals.close
-        ? ((exportTotals.close / exportTotals.total).toFixed(2) * 100) + " %"
+        ? ((exportTotals.close / exportTotals.total) * 100).toFixed(0) + " %"
         : "0.0 %",
     });
 
@@ -509,7 +509,7 @@ const CorrectiveReport = () => {
                       <td>{cat.category_total.close}</td>
                       <td>
                         {cat.category_total.close
-                          ? ((cat.category_total.close / cat.category_total.total).toFixed(2) * 100) + " %"
+                          ? ((cat.category_total.close / cat.category_total.total) * 100).toFixed(0) + " %"
                           : "0.0 %"}
                       </td>
                     </tr>
@@ -524,7 +524,7 @@ const CorrectiveReport = () => {
                   <td>{grandTotals.close}</td>
                   <td>
                     {grandTotals.close
-                      ? ((grandTotals.close / grandTotals.total).toFixed(2) * 100)  + " %"
+                      ? ((grandTotals.close / grandTotals.total) * 100).toFixed(0)  + " %"
                       : "0.0 %"}
                   </td>
                 </tr>
