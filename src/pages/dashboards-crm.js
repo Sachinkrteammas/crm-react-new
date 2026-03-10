@@ -41,6 +41,16 @@ const Dashboard = () => {
     abandon_callback: 0,
   });
 
+  const [previousData, setPreviousData] = useState({
+    total: 0,
+    unique: 0,
+    answered: 0,
+    abandon: 0,
+    Unique_abandon: 0,
+    tagged: 0,
+    abandon_callback: 0,
+  });
+
   const [data, setData] = useState([
     { name: "Answered", value: 0 },
     { name: "Abandon", value: 0 },
@@ -154,6 +164,7 @@ const [rlChartData, setRlChartData] = useState([]);
         setLoading(true);
         await Promise.all([
           fetchDashboardData(),
+          fetchPreviousDashboardData(),
           fetchCallAnalysis(),
           fetchCallDistribution(),
           fetchData(),
@@ -200,6 +211,43 @@ const [rlChartData, setRlChartData] = useState([]);
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
+    }
+  };
+
+
+  const fetchPreviousDashboardData = async () => {
+    if (!selectedClient || !fromDate || !toDate) return;
+
+    try {
+      const payload = {
+        company_id: Number(selectedClient),
+        view_type: dateRange.charAt(0).toUpperCase() + dateRange.slice(1),
+        from_date: fromDate,
+        to_date: toDate,
+      };
+
+      const res = await api.post("/dashboard/dashboard_report_previous", payload);
+
+      const { days, total_tagged, total_abandon_cb } = res.data;
+
+      const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
+      const abandon = days.reduce((sum, d) => sum + (d.Abandon ?? 0), 0);
+      const Unique_abandon = days.reduce((sum, d) => sum + (d.Unique_abandon ?? 0), 0);
+      const total = days.reduce((sum, d) => sum + (d.Total ?? 0), 0);
+      const unique = days.reduce((sum, d) => sum + (d.Unique ?? 0), 0);
+
+      setPreviousData({
+        total,
+        unique,
+        answered,
+        abandon,
+        Unique_abandon,
+        tagged: total_tagged ?? 0,
+        abandon_callback: total_abandon_cb ?? 0,
+      });
+
+    } catch (err) {
+      console.error("Previous dashboard API error", err);
     }
   };
 
@@ -368,6 +416,7 @@ const [rlChartData, setRlChartData] = useState([]);
       setLoading(true);
       await Promise.all([
         fetchDashboardData(),
+        fetchPreviousDashboardData(),
         fetchCallAnalysis(),
         fetchCallDistribution(),
         fetchData(),
@@ -432,6 +481,19 @@ const [rlChartData, setRlChartData] = useState([]);
   );
 
 
+  const getPercentChange = (current, previous) => {
+    if (!previous) return 0;
+    return (((current - previous) / previous) * 100).toFixed(1);
+  };
+
+  const offeredChange = getPercentChange(dashboardData.total, previousData.total);
+  const answeredChange = getPercentChange(dashboardData.answered, previousData.answered);
+  const abandonChange = getPercentChange(dashboardData.abandon, previousData.abandon);
+  const uniqueAbandonChange = getPercentChange(dashboardData.Unique_abandon, previousData.Unique_abandon);
+  const taggedChange = getPercentChange(dashboardData.tagged, previousData.tagged);
+  const abandonCallbackChange = getPercentChange(dashboardData.abandon_callback, previousData.abandon_callback);
+
+
   return (
     <>
       <div className="row mb-4">
@@ -492,7 +554,10 @@ const [rlChartData, setRlChartData] = useState([]);
                       <div className="badge p-2 bg-label-success rounded">
                         <i className="icon-base ti tabler-phone icon-28px"></i>
                       </div>
-                      <small className="text-success fw-medium">+1.6%</small>
+                      <small className={`fw-medium ${offeredChange >= 0 ? "text-success" : "text-danger"}`}>
+                        {offeredChange >= 0 ? "+" : ""}
+                        {offeredChange}%
+                      </small>
                     </div>
                     <h5 className="card-title mb-1">Offered Calls</h5>
                     <h4 className="mb-0">
@@ -510,7 +575,10 @@ const [rlChartData, setRlChartData] = useState([]);
                       <div className="badge p-2 bg-label-success rounded">
                         <i className="icon-base ti tabler-phone-incoming icon-28px"></i>
                       </div>
-                      <small className="text-success fw-medium">+12.6%</small>
+                      <small className={`fw-medium ${answeredChange >= 0 ? "text-success" : "text-danger"}`}>
+                        {answeredChange >= 0 ? "+" : ""}
+                        {answeredChange}%
+                      </small>
                     </div>
                     <h5 className="card-title mb-1">Answered Calls</h5>
                     <h4 className="mb-0">
@@ -528,7 +596,10 @@ const [rlChartData, setRlChartData] = useState([]);
                       <div className="badge p-2 bg-label-danger rounded">
                         <i className="icon-base ti tabler-phone-off icon-28px"></i>
                       </div>
-                      <small className="text-danger fw-medium">-16.2%</small>
+                      <small className={`fw-medium ${abandonChange >= 0 ? "text-success" : "text-danger"}`}>
+                        {abandonChange >= 0 ? "+" : ""}
+                        {abandonChange}%
+                      </small>
                     </div>
                     <h5 className="card-title mb-1">Abandon Offered Calls</h5>
                     <h4 className="mb-0">
@@ -545,7 +616,10 @@ const [rlChartData, setRlChartData] = useState([]);
                       <div className="badge p-2 bg-label-success rounded">
                         <i className="icon-base ti tabler-user icon-28px"></i>
                       </div>
-                      <small className="text-success fw-medium">+20.6%</small>
+                      <small className={`fw-medium ${uniqueAbandonChange >= 0 ? "text-success" : "text-danger"}`}>
+                        {uniqueAbandonChange >= 0 ? "+" : ""}
+                        {uniqueAbandonChange}%
+                      </small>
                     </div>
                     <h5 className="card-title mb-1">Unique Abandon Calls</h5>
                     <h4 className="mb-0">
@@ -563,7 +637,10 @@ const [rlChartData, setRlChartData] = useState([]);
                       <div className="badge p-2 bg-label-warning rounded">
                         <i className="icon-base ti tabler-tag icon-28px"></i>
                       </div>
-                      <small className="text-danger fw-medium">-12.2%</small>
+                      <small className={`fw-medium ${taggedChange >= 0 ? "text-success" : "text-danger"}`}>
+                        {taggedChange >= 0 ? "+" : ""}
+                        {taggedChange}%
+                      </small>
                     </div>
                     <h5 className="card-title mb-1">Tagged Calls</h5>
                     <h4 className="mb-0">
@@ -581,7 +658,10 @@ const [rlChartData, setRlChartData] = useState([]);
                       <div className="badge p-2 bg-label-info rounded">
                         <i className="icon-base ti tabler-phone-calling icon-28px"></i>
                       </div>
-                      <small className="text-success fw-medium">+24.5%</small>
+                      <small className={`fw-medium ${abandonCallbackChange >= 0 ? "text-success" : "text-danger"}`}>
+                        {abandonCallbackChange >= 0 ? "+" : ""}
+                        {abandonCallbackChange}%
+                      </small>
                     </div>
                     <h5 className="card-title mb-1">Abandon Call Back</h5>
                     <h4 className="mb-0">
