@@ -423,6 +423,15 @@ const [rlChartData, setRlChartData] = useState([]);
   }
 
 
+  const openTicketData = openCloseTicketData.filter(
+    (item) => item.name === "Open"
+  );
+
+  const closeTicketData = openCloseTicketData.filter(
+    (item) => item.name === "Close"
+  );
+
+
   return (
     <>
       <div className="row mb-4">
@@ -1073,7 +1082,7 @@ const [rlChartData, setRlChartData] = useState([]);
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="name" stroke="#b4b7bd" />
                         <YAxis stroke="#b4b7bd" />
-                        <Tooltip position={{ y: -50 }} />
+                        <Tooltip position={{ y: -60 }} />
                         <Legend />
                         {ticketCaseData[0] &&
                           Object.keys(ticketCaseData[0].data).map((key, idx) => (
@@ -1092,7 +1101,7 @@ const [rlChartData, setRlChartData] = useState([]);
                           Open Ticket Analysis
                         </h6>
                         <ResponsiveContainer width="100%" height={200}>
-                          <BarChart data={openCloseTicketData}>
+                          <BarChart data={openTicketData}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="name" stroke="#b4b7bd" />
                             <YAxis stroke="#b4b7bd" />
@@ -1112,7 +1121,7 @@ const [rlChartData, setRlChartData] = useState([]);
                           Close Ticket Analysis
                         </h6>
                         <ResponsiveContainer width="100%" height={200}>
-                          <BarChart data={openCloseTicketData}>
+                          <BarChart data={closeTicketData}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis dataKey="name" stroke="#b4b7bd" />
                             <YAxis stroke="#b4b7bd" />
