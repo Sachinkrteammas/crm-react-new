@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import text
 from schemas import *
-from database import get_db, get_db2, get_db3, get_db4
+from database import get_db2, get_db4
 from datetime import date, datetime, timedelta
 from typing import List, Dict, Any
 

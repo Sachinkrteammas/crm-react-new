@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from sqlalchemy import bindparam
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from database import get_db, get_db2, get_db3, get_db4
+from database import get_db2, get_db4
 from schemas import *
 from passlib.context import CryptContext
 from jose import jwt
@@ -402,8 +402,7 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
 def get_ob_cdr_report(
     request: OBCDRReportRequest,
     db: Session = Depends(get_db4),   # main DB
-    db2: Session = Depends(get_db2),  # vicidial
-    db3: Session = Depends(get_db3)   # call_master_out DB
+    db2: Session = Depends(get_db2)  # vicidial
 ):
     # Step 1: Get campaign IDs
     campaign_query = text("SELECT campaignid FROM registration_master WHERE company_id = :company_id")
