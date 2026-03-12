@@ -6,6 +6,7 @@ from datetime import date, datetime, timedelta
 from database import get_db2, get_db4  # adjust to your actual import path
 from call_scenario import send_call_summary  # adjust path
 from sqlalchemy.orm import Session
+from logger import logger
 import os
 from sqlalchemy import text
 from daily_consume import BillingDailyRequest, compute_ib_consumption
@@ -158,14 +159,24 @@ def scheduled_call_summary():
         client_id = int(os.getenv("DEFAULT_CLIENT_ID", 1))  # fallback to 1
         report_date = date.today()
 
+        logger.info(f"Scheduler started | client={client_id} | date={report_date}")
+
         print(f"Running scheduled report for client {client_id} on {report_date}")
         send_call_summary(client_id=client_id, report_date=report_date, db=db, db2=db2)
+
+        logger.info("Scheduler completed successfully")
+
     except Exception as e:
+        logger.error(
+            f"Error in scheduled_call_summary | client={client_id if 'client_id' in locals() else 'unknown'}",
+            exc_info=True
+        )
         print("Error in scheduled job:", e)
     finally:
         db_gen.close()
         db2_gen.close()
 
+        logger.info("DB sessions closed")
 
 # -------------------------------------------------------
 # DAILY BILLING SCHEDULER (runs at 3 AM)
