@@ -411,16 +411,19 @@ def send_call_summary(
         # recipient_list = [email.strip() for email in recipient.split(",") if email.strip()]
         # cc_list = [email.strip() for email in cc_recipient.split(",") if email.strip()] if cc_recipient else []
 
+        current_time = datetime.now().strftime("%H:%M")
+
         # Fetch email configuration from reportmatrix_master_new
         email_query = text("""
             SELECT user_email, cc
             FROM reportmatrix_master_new
             WHERE report = 'Crystal'
             AND client_id = :client_id
-            LIMIT 1
+            AND report_type = 'daily'
+            AND report_value = :time
         """)
 
-        email_row = db.execute(email_query, {"client_id": client_id}).mappings().first()
+        email_row = db.execute(email_query, {"client_id": client_id, "time": current_time}).mappings().first()
 
         if not email_row:
             raise HTTPException(status_code=404, detail="Email configuration not found for Crystal report")
