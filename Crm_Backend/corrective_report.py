@@ -5,6 +5,8 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from database import get_db4  # your existing DB dependency
 from sqlalchemy import text
+from openpyxl import Workbook
+from io import BytesIO
 
 router = APIRouter()
 
@@ -182,3 +184,83 @@ def corrective_report(
         },
         "data": final_data
     }
+
+
+# Below Function is for schedular that runs from "reportmatrix_master_new" table.
+def generate_corrective_excel(client_id: int, start_date: str, db: Session):
+
+    start = datetime.strptime(start_date, "%Y-%m-%d").date()
+
+    calls = fetch_calls(client_id, start, start, db)
+
+    data_arr: Dict[str, Dict[str, Dict[str, int]]] = {}
+
+    for call in calls:
+
+        category = call.get("Category2") or "Undefined"
+        phase = call.get("Category3") or "Undefined"
+        status = call.get("CloseLoopCate1")
+
+        data_arr.setdefault(category, {})
+        data_arr[category].setdefault(phase, {"open": 0, "close": 0, "total": 0})
+
+        if status == "Open":
+            data_arr[category][phase]["open"] += 1
+        else:
+            data_arr[category][phase]["close"] += 1
+
+        data_arr[category][phase]["total"] += 1
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Corrective Report"
+
+    ws.append(["Category","Phase","Total Tickets","Open","Close","Ticket Closure %"])
+
+    grand_open = grand_close = grand_total = 0
+
+    for category, phases in data_arr.items():
+
+        cat_open = cat_close = cat_total = 0
+        first = True
+
+        for phase, values in phases.items():
+
+            total = values["total"]
+            open_val = values["open"]
+            close_val = values["close"]
+
+            ws.append([
+                category if first else "",
+                phase,
+                total,
+                open_val,
+                close_val,
+                ""
+            ])
+
+            first = False
+
+            cat_open += open_val
+            cat_close += close_val
+            cat_total += total
+
+        closure = round((cat_close / cat_total) * 100) if cat_total else 0
+
+        ws.append(["","Total",cat_total,cat_open,cat_close,f"{closure} %"])
+
+        grand_open += cat_open
+        grand_close += cat_close
+        grand_total += cat_total
+
+    grand_closure = round((grand_close / grand_total) * 100) if grand_total else 0
+
+    ws.append(["","GRAND TOTAL",grand_total,grand_open,grand_close,f"{grand_closure} %"])
+
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+
+    return stream
+
+

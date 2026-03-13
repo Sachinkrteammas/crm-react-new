@@ -3,6 +3,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import os
 from dotenv import load_dotenv
+from email.message import EmailMessage
 
 load_dotenv()
 
@@ -82,3 +83,70 @@ def send_reset_password_email(to_email: str, reset_link: str):
         subject=subject,
         html_content=html_content
     )
+
+
+
+
+
+def send_email_with_excel(
+    to_email,
+    subject,
+    body,
+    excel_stream,
+    filename,
+    cc_emails=None
+):
+    sender = os.getenv("EMAIL_USER")
+    password = os.getenv("EMAIL_PASSWORD")
+    smtp_server = os.getenv("SMTP_SERVER")
+    smtp_port = int(os.getenv("SMTP_PORT"))
+
+    try:
+        msg = EmailMessage()
+
+        msg["From"] = sender
+        msg["Subject"] = subject
+
+        # Handle TO
+        if isinstance(to_email, list):
+            msg["To"] = ", ".join(to_email)
+            to_list = to_email
+        else:
+            msg["To"] = to_email
+            to_list = [to_email]
+
+        # Handle CC
+        if cc_emails:
+            if isinstance(cc_emails, list):
+                msg["Cc"] = ", ".join(cc_emails)
+                cc_list = cc_emails
+            else:
+                msg["Cc"] = cc_emails
+                cc_list = [cc_emails]
+        else:
+            cc_list = []
+
+        # Email body (HTML supported)
+        msg.add_alternative(body, subtype="html")
+
+        # Ensure stream pointer at start
+        excel_stream.seek(0)
+
+        msg.add_attachment(
+            excel_stream.read(),
+            maintype="application",
+            subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename=filename
+        )
+
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender, password)
+
+            recipients = to_list + cc_list
+            server.send_message(msg, from_addr=sender, to_addrs=recipients)
+
+        print(f"Email sent successfully to {recipients}")
+
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")

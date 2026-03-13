@@ -5,6 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import date, datetime, timedelta
 from database import get_db2, get_db4  # adjust to your actual import path
 from call_scenario import send_call_summary  # adjust path
+from report_scheduler import run_report_scheduler
 from sqlalchemy.orm import Session
 from logger import logger
 import os
@@ -71,6 +72,7 @@ from process_update import router as process_update_router
 from call_flow import router as call_flow_router
 from create_manual_ob_call import router as create_manual_ob_call_router
 from list_id import router as list_id_router
+from manage_mis_report import router as manage_mis_report_router
 
 
 
@@ -140,6 +142,7 @@ app.include_router(process_update_router, tags=["Process Update"], dependencies=
 app.include_router(call_flow_router, tags=["Call Flow"], dependencies=[Depends(verify_token)])
 app.include_router(create_manual_ob_call_router, tags=["Create Manual OB Call"], dependencies=[Depends(verify_token)])
 app.include_router(list_id_router, tags=["List ID"], dependencies=[Depends(verify_token)])
+app.include_router(manage_mis_report_router, tags=["Manage Mis Report"], dependencies=[Depends(verify_token)])
 
 app.include_router(dialer_router, prefix="/api")
 
@@ -249,10 +252,12 @@ def scheduled_daily_billing():
 scheduler = BackgroundScheduler()
 scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
 #scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
-scheduler.start()
+scheduler.add_job(run_report_scheduler, "interval", minutes=1)
+
 
 @app.on_event("startup")
 def on_startup():
+    scheduler.start()
     print("🚀 Scheduler started — Call Summary job will run daily at 9:30 PM")
     print("🚀 Scheduler started — Daily Billing active will run daily at 3:00 AM")
 
