@@ -6,7 +6,7 @@ from database import get_db4, get_db2
 from email_utils import send_email
 import os, html
 from datetime import datetime
-
+from email_utils import send_email_with_excel
 
 router = APIRouter()
 
@@ -401,31 +401,55 @@ def send_call_summary(
         <p>Regards,</p>
         """
 
-        # 📧 Send email
-        recipient = os.getenv("EMAIL_RECEIVER")
-        cc_recipient = os.getenv("EMAIL_CC")
+        # # 📧 Send email
+        # recipient = os.getenv("EMAIL_RECEIVER")
+        # cc_recipient = os.getenv("EMAIL_CC")
 
-        if not recipient:
-            raise HTTPException(status_code=500, detail="EMAIL_RECEIVER not set in .env")
+        # if not recipient:
+        #     raise HTTPException(status_code=500, detail="EMAIL_RECEIVER not set in .env")
+
+        # recipient_list = [email.strip() for email in recipient.split(",") if email.strip()]
+        # cc_list = [email.strip() for email in cc_recipient.split(",") if email.strip()] if cc_recipient else []
+
+        # Fetch email configuration from reportmatrix_master_new
+        email_query = text("""
+            SELECT user_email, cc
+            FROM reportmatrix_master_new
+            WHERE report = 'Crystal'
+            AND client_id = :client_id
+            LIMIT 1
+        """)
+
+        email_row = db.execute(email_query, {"client_id": client_id}).mappings().first()
+
+        if not email_row:
+            raise HTTPException(status_code=404, detail="Email configuration not found for Crystal report")
+
+        # Extract emails
+        recipient = email_row["user_email"]
+        cc_recipient = email_row["cc"]
 
         recipient_list = [email.strip() for email in recipient.split(",") if email.strip()]
         cc_list = [email.strip() for email in cc_recipient.split(",") if email.strip()] if cc_recipient else []
 
         formatted_date = format_date_with_suffix(report_date)
 
-        # ✅ Send ONCE (No loop needed)
-        send_email(
-            to_emails=recipient_list,
-            cc_emails=cc_list,
-            subject=f"CL Crystal EOD Report_{formatted_date}",
-            html_content=html_content
-        )
-
+        # # ✅ Send ONCE (No loop needed)
         # send_email(
-        #     to_email=recipient,
-        #     subject=f"Call Summary Report - {report_date}, For Client-ID: {client_id}",
+        #     to_emails=recipient_list,
+        #     cc_emails=cc_list,
+        #     subject=f"CL Crystal EOD Report_{formatted_date}",
         #     html_content=html_content
         # )
+
+        send_email_with_excel(
+            to_email=recipient_list,
+            cc_emails=cc_list,
+            subject=f"CL Crystal EOD Report_{formatted_date}",
+            body=html_content
+        )
+
+
 
         # Sends message for multiple emails.
         return {

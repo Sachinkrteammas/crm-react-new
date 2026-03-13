@@ -1,15 +1,20 @@
 from datetime import datetime
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from database import get_db4
+from database import get_db4, get_db2
 from email_utils import send_email_with_excel
 from corrective_report import generate_corrective_excel
-
+from logger import logger
+from call_scenario import send_call_summary
+from datetime import date
 
 def run_report_scheduler():
 
     db_gen = get_db4()
     db: Session = next(db_gen)
+
+    db2_gen = get_db2()
+    db2: Session = next(db2_gen)
 
     try:
 
@@ -62,6 +67,26 @@ def run_report_scheduler():
                 )
 
                 print(f"Report sent to {to_email}")
+            
+            # -------------------------------------------------
+            # 2️⃣ Crystal Report (reuse existing API logic)
+            # -------------------------------------------------
+            elif report_name == "Crystal":
+
+                report_date = date.today()
+
+                logger.info(
+                    f"Running Crystal report | client={client_id} | date={report_date}"
+                )
+
+                send_call_summary(
+                    client_id=client_id,
+                    report_date=report_date,
+                    db=db,
+                    db2=db2
+                )
+
+                print(f"Crystal report sent for client {client_id}")
 
     except Exception as e:
         print(f"Scheduler error: {str(e)}")

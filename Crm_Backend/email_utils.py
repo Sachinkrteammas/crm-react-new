@@ -103,8 +103,8 @@ def send_email_with_excel(
     to_email,
     subject,
     body,
-    excel_stream,
-    filename,
+    excel_stream=None,
+    filename=None,
     cc_emails=None
 ):
     sender = os.getenv("EMAIL_USER")
@@ -129,14 +129,15 @@ def send_email_with_excel(
         # Email body
         msg.add_alternative(body, subtype="html")
 
-        excel_stream.seek(0)
-
-        msg.add_attachment(
-            excel_stream.read(),
-            maintype="application",
-            subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            filename=filename
-        )
+        # ✅ Attach Excel ONLY if provided
+        if excel_stream and filename:
+            excel_stream.seek(0)
+            msg.add_attachment(
+                excel_stream.read(),
+                maintype="application",
+                subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                filename=filename
+            )
 
         recipients = to_list + cc_list
 
