@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
 from sqlalchemy import text
-
+from report_scheduler import run_report_scheduler
 
 router = APIRouter()
 
@@ -214,3 +214,11 @@ def delete_report_matrix(id: int = Query(...), db: Session = Depends(get_db4)):
     db.commit()
 
     return {"message": "Report matrix deleted successfully"}
+
+
+
+@router.get("/test")
+def test():
+    print("start")
+    run_report_scheduler()
+    print("end")
