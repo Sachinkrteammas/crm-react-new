@@ -73,7 +73,6 @@ from call_flow import router as call_flow_router
 from create_manual_ob_call import router as create_manual_ob_call_router
 from list_id import router as list_id_router
 from manage_mis_report import router as manage_mis_report_router
-import multiprocessing
 
 
 app = FastAPI(title="CRM Backend")
@@ -257,12 +256,10 @@ scheduler.add_job(run_report_scheduler, "interval", minutes=1)
 
 @app.on_event("startup")
 def on_startup():
-    if multiprocessing.current_process().name == "MainProcess":
         scheduler.start()
         print("🚀 Scheduler started — Call Summary job will run daily at 9:30 PM")
         print("🚀 Scheduler started — Daily Billing active will run daily at 3:00 AM")
 
 @app.on_event("shutdown")
 def on_shutdown():
-    if scheduler.running:
         scheduler.shutdown()
