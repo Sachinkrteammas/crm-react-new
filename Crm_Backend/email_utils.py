@@ -88,6 +88,17 @@ def send_reset_password_email(to_email: str, reset_link: str):
 
 
 
+def normalize_emails(emails):
+    if not emails:
+        return []
+
+    if isinstance(emails, list):
+        return [e.strip() for e in emails if e.strip()]
+
+    # if string like "a@gmail.com,b@gmail.com"
+    return [e.strip() for e in emails.split(",") if e.strip()]
+
+
 def send_email_with_excel(
     to_email,
     subject,
@@ -103,33 +114,21 @@ def send_email_with_excel(
 
     try:
         msg = EmailMessage()
-
         msg["From"] = sender
         msg["Subject"] = subject
 
-        # Handle TO
-        if isinstance(to_email, list):
-            msg["To"] = ", ".join(to_email)
-            to_list = to_email
-        else:
-            msg["To"] = to_email
-            to_list = [to_email]
+        # Normalize emails
+        to_list = normalize_emails(to_email)
+        cc_list = normalize_emails(cc_emails)
 
-        # Handle CC
-        if cc_emails:
-            if isinstance(cc_emails, list):
-                msg["Cc"] = ", ".join(cc_emails)
-                cc_list = cc_emails
-            else:
-                msg["Cc"] = cc_emails
-                cc_list = [cc_emails]
-        else:
-            cc_list = []
+        msg["To"] = ", ".join(to_list)
 
-        # Email body (HTML supported)
+        if cc_list:
+            msg["Cc"] = ", ".join(cc_list)
+
+        # Email body
         msg.add_alternative(body, subtype="html")
 
-        # Ensure stream pointer at start
         excel_stream.seek(0)
 
         msg.add_attachment(
@@ -139,11 +138,11 @@ def send_email_with_excel(
             filename=filename
         )
 
+        recipients = to_list + cc_list
+
         with smtplib.SMTP(smtp_server, smtp_port) as server:
             server.starttls()
             server.login(sender, password)
-
-            recipients = to_list + cc_list
             server.send_message(msg, from_addr=sender, to_addrs=recipients)
 
         print(f"Email sent successfully to {recipients}")
