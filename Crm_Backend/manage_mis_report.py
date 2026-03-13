@@ -216,9 +216,3 @@ def delete_report_matrix(id: int = Query(...), db: Session = Depends(get_db4)):
     return {"message": "Report matrix deleted successfully"}
 
 
-
-@router.get("/test")
-def test():
-    print("start")
-    run_report_scheduler()
-    print("end")
