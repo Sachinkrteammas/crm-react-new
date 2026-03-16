@@ -7,6 +7,7 @@ from corrective_report import generate_corrective_excel
 from logger import logger
 from call_scenario import send_call_summary
 from datetime import date
+from reports import generate_outbound_excel
 
 def run_report_scheduler():
 
@@ -87,6 +88,36 @@ def run_report_scheduler():
                 )
 
                 print(f"Crystal report sent for client {client_id}")
+                
+            # -------------------------------------------------
+            # DIGICOFFER Report (reuse existing API logic)
+            # -------------------------------------------------
+            elif report_name == "Digicoffer Report":
+
+                start_date = datetime.today().strftime("%Y-%m-%d")
+
+                excel_stream = generate_outbound_excel(
+                    client_id,
+                    start_date,
+                    db,
+                    db2
+                )
+
+                send_email_with_excel(
+                    to_email=to_email,
+                    cc_emails=cc,
+                    subject=f"DIGICOFFER SOFTWARE PRIVATE LIMITED REPORT ({start_date})",
+                    body="""
+                    <p>Please find the DIGICOFFER report.</p>
+                    <br>
+                    <p>Best Regards,<br>Team Ispark Data Connect</p>
+                    """,
+                    excel_stream=excel_stream,
+                    filename=f"DIGICOFFER_SOFTWARE_PRIVATE_LIMITED_Report_{start_date}.xlsx"
+                )
+
+                print(f"DIGICOFFER report sent to {to_email}")
+            
 
     except Exception as e:
         print(f"Scheduler error: {str(e)}")

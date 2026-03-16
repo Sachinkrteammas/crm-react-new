@@ -19,6 +19,7 @@ const ManageCampaign = () => {
     campaignName: "",
     description: "",
     campaignTypeId: "",
+    CampaignParentName: "",
   });
 
   // Search & Pagination
@@ -121,12 +122,13 @@ const ManageCampaign = () => {
     payload.append("CampaignName", form.campaignName);
     payload.append("campaign_description", form.description);
     payload.append("CampaignTypeId", form.campaignTypeId);
+    payload.append("CampaignParentName", form.CampaignParentName);
     fields.forEach((f) => f.trim() && payload.append("fields", f));
 
     try {
       await api.post("/campaign/create", payload);
       alert("✅ Campaign created successfully!");
-      setForm({ campaignName: "", description: "", campaignTypeId: "" });
+      setForm({ campaignName: "", description: "", campaignTypeId: "", CampaignParentName: "" });
       setFields([""]);
 
       // Refresh campaigns
@@ -236,6 +238,20 @@ const ManageCampaign = () => {
                 required
               />
             </div>
+
+            <div className="col-md-4 mb-3">
+              <label className="form-label">Campaign ID</label>
+              <input
+                className="form-control"
+                placeholder="Campaign ID"
+                value={form.campaignTypeId}
+                onChange={(e) =>
+                  setForm({ ...form, campaignTypeId: e.target.value })
+                }
+                required
+              />
+            </div>
+
             <div className="col-md-4 mb-3">
               <label className="form-label">Description</label>
               <input
@@ -251,9 +267,9 @@ const ManageCampaign = () => {
               <label className="form-label">Campaign Type</label>
               <select
                 className="form-select"
-                value={form.campaignTypeId}
+                value={form.CampaignParentName}
                 onChange={(e) =>
-                  setForm({ ...form, campaignTypeId: e.target.value })
+                  setForm({ ...form, CampaignParentName: e.target.value })
                 }
                 required
               >

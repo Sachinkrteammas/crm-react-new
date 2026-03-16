@@ -12,6 +12,13 @@ from auth_utils import get_current_user
 from sqlalchemy import text
 from urllib.parse import quote_plus
 from new_outbound_dashboard import get_campaign_in_clause
+from fastapi.responses import StreamingResponse
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Border, Side
+from io import BytesIO
+
+
+
 router = APIRouter()
 
 
@@ -1372,6 +1379,8 @@ def outbound_Report(
             vu.full_name,
             COUNT(*) AS total_calls
         FROM vicidial_log vl
+        LEFT JOIN vicidial_agent_log val 
+            ON vl.uniqueid = val.uniqueid
         LEFT JOIN vicidial_users vu 
             ON vl.user = vu.user
         WHERE vl.call_date BETWEEN :start AND :end
@@ -1583,3 +1592,240 @@ def outbound_Report(
         "statusBreakdown_From_SubScenario2": status_summary,
         "demoBookedCalls": demo_booked_calls
     }
+
+
+
+
+
+
+
+def generate_outbound_excel(company_id, start_date, db, db2):
+
+    # call your existing function logic
+    data = outbound_Report(company_id, start_date, start_date, db, db2)
+
+    overall = data["overall"]
+    agents = data["agents"]
+    status_summary = data["statusBreakdown_From_SubScenario2"]
+    demo_rows = data["demoBookedCalls"]
+    ob_auto = data["obAutoDial"]
+
+    # --------------------------------
+    # SECOND REPORT DATA (OB CDR)
+    # --------------------------------
+    request = OBCDRReportRequest(
+        company_id=company_id,
+        from_date=start_date,
+        to_date=start_date
+    )
+
+    ob_cdr_rows = get_ob_cdr_report(request, db, db2)
+
+    # --------------------------------
+    # Create Workbook
+    # --------------------------------
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "DIGICOFFER SOFTWARE PRIVATE LIMITED REPORT"
+
+    thin_border = Border(
+        left=Side(style='thin'),
+        right=Side(style='thin'),
+        top=Side(style='thin'),
+        bottom=Side(style='thin')
+    )
+
+    def apply_border(ws, start_row, end_row, start_col, end_col):
+        for r in range(start_row, end_row + 1):
+            for c in range(start_col, end_col + 1):
+                ws.cell(row=r, column=c).border = thin_border
+
+    header_fill = PatternFill(start_color="2F5597", end_color="2F5597", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+
+    row = 1
+
+    # --------------------------------
+    # Report Title
+    # --------------------------------
+    title = f"DIGICOFFER SOFTWARE PRIVATE LIMITED REPORT ({start_date})"
+
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
+    ws.cell(row=row, column=1, value=title).font = Font(bold=True)
+    row += 2
+
+    # --------------------------------
+    # Overall Summary
+    # --------------------------------
+    ws.cell(row=row, column=1, value="Connected Calls")
+    ws.cell(row=row, column=2, value="Not Connected Calls")
+    ws.cell(row=row, column=3, value="Total Calls")
+
+    for col in range(1,4):
+        c = ws.cell(row=row, column=col)
+        c.fill = header_fill
+        c.font = header_font
+
+    row += 1
+
+    ws.cell(row=row, column=1, value=overall["connected"])
+    ws.cell(row=row, column=2, value=overall["notConnected"])
+    ws.cell(row=row, column=3, value=overall["totalCalls"])
+
+    apply_border(ws, row-1, row, 1, 3)
+
+    row += 3
+
+    # --------------------------------
+    # Agent Performance
+    # --------------------------------
+    ws.cell(row=row, column=1, value="Agent Performance").font = Font(bold=True)
+    row += 1
+
+    headers = ["Agent Name", "Connected", "Not Connected", "Total Calls"]
+
+    for col, h in enumerate(headers, 1):
+        cell = ws.cell(row=row, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+
+    row += 1
+
+    for agent, stats in agents.items():
+        ws.cell(row=row, column=1, value=agent)
+        ws.cell(row=row, column=2, value=stats["connected"])
+        ws.cell(row=row, column=3, value=stats["notConnected"])
+        ws.cell(row=row, column=4, value=stats["totalCalls"])
+        row += 1
+
+    agent_start = row - len(agents) - 1
+    agent_end = row - 1
+    apply_border(ws, agent_start, agent_end, 1, 4)
+
+    row += 2
+
+    # --------------------------------
+    # Drop Calls
+    # --------------------------------
+    ws.cell(row=row, column=1, value="Drop Calls").font = Font(bold=True)
+    row += 1
+
+    ws.cell(row=row, column=1, value="Not Connected")
+    ws.cell(row=row, column=2, value=ob_auto["notConnected"])
+
+    apply_border(ws, row, row, 1, 2)
+
+    row += 3
+
+    # --------------------------------
+    # Status Breakdown
+    # --------------------------------
+    ws.cell(row=row, column=1, value="Status Breakdown").font = Font(bold=True)
+    row += 1
+
+    ws.cell(row=row, column=1, value="Status").fill = header_fill
+    ws.cell(row=row, column=1).font = header_font
+
+    ws.cell(row=row, column=2, value="Count").fill = header_fill
+    ws.cell(row=row, column=2).font = header_font
+
+    row += 1
+
+    for status, count in status_summary.items():
+        ws.cell(row=row, column=1, value=status)
+        ws.cell(row=row, column=2, value=count)
+        row += 1
+
+    status_start = row - len(status_summary) - 1
+    status_end = row - 1
+    apply_border(ws, status_start, status_end, 1, 2)
+
+    row += 3
+
+    # --------------------------------
+    # Demo Booked Details
+    # --------------------------------
+    ws.cell(row=row, column=1, value="Demo Booked Details").font = Font(bold=True)
+    row += 1
+
+    demo_headers = [
+        "Name",
+        "Email Address",
+        "Contact Number",
+        "App Installation Done",
+        "Meeting Arrange Date",
+        "Location",
+        "Agent Name",
+        "Call Date"
+    ]
+
+    for col, h in enumerate(demo_headers, 1):
+        cell = ws.cell(row=row, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+
+    row += 1
+
+    for r in demo_rows:
+        ws.cell(row=row, column=1, value=r.get("Name"))
+        ws.cell(row=row, column=2, value=r.get("Email Address"))
+        ws.cell(row=row, column=3, value=r.get("Contact Number"))
+        ws.cell(row=row, column=4, value=r.get("App Installation Done"))
+        ws.cell(row=row, column=5, value=r.get("Meeting Arrange Date"))
+        ws.cell(row=row, column=6, value=r.get("Location"))
+        ws.cell(row=row, column=7, value=r.get("Agent"))
+        ws.cell(row=row, column=8, value=r.get("Call Date"))
+        row += 1
+
+    demo_start = row - len(demo_rows) - 1
+    demo_end = row - 1
+    apply_border(ws, demo_start, demo_end, 1, 8)
+
+    # --------------------------------
+    # Column Widths (ADD HERE)
+    # --------------------------------
+    ws.column_dimensions['A'].width = 22
+    ws.column_dimensions['B'].width = 28
+    ws.column_dimensions['C'].width = 18
+    ws.column_dimensions['D'].width = 22
+    ws.column_dimensions['E'].width = 32
+    ws.column_dimensions['F'].width = 22
+    ws.column_dimensions['G'].width = 22
+    ws.column_dimensions['H'].width = 22
+
+    # --------------------------------
+    # SHEET 2 (OB CDR REPORT)
+    # --------------------------------
+    ws2 = wb.create_sheet(title="OB CDR REPORT")
+
+    if ob_cdr_rows:
+
+        headers = list(ob_cdr_rows[0].keys())
+
+        # header
+        for col, h in enumerate(headers, 1):
+            cell = ws2.cell(row=1, column=col, value=h)
+            cell.fill = header_fill
+            cell.font = header_font
+
+        # data
+        row_idx = 2
+        for record in ob_cdr_rows:
+            for col_idx, value in enumerate(record.values(), 1):
+                ws2.cell(row=row_idx, column=col_idx, value=value)
+            row_idx += 1
+
+        apply_border(ws2, 1, row_idx-1, 1, len(headers))
+
+    # --------------------------------
+    # Save to Stream
+    # --------------------------------
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+
+    return stream

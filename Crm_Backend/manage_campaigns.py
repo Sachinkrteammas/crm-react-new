@@ -40,6 +40,7 @@ def create_campaign(
     CampaignName: str = Form(...),
     campaign_description: Optional[str] = Form(None),
     CampaignTypeId: str = Form(...),
+    CampaignParentName: str = Form(...),
     fields: Optional[List[str]] = Form(None),
     db: Session = Depends(get_db4)
 ):
@@ -95,13 +96,13 @@ def create_campaign(
         "campaign_id": CampaignTypeId,
         "CreationDate": creation_date,
         "TotalCount": total_count,
-        "CampaignParentName": CampaignTypeId,  
+        "CampaignParentName": CampaignParentName,  
         **field_data
     }
 
     db.execute(query, params)
     db.commit()
-    return {"message": "Campaign created successfully", "TotalCount": total_count, "CampaignParentName": CampaignTypeId}
+    return {"message": "Campaign created successfully", "TotalCount": total_count, "CampaignParentName": CampaignParentName}
 
 
 # ✅ 3. List All Campaigns (with Type Name)
