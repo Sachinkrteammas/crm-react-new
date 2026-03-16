@@ -653,3 +653,127 @@ def slot_wise_utilization(
         "timearray": list(set(timearray)),
         "datetimeArray": datetimeArray
     }
+
+
+
+
+def generate_rl_sl_excel(startdate, enddate, clientID, sd_type, db1, db2):
+
+    # ---------------------------------
+    # Call existing API logic
+    # ---------------------------------
+    result = slot_wise_utilization(
+        startdate=startdate,
+        enddate=enddate,
+        clientID=clientID,
+        sd_type=sd_type,
+        db1=db1,
+        db2=db2
+    )
+
+    jsonData = result.get("data", {})
+
+    rows = []
+
+    # ---------------------------------
+    # JSON → ROWS
+    # ---------------------------------
+    for date, hours in jsonData.items():
+        for hour, values in hours.items():
+
+            rows.append([
+                date,
+                hour,
+                values.get("Total", 0),
+                values.get("Answered", 0),
+                values.get("Manpower", 0),
+                values.get("Shared", 0),
+                values.get("Dedicated", 0),
+                values.get("Other", 0),
+                values.get("Talk", 0),
+                values.get("wait", 0),
+                values.get("dispo", 0),
+                values.get("hold", 0),
+                values.get("Al %", 0),
+                values.get("SL %", 0),
+                values.get("RL %", 0),
+                values.get("RL", 0),
+                values.get("Total login", 0),
+                values.get("Net login", 0),
+                values.get("Utilization %", 0),
+                values.get("WIthinSLA", 0),
+                values.get("Manpower Agents", ""),
+                values.get("Shared Agents", ""),
+                values.get("Dedicated Agents", ""),
+                values.get("Other Agents", "")
+            ])
+
+    # ---------------------------------
+    # Create Workbook
+    # ---------------------------------
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "RL SL Report"
+
+    headers = [
+        "Date","Hour","Total","Answered","Manpower","Shared","Dedicated","Other",
+        "Talk","Wait","Dispo","Hold",
+        "Al %","SL %","RL %","RL",
+        "Total Login","Net Login","Utilization %",
+        "Within SLA",
+        "Manpower Agents","Shared Agents","Dedicated Agents","Other Agents"
+    ]
+
+    ws.append(headers)
+
+    # ---------------------------------
+    # Add Data Rows
+    # ---------------------------------
+    for r in rows:
+        ws.append(r)
+
+    # ---------------------------------
+    # GRAND TOTAL
+    # ---------------------------------
+    if rows:
+
+        percent_cols = [12, 13, 14, 18]  # Al %, SL %, RL %, Utilization %
+
+        grand = ["Grand Total", ""]
+
+        for i in range(2, 20):
+
+            col_values = [float(r[i]) if r[i] else 0 for r in rows]
+
+            if i in percent_cols:
+                grand.append(round(sum(col_values) / len(col_values), 2))
+            else:
+                grand.append(round(sum(col_values), 2))
+
+        # agent columns empty
+        grand += ["", "", "", ""]
+
+        ws.append(grand)
+
+    # ---------------------------------
+    # Auto Column Width
+    # ---------------------------------
+    for col in ws.columns:
+
+        max_length = 0
+        column = col[0].column_letter
+
+        for cell in col:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+
+        ws.column_dimensions[column].width = max_length + 2
+
+    # ---------------------------------
+    # Save to Memory
+    # ---------------------------------
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return output

@@ -8,6 +8,7 @@ from logger import logger
 from call_scenario import send_call_summary
 from datetime import date
 from reports import generate_outbound_excel
+from sla_reports import generate_rl_sl_excel
 
 def run_report_scheduler():
 
@@ -117,6 +118,34 @@ def run_report_scheduler():
                 )
 
                 print(f"DIGICOFFER report sent to {to_email}")
+
+            elif report_name == "RL/SL":
+
+                today = datetime.today().strftime("%Y-%m-%d")
+
+                excel_stream = generate_rl_sl_excel(
+                    startdate=today,
+                    enddate=today,
+                    clientID=client_id,
+                    sd_type="All",
+                    db1=db,
+                    db2=db2
+                )
+
+                send_email_with_excel(
+                    to_email=to_email,
+                    cc_emails=cc,
+                    subject=f"RL/SL Report ({today})",
+                    body="""
+                    <p>Please find attached RL/SL Report.</p>
+                    <br>
+                    <p>Best Regards,<br>Team Ispark Data Connect</p>
+                    """,
+                    excel_stream=excel_stream,
+                    filename="RL_SL_Report.xlsx"
+                )
+
+                print(f"RL_SL_Report sent to {to_email}")
             
 
     except Exception as e:
@@ -124,3 +153,4 @@ def run_report_scheduler():
 
     finally:
         db.close()
+        db2.close()
