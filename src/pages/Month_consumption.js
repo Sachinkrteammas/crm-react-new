@@ -11,8 +11,9 @@ const MonthConsumption = () => {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState("");
 
-  const currentYear = new Date().getFullYear();
+  const [type, setType] = useState("");
 
+  const currentYear = new Date().getFullYear();
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
@@ -21,30 +22,56 @@ const MonthConsumption = () => {
   const [loading, setLoading] = useState(false);
 
   // ===============================
-  // FETCH CLIENT LIST
+  // FETCH CLIENTS
   // ===============================
   useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        let is_shared_param = null;
+
+        if (type === "0") is_shared_param = 0;
+        else if (type === "1") is_shared_param = 1;
+
+        const res = await api.get("/companies", {
+          params:
+            is_shared_param !== null
+              ? { is_shared: is_shared_param }
+              : {},
+        });
+
+        const sorted = res.data.sort((a, b) =>
+          (a.company_name || "").localeCompare(
+            b.company_name || "",
+            "en",
+            { sensitivity: "base" }
+          )
+        );
+
+        setClients([
+          { company_id: "ALL", company_name: "ALL" },
+          ...sorted,
+        ]);
+      } catch (err) {
+        console.error("Client fetch error:", err);
+      }
+    };
+
     if (userType === "Super-Admin" || userType === "Admin") {
-      api
-        .get("/agents/clients-rights")
-        .then((res) => {
-          const sorted = res.data.sort((a, b) =>
-            a.company_name.localeCompare(b.company_name)
-          );
-          setClients(sorted);
-        })
-        .catch((err) => console.error(err));
+      fetchClients();
     } else {
       setSelectedClient(companyId);
     }
-  }, []);
+  }, [type]);
 
   // ===============================
   // API CALL
   // ===============================
   const fetchReport = async () => {
-    const payload = { year, month };
-    if (selectedClient) payload.company_id = selectedClient;
+    const payload = { year, month, type };
+
+    if (selectedClient && selectedClient !== "ALL") {
+      payload.company_id = selectedClient;
+    }
 
     const res = await api.post(
       "/report/company_consumption_month",
@@ -55,23 +82,22 @@ const MonthConsumption = () => {
   };
 
   // ===============================
-  // VIEW DATA
+  // VIEW
   // ===============================
   const handleView = async () => {
     setLoading(true);
-
     try {
       const res = await fetchReport();
 
       if (!res?.data?.length) {
         alert("No data found");
+        setShowTable(false);
         return;
       }
 
       const rows = res.data.map((row) => ({
-        companyName: row.Company_Name,
-        companyType: row.Company_Type,
-        month: row.Month,
+        companyName: row.Company_Name || "-",
+        companyType: row.Company_Type || "-",
         talkMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
         callRate: Number(row.Call_Rate || 0).toFixed(2),
         totalValue: Number(row.Total_Consume || 0).toFixed(2),
@@ -81,18 +107,17 @@ const MonthConsumption = () => {
       setShowTable(true);
     } catch (err) {
       console.error(err);
-      alert("Failed to fetch data");
+      alert("Error fetching data");
     } finally {
       setLoading(false);
     }
   };
 
   // ===============================
-  // EXPORT EXCEL
+  // EXPORT
   // ===============================
   const handleExport = async () => {
     setLoading(true);
-
     try {
       const res = await fetchReport();
 
@@ -102,43 +127,21 @@ const MonthConsumption = () => {
       }
 
       const exportRows = res.data.map((row) => ({
-        ClientName: row.Company_Name,
-        Type: row.Company_Type,
-        Month: row.Month,
-        TalkTimeMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
+        ClientName: row.Company_Name || "-",
+        Type: row.Company_Type || "-",
+        TalkMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
         CallRate: Number(row.Call_Rate || 0).toFixed(2),
         TotalValue: Number(row.Total_Consume || 0).toFixed(2),
       }));
-
-      const selectedClientObj = clients.find(
-        (c) => String(c.company_id) === String(selectedClient)
-      );
-
-      const clientLabel = selectedClientObj
-        ? selectedClientObj.company_name
-        : "All Clients";
 
       const monthName = [
         "Jan","Feb","Mar","Apr","May","Jun",
         "Jul","Aug","Sep","Oct","Nov","Dec"
       ][month - 1];
 
-      const headerRows = [
-        [
-          "Month Consumption Report",
-          `Client: ${clientLabel}`,
-          `Month: ${monthName} ${year}`
-        ],
-        [],
-      ];
-
-      const worksheet = XLSX.utils.json_to_sheet(exportRows, {
-        origin: "A3",
-      });
-
-      XLSX.utils.sheet_add_aoa(worksheet, headerRows, { origin: "A1" });
-
+      const worksheet = XLSX.utils.json_to_sheet(exportRows);
       const workbook = XLSX.utils.book_new();
+
       XLSX.utils.book_append_sheet(
         workbook,
         worksheet,
@@ -170,23 +173,41 @@ const MonthConsumption = () => {
           <div className="bar"></div>
           <div className="bar"></div>
           <div className="bar"></div>
+          <div className="bar"></div>
+          <div className="bar"></div>
         </div>
       )}
 
       <div className={`priority-wrapper ${loading ? "blurred" : ""}`}>
         <div className="card p-4 mb-4">
-          <h5>Month Consumption Report</h5>
+          <h5>Month Consumption</h5>
 
           <div className="d-flex gap-3 flex-wrap align-items-center">
 
+            {/* TYPE */}
+            <select
+              className="form-control w-auto"
+              value={type}
+              onChange={(e) => {
+                setType(e.target.value);
+                setSelectedClient("");
+              }}
+            >
+              <option value="">All</option>
+              <option value="0">Dedicated</option>
+              <option value="1">Shared</option>
+            </select>
+
             {/* CLIENT */}
-            {(userType === "Super-Admin" || userType === "Admin") && (
+            {(userType === "Admin" ||
+              userType === "Super-Admin") && (
               <select
-                className="form-control w-25"
+                className="form-control w-20"
                 value={selectedClient}
-                onChange={(e) => setSelectedClient(e.target.value)}
+                onChange={(e) =>
+                  setSelectedClient(e.target.value)
+                }
               >
-                <option value="">All Clients</option>
                 {clients.map((c) => (
                   <option key={c.company_id} value={c.company_id}>
                     {c.company_name}
@@ -195,13 +216,16 @@ const MonthConsumption = () => {
               </select>
             )}
 
-            {/* YEAR (DYNAMIC) */}
+            {/* YEAR */}
             <select
               className="form-control w-auto"
               value={year}
               onChange={(e) => setYear(e.target.value)}
             >
-              {Array.from({ length: 10 }, (_, i) => currentYear - 5 + i).map((y) => (
+              {Array.from(
+                { length: 10 },
+                (_, i) => currentYear - 5 + i
+              ).map((y) => (
                 <option key={y} value={y}>
                   {y}
                 </option>
@@ -229,7 +253,7 @@ const MonthConsumption = () => {
             </button>
 
             <button className="btn btn-success" onClick={handleExport}>
-              Export Excel
+              Export
             </button>
           </div>
         </div>
@@ -239,39 +263,36 @@ const MonthConsumption = () => {
           <div className="card p-4">
             <div
               className="table-responsive"
-              style={{ maxHeight: "500px", overflow: "auto" }}
+              style={{ maxHeight: "600px", overflowY: "auto" }}
             >
               <table className="table table-bordered">
-                <thead>
+                <thead
+                  style={{
+                    position: "sticky",
+                    top: 0,
+                    background: "#fff",
+                    zIndex: 1,
+                  }}
+                >
                   <tr>
-                    <th>Client Name</th>
+                    <th>Client</th>
                     <th>Type</th>
-                    <th>Month</th>
-                    <th>Talk Time (Minutes)</th>
-                    <th>Call Rate</th>
-                    <th>Total Value</th>
+                    <th>Talk</th>
+                    <th>Rate</th>
+                    <th>Total</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {data.length > 0 ? (
-                    data.map((row, i) => (
-                      <tr key={i}>
-                        <td>{row.companyName}</td>
-                        <td>{row.companyType}</td>
-                        <td>{row.month}</td>
-                        <td>{row.talkMinutes}</td>
-                        <td>{row.callRate}</td>
-                        <td>{row.totalValue}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="6" className="text-center">
-                        No data available
-                      </td>
+                  {data.map((r, i) => (
+                    <tr key={i}>
+                      <td>{r.companyName}</td>
+                      <td>{r.companyType}</td>
+                      <td>{r.talkMinutes}</td>
+                      <td>{r.callRate}</td>
+                      <td>{r.totalValue}</td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>

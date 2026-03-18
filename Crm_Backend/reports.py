@@ -1219,56 +1219,56 @@ def company_consumption_month(
 ):
     company_id = request.get("company_id")
     year = request.get("year")
-    month = request.get("month")  # 1–12
+    month = request.get("month")
+    type_filter = request.get("type")
 
     if not year or not month:
         raise HTTPException(status_code=400, detail="year and month required")
 
-    # ===============================
-    # DATE RANGE
-    # ===============================
+    # ✅ DATE RANGE
     start_date = f"{year}-{str(month).zfill(2)}-01"
     last_day = calendar.monthrange(int(year), int(month))[1]
     end_date = f"{year}-{str(month).zfill(2)}-{last_day}"
 
-    # ===============================
-    # COMPANY LIST (SORTED)
-    # ===============================
-    if company_id:
-        company_q = text("""
-            SELECT company_id, campaignid, company_name, is_shared
-            FROM registration_master
-            WHERE company_id = :company_id
-            AND status = 'A'
-            ORDER BY company_name
-        """)
-        companies = db.execute(
-            company_q, {"company_id": company_id}
-        ).mappings().fetchall()
-    else:
-        company_q = text("""
-            SELECT company_id, campaignid, company_name, is_shared
-            FROM registration_master
-            WHERE status = 'A'
-            ORDER BY company_name
-        """)
-        companies = db.execute(company_q).mappings().fetchall()
+    # --------------------------------------------------
+    # 1️⃣ COMPANY QUERY (WITH TYPE FILTER)
+    # --------------------------------------------------
+    base_query = """
+        SELECT company_id, campaignid, company_name, is_shared
+        FROM registration_master
+        WHERE status = 'A'
+    """
+
+    params = {}
+
+    # ✅ COMPANY FILTER
+    if company_id and company_id != "ALL":
+        base_query += " AND company_id = :company_id"
+        params["company_id"] = company_id
+
+    # ✅ TYPE FILTER
+    if type_filter in ["0", "1"]:
+        base_query += " AND is_shared = :is_shared"
+        params["is_shared"] = int(type_filter)
+
+    # ✅ SORTING
+    base_query += " ORDER BY company_name ASC"
+
+    companies = db.execute(text(base_query), params).mappings().fetchall()
 
     final_result = []
 
-    # ===============================
-    # LOOP EACH COMPANY
-    # ===============================
+    # --------------------------------------------------
+    # 2️⃣ LOOP
+    # --------------------------------------------------
     for comp in companies:
         comp_id = comp["company_id"]
         company_name = comp["company_name"]
 
-        # ✅ FIX: Shared / Dedicated
+        # ✅ TYPE LABEL
         company_type = "Shared" if str(comp.get("is_shared")) == "1" else "Dedicated"
 
-        # ===============================
-        # GET PLAN
-        # ===============================
+        # PLAN
         bal_row = db.execute(text("""
             SELECT PlanId FROM balance_master
             WHERE clientId = :cid LIMIT 1
@@ -1279,15 +1279,14 @@ def company_consumption_month(
 
         plan_row = db.execute(text("""
             SELECT rate_per_pulse_day_shift
-            FROM plan_master
-            WHERE Id = :pid
+            FROM plan_master WHERE Id = :pid
         """), {"pid": bal_row["PlanId"]}).mappings().fetchone()
 
         day_rate = float(plan_row.get("rate_per_pulse_day_shift") or 0)
 
-        # ===============================
-        # CONSUMPTION DATA
-        # ===============================
+        # --------------------------------------------------
+        # 3️⃣ CONSUME DATA
+        # --------------------------------------------------
         consume = db.execute(text("""
             SELECT
                 COALESCE(SUM(ib_total + ibn_total), 0) AS total_consume,
@@ -1310,9 +1309,9 @@ def company_consumption_month(
             "Call_Rate": round(day_rate, 2)
         })
 
-    # ===============================
+    # --------------------------------------------------
     # FINAL RESPONSE
-    # ===============================
+    # --------------------------------------------------
     return {
         "year": year,
         "month": month,
