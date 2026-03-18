@@ -117,53 +117,72 @@ const MonthConsumption = () => {
   // EXPORT
   // ===============================
   const handleExport = async () => {
-    setLoading(true);
-    try {
-      const res = await fetchReport();
+  setLoading(true);
+  try {
+    const res = await fetchReport();
 
-      if (!res?.data?.length) {
-        alert("No data available");
-        return;
-      }
-
-      const exportRows = res.data.map((row) => ({
-        ClientName: row.Company_Name || "-",
-        Type: row.Company_Type || "-",
-        TalkMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
-        CallRate: Number(row.Call_Rate || 0).toFixed(2),
-        TotalValue: Number(row.Total_Consume || 0).toFixed(2),
-      }));
-
-      const monthName = [
-        "Jan","Feb","Mar","Apr","May","Jun",
-        "Jul","Aug","Sep","Oct","Nov","Dec"
-      ][month - 1];
-
-      const worksheet = XLSX.utils.json_to_sheet(exportRows);
-      const workbook = XLSX.utils.book_new();
-
-      XLSX.utils.book_append_sheet(
-        workbook,
-        worksheet,
-        "Month Consumption"
-      );
-
-      const buffer = XLSX.write(workbook, {
-        bookType: "xlsx",
-        type: "array",
-      });
-
-      saveAs(
-        new Blob([buffer]),
-        `MonthConsumption_${monthName}_${year}.xlsx`
-      );
-    } catch (err) {
-      console.error(err);
-      alert("Export failed");
-    } finally {
-      setLoading(false);
+    if (!res?.data?.length) {
+      alert("No data available");
+      return;
     }
-  };
+
+    const exportRows = res.data.map((row) => ({
+      ClientName: row.Company_Name || "-",
+      Type: row.Company_Type || "-",
+      TalkMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
+      CallRate: Number(row.Call_Rate || 0).toFixed(2),
+      TotalValue: Number(row.Total_Consume || 0).toFixed(2),
+    }));
+
+    const monthName = [
+      "Jan","Feb","Mar","Apr","May","Jun",
+      "Jul","Aug","Sep","Oct","Nov","Dec"
+    ][month - 1];
+
+    const selectedClientObj = clients.find(
+      (c) => String(c.company_id) === String(selectedClient)
+    );
+
+    const clientLabel = selectedClientObj
+      ? selectedClientObj.company_name
+      : "All Clients";
+
+    // ✅ ONE LINE HEADER
+    const headerRows = [
+      [`Month Consumption Report | Client: ${clientLabel} | Month: ${monthName} ${year}`],
+      [],
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(exportRows, {
+      origin: "A3",
+    });
+
+    XLSX.utils.sheet_add_aoa(worksheet, headerRows, { origin: "A1" });
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      worksheet,
+      "Month Consumption"
+    );
+
+    const buffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+    saveAs(
+      new Blob([buffer]),
+      `MonthConsumption_${monthName}_${year}.xlsx`
+    );
+
+  } catch (err) {
+    console.error(err);
+    alert("Export failed");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
