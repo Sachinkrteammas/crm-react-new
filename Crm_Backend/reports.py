@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 from io import BytesIO
-
+from collections import defaultdict
 
 
 router = APIRouter()
@@ -1829,3 +1829,520 @@ def generate_outbound_excel(company_id, start_date, db, db2):
     stream.seek(0)
 
     return stream
+
+
+
+
+
+
+
+
+@router.get("/closer-log-report")
+def closer_log_report(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db2)
+) -> Dict:
+
+    # 🔹 Overall
+    overall_query = text("""
+        SELECT 
+            COUNT(*) AS total_calls,
+            SUM(length_in_sec) AS total_talk_time,
+            AVG(length_in_sec) AS avg_call_duration
+        FROM vicidial_closer_log
+        WHERE DATE(call_date) BETWEEN :start AND :end
+        AND user != 'VDCL'
+    """)
+
+    overall = db.execute(overall_query, {
+        "start": start_date,
+        "end": end_date
+    }).mappings().first()
+
+    # 🔹 Campaign-wise (date-wise)
+    campaign_query = text("""
+        SELECT 
+            DATE(call_date) AS call_date,
+            campaign_id,
+            COUNT(*) AS total_calls,
+            SUM(length_in_sec) AS talk_time
+        FROM vicidial_closer_log
+        WHERE DATE(call_date) BETWEEN :start AND :end
+        AND user != 'VDCL'
+        GROUP BY DATE(call_date), campaign_id
+        ORDER BY call_date, campaign_id ASC
+    """)
+
+    campaign_rows = db.execute(campaign_query, {
+        "start": start_date,
+        "end": end_date
+    }).mappings().all()
+
+    # 🔹 Agent → Campaign breakdown (WITH full_name)
+    agent_query = text("""
+        SELECT 
+            DATE(vcl.call_date) AS call_date,
+            vcl.user AS user,
+            COALESCE(vu.full_name, vcl.user) AS full_name,
+            vcl.campaign_id,
+            COUNT(*) AS total_calls
+        FROM vicidial_closer_log vcl
+        LEFT JOIN vicidial_users vu 
+            ON vcl.user = vu.user
+        WHERE DATE(vcl.call_date) BETWEEN :start AND :end
+        AND vcl.user != 'VDCL'
+        GROUP BY DATE(vcl.call_date), vcl.user, vu.full_name, vcl.campaign_id
+        ORDER BY call_date, full_name
+    """)
+
+    agent_rows = db.execute(agent_query, {
+        "start": start_date,
+        "end": end_date
+    }).mappings().all()
+
+    # -------------------------------
+    # 🔹 Transform Campaign Data
+    # -------------------------------
+    campaign_dict = defaultdict(list)
+
+    for row in campaign_rows:
+        campaign_dict[str(row["call_date"])].append({
+            "campaign_id": row["campaign_id"],
+            "total_calls": row["total_calls"],
+            "talk_time": row["talk_time"]
+        })
+
+    # -------------------------------
+    # 🔹 Transform Agent Data
+    # user + full_name → campaigns
+    # -------------------------------
+    agent_dict = defaultdict(lambda: defaultdict(lambda: {
+        "user": "",
+        "full_name": "",
+        "campaigns": []
+    }))
+
+    for row in agent_rows:
+        date_key = str(row["call_date"])
+        user_key = row["user"]
+
+        agent_entry = agent_dict[date_key][user_key]
+
+        agent_entry["user"] = row["user"]
+        agent_entry["full_name"] = row["full_name"]
+
+        agent_entry["campaigns"].append({
+            "campaign_id": row["campaign_id"],
+            "total_calls": row["total_calls"]
+        })
+
+    # format final output
+    formatted_agents = {}
+
+    for date_key, users in agent_dict.items():
+        formatted_agents[date_key] = list(users.values())
+
+    return {
+        "overall": dict(overall) if overall else {},
+        "campaigns_date_wise": dict(campaign_dict),
+        "agents_date_wise": formatted_agents
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+@router.get("/closer-log-report-by-campaign")
+def closer_log_report_by_campaign(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db2)
+) -> Dict:
+
+    # 🔹 Overall (same)
+    overall_query = text("""
+        SELECT 
+            COUNT(*) AS total_calls,
+            SUM(length_in_sec) AS total_talk_time,
+            AVG(length_in_sec) AS avg_call_duration
+        FROM vicidial_closer_log
+        WHERE DATE(call_date) BETWEEN :start AND :end
+        AND user != 'VDCL'
+    """)
+
+    overall = db.execute(overall_query, {
+        "start": start_date,
+        "end": end_date
+    }).mappings().first()
+
+    # 🔹 Campaign-wise (same)
+    campaign_query = text("""
+        SELECT 
+            DATE(call_date) AS call_date,
+            campaign_id,
+            COUNT(*) AS total_calls,
+            SUM(length_in_sec) AS talk_time
+        FROM vicidial_closer_log
+        WHERE DATE(call_date) BETWEEN :start AND :end
+        AND user != 'VDCL'
+        GROUP BY DATE(call_date), campaign_id
+        ORDER BY call_date, campaign_id ASC
+    """)
+
+    campaign_rows = db.execute(campaign_query, {
+        "start": start_date,
+        "end": end_date
+    }).mappings().all()
+
+    # 🔹 Agent query (same)
+    agent_query = text("""
+        SELECT 
+            DATE(vcl.call_date) AS call_date,
+            vcl.user AS user,
+            COALESCE(vu.full_name, vcl.user) AS full_name,
+            vcl.campaign_id,
+            COUNT(*) AS total_calls
+        FROM vicidial_closer_log vcl
+        LEFT JOIN vicidial_users vu 
+            ON vcl.user = vu.user
+        WHERE DATE(vcl.call_date) BETWEEN :start AND :end
+        AND vcl.user != 'VDCL'
+        GROUP BY DATE(vcl.call_date), vcl.user, vu.full_name, vcl.campaign_id
+        ORDER BY call_date, campaign_id, full_name
+    """)
+
+    agent_rows = db.execute(agent_query, {
+        "start": start_date,
+        "end": end_date
+    }).mappings().all()
+
+    # -------------------------------
+    # 🔹 Campaign Date Wise (same)
+    # -------------------------------
+    campaign_dict = defaultdict(list)
+
+    for row in campaign_rows:
+        campaign_dict[str(row["call_date"])].append({
+            "campaign_id": row["campaign_id"],
+            "total_calls": row["total_calls"],
+            "talk_time": row["talk_time"]
+        })
+
+    # -------------------------------
+    # 🔹 🔥 NEW: Campaign → Users
+    # -------------------------------
+    campaign_user_dict = defaultdict(lambda: defaultdict(lambda: {
+        "campaign_id": "",
+        "users": []
+    }))
+
+    for row in agent_rows:
+        date_key = str(row["call_date"])
+        campaign_key = row["campaign_id"]
+
+        campaign_entry = campaign_user_dict[date_key][campaign_key]
+
+        campaign_entry["campaign_id"] = campaign_key
+
+        campaign_entry["users"].append({
+            "user": row["user"],
+            "full_name": row["full_name"],
+            "total_calls": row["total_calls"]
+        })
+
+    # format final output
+    formatted_campaign_users = {}
+
+    for date_key, campaigns in campaign_user_dict.items():
+        formatted_campaign_users[date_key] = list(campaigns.values())
+
+    return {
+        "overall": dict(overall) if overall else {},
+        "campaigns_date_wise": dict(campaign_dict),
+        "campaigns_users_date_wise": formatted_campaign_users
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+@router.get("/closer-log-report/excel")
+def closer_log_report_excel(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    db: Session = Depends(get_db2)
+):
+
+    # -------------------------------
+    # 🔹 KEEP YOUR EXISTING LOGIC
+    # -------------------------------
+    response = closer_log_report(start_date, end_date, db)
+
+    agents_data = response["agents_date_wise"]
+
+    # -------------------------------
+    # 🔹 Generate Date List
+    # -------------------------------
+    date_list = []
+    current = start_date
+    while current <= end_date:
+        date_list.append(str(current))
+        current += timedelta(days=1)
+
+    # -------------------------------
+    # 🔹 Transform → Pivot Structure
+    # user → campaign → date → calls
+    # -------------------------------
+    pivot = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+
+    for date_key, users in agents_data.items():
+        for user in users:
+            full_name = user["full_name"]
+
+            for camp in user["campaigns"]:
+                campaign = camp["campaign_id"]
+                calls = camp["total_calls"]
+
+                pivot[full_name][campaign][date_key] += calls
+
+    blue_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    white_bold_font = Font(bold=True, color="FFFFFF")
+
+    # -------------------------------
+    # 🔹 Create Excel
+    # -------------------------------
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Agent Wise"
+
+    bold = Font(bold=True)
+
+    # Header
+    header = ["Row Labels"]
+    header += [d for d in date_list]
+    header.append("Grand Total")
+
+    ws.append(header)
+
+    # style header
+    for col in range(1, len(header) + 1):
+        cell = ws.cell(row=1, column=col)
+        cell.fill = blue_fill
+        cell.font = white_bold_font
+
+    # -------------------------------
+    # 🔹 Fill Data
+    # -------------------------------
+    for user, campaigns in pivot.items():
+
+        # USER ROW
+        user_row = [user]
+        user_totals = []
+
+        for d in date_list:
+            total = sum(campaigns[c].get(d, 0) for c in campaigns)
+            user_totals.append(total)
+
+        user_row += user_totals
+        user_row.append(sum(user_totals))
+
+        ws.append(user_row)
+
+        # bold user row
+        for col in range(1, len(user_row) + 1):
+            ws.cell(row=ws.max_row, column=col).font = bold
+
+        # CAMPAIGN ROWS
+        for campaign, date_map in campaigns.items():
+            row = ["   " + campaign]
+
+            totals = []
+            for d in date_list:
+                val = date_map.get(d, 0)
+                totals.append(val)
+
+            row += totals
+            row.append(sum(totals))
+
+            ws.append(row)
+
+    # -------------------------------
+    # 🔹 Auto Width
+    # -------------------------------
+    for col in ws.columns:
+        max_len = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            if cell.value:
+                max_len = max(max_len, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max_len + 2
+
+
+    # -------------------------------
+    # 🔹 GRAND TOTAL (BOTTOM ROW)
+    # -------------------------------
+    grand_row = ["Grand Total"]
+
+    column_totals = []
+
+    for d in date_list:
+        total = 0
+        for user, campaigns in pivot.items():
+            for campaign in campaigns:
+                total += campaigns[campaign].get(d, 0)
+        column_totals.append(total)
+
+    grand_row += column_totals
+    grand_row.append(sum(column_totals))
+
+    ws.append(grand_row)
+
+    # style grand total row
+    for col in range(1, len(grand_row) + 1):
+        cell = ws.cell(row=ws.max_row, column=col)
+        cell.fill = blue_fill
+        cell.font = white_bold_font
+
+
+
+
+
+
+    # -------------------------------
+    # 🔹 SECOND SHEET (Campaign → Users)
+    # -------------------------------
+    campaign_response = closer_log_report_by_campaign(start_date, end_date, db)
+    campaign_users_data = campaign_response["campaigns_users_date_wise"]
+
+    ws2 = wb.create_sheet(title="Client Wise")
+
+    # Header
+    header2 = ["Row Labels"]
+    header2 += [d for d in date_list]
+    header2.append("Grand Total")
+
+    ws2.append(header2)
+
+    # style header
+    for col in range(1, len(header2) + 1):
+        cell = ws2.cell(row=1, column=col)
+        cell.fill = blue_fill
+        cell.font = white_bold_font
+
+    # -------------------------------
+    # 🔹 Transform → Pivot
+    # campaign → user → date → calls
+    # -------------------------------
+    pivot2 = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))
+
+    for date_key, campaigns in campaign_users_data.items():
+        for campaign in campaigns:
+            campaign_id = campaign["campaign_id"]
+
+            for user in campaign["users"]:
+                name = user["full_name"]
+                calls = user["total_calls"]
+
+                pivot2[campaign_id][name][date_key] += calls
+
+    # -------------------------------
+    # 🔹 Fill Data
+    # -------------------------------
+    for campaign, users in pivot2.items():
+
+        # CAMPAIGN ROW
+        camp_row = [campaign]
+        camp_totals = []
+
+        for d in date_list:
+            total = sum(users[u].get(d, 0) for u in users)
+            camp_totals.append(total)
+
+        camp_row += camp_totals
+        camp_row.append(sum(camp_totals))
+
+        ws2.append(camp_row)
+
+        # bold campaign row
+        for col in range(1, len(camp_row) + 1):
+            ws2.cell(row=ws2.max_row, column=col).font = bold
+
+        # USER ROWS
+        for user, date_map in users.items():
+            row = ["   " + user]
+
+            totals = []
+            for d in date_list:
+                val = date_map.get(d, 0)
+                totals.append(val)
+
+            row += totals
+            row.append(sum(totals))
+
+            ws2.append(row)
+
+    # -------------------------------
+    # 🔹 GRAND TOTAL (BOTTOM)
+    # -------------------------------
+    grand_row2 = ["Grand Total"]
+    column_totals2 = []
+
+    for d in date_list:
+        total = 0
+        for campaign, users in pivot2.items():
+            for user in users:
+                total += users[user].get(d, 0)
+        column_totals2.append(total)
+
+    grand_row2 += column_totals2
+    grand_row2.append(sum(column_totals2))
+
+    ws2.append(grand_row2)
+
+    # style grand total
+    for col in range(1, len(grand_row2) + 1):
+        cell = ws2.cell(row=ws2.max_row, column=col)
+        cell.fill = blue_fill
+        cell.font = white_bold_font
+
+    # -------------------------------
+    # 🔹 Auto Width (Sheet 2)
+    # -------------------------------
+    for col in ws2.columns:
+        max_len = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            if cell.value:
+                max_len = max(max_len, len(str(cell.value)))
+        ws2.column_dimensions[col_letter].width = max_len + 2
+
+
+    # -------------------------------
+    # 🔹 Return File
+    # -------------------------------
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename=Agent_{start_date}_to_{end_date}.xlsx"
+        }
+    )

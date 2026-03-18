@@ -25,8 +25,9 @@ export default function ChannelUtilization() {
   };
 
   const fetchData = async () => {
-    setLoading(true);
+    
     if (!validate()) return;
+    setLoading(true);
     const res = await api.get(`${BASE}/list`, { params: { fromDate, toDate } });
     setTableData(res.data.data || []);
     setShowMax(false); // show normal table
@@ -35,8 +36,9 @@ export default function ChannelUtilization() {
   };
 
   const fetchMaxCount = async () => {
-    setLoading(true);
+    
     if (!validate()) return;
+    setLoading(true);
     const res = await api.get(`${BASE}/max-count`, {
       params: { fromDate, toDate },
     });
@@ -47,8 +49,9 @@ export default function ChannelUtilization() {
   };
 
   const downloadExcel = async () => {
-    setLoading(true);
+    
     if (!validate()) return;
+    setLoading(true);
 
     const res = await api.get(`${BASE}/download`, {
       params: { fromDate, toDate },

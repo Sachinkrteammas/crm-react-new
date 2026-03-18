@@ -120,7 +120,7 @@ def send_call_summary(
                 SUM(IF(t2.user!='VDCL',1,0)) AS Answered,
                 COUNT(DISTINCT IF(t2.user!='VDCL', t2.user, NULL)) AS Manpower,
                 ROUND(SUM(IF(t2.user!='VDCL',1,0))/COUNT(*)*100,2) AS `AL %`,
-                ROUND(SUM(IF(t2.user!='VDCL' AND t2.queue_seconds <= 20,1,0))/SUM(IF(t2.user!='VDCL',1,0))*100,2) AS `SL %`
+                ROUND(IFNULL(SUM(IF(t2.user!='VDCL' AND t2.queue_seconds <= 20,1,0))/ NULLIF(SUM(IF(t2.user!='VDCL',1,0)), 0) * 100,0),2) AS `SL %`
             FROM asterisk.vicidial_closer_log t2
             LEFT JOIN vicidial_agent_log t1 ON t1.uniqueid = t2.uniqueid AND t1.user = t2.user
             WHERE DATE(t2.call_date) = '{report_date}'
@@ -172,11 +172,11 @@ def send_call_summary(
 
 
         # Compute totals
-        total_total = sum(row["Total"] for row in hourly_data)
-        total_answered = sum(row["Answered"] for row in hourly_data)
+        total_total = sum(row.get("Total") or 0 for row in hourly_data)
+        total_answered = sum(row.get("Answered") or 0 for row in hourly_data)
  
         total_al = round((total_answered / total_total) * 100, 2) if total_total else 0
-        weighted_sl_num = sum((row["SL %"] * row["Answered"]) for row in hourly_data)
+        weighted_sl_num = sum(((row.get("SL %") or 0) * (row.get("Answered") or 0)) for row in hourly_data)
         total_sl = round(weighted_sl_num / total_answered, 2) if total_answered else 0
         total_rl = round((RL_total + total_answered) / total_total * 100, 2) if total_total else 0
 
