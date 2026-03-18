@@ -1810,8 +1810,51 @@ def generate_outbound_excel(company_id, start_date, db, db2):
 def closer_log_report(
     start_date: date = Query(...),
     end_date: date = Query(...),
-    db: Session = Depends(get_db2)
+    is_shared: str = Query("all"),   # default = all
+    db: Session = Depends(get_db2),
+    db4: Session = Depends(get_db4),
 ) -> Dict:
+
+
+    campaign_filter_query = """
+        SELECT campaignid 
+        FROM registration_master
+        WHERE status = 'A'
+        AND campaignid IS NOT NULL
+    """
+
+    params = {}
+
+    if is_shared.lower() == "true":
+        campaign_filter_query += " AND is_shared = 1"
+    elif is_shared.lower() == "false":
+        campaign_filter_query += " AND is_shared = 0"
+    elif is_shared.lower() == "all":
+        pass
+    else:
+        raise HTTPException(status_code=400, detail="is_shared must be true, false, or all")
+
+    campaign_filter_query = text(campaign_filter_query)
+
+    rows = db4.execute(campaign_filter_query, params).fetchall()
+
+    # 🔹 Convert to list
+    campaign_ids = []
+
+    for row in rows:
+        if row[0]:
+            campaign_ids.extend([
+                cid.strip()
+                for cid in row[0].replace("'", "").split(",")
+                if cid.strip()
+            ])
+
+    if not campaign_ids:
+        return {
+            "overall": {},
+            "campaigns_date_wise": {},
+            "agents_date_wise": {}
+        }
 
     # 🔹 Overall
     overall_query = text("""
@@ -1822,11 +1865,13 @@ def closer_log_report(
         FROM vicidial_closer_log
         WHERE DATE(call_date) BETWEEN :start AND :end
         AND user != 'VDCL'
-    """)
+        AND campaign_id IN :campaign_ids
+    """).bindparams(bindparam("campaign_ids", expanding=True))
 
     overall = db.execute(overall_query, {
         "start": start_date,
-        "end": end_date
+        "end": end_date,
+        "campaign_ids": tuple(campaign_ids)
     }).mappings().first()
 
     # 🔹 Campaign-wise (date-wise)
@@ -1839,13 +1884,15 @@ def closer_log_report(
         FROM vicidial_closer_log
         WHERE DATE(call_date) BETWEEN :start AND :end
         AND user != 'VDCL'
+        AND campaign_id IN :campaign_ids
         GROUP BY DATE(call_date), campaign_id
         ORDER BY call_date, campaign_id ASC
-    """)
+    """).bindparams(bindparam("campaign_ids", expanding=True))
 
     campaign_rows = db.execute(campaign_query, {
         "start": start_date,
-        "end": end_date
+        "end": end_date,
+        "campaign_ids": tuple(campaign_ids)
     }).mappings().all()
 
     # 🔹 Agent → Campaign breakdown (WITH full_name)
@@ -1861,13 +1908,15 @@ def closer_log_report(
             ON vcl.user = vu.user
         WHERE DATE(vcl.call_date) BETWEEN :start AND :end
         AND vcl.user != 'VDCL'
+        AND vcl.campaign_id IN :campaign_ids
         GROUP BY DATE(vcl.call_date), vcl.user, vu.full_name, vcl.campaign_id
         ORDER BY call_date, full_name
-    """)
+    """).bindparams(bindparam("campaign_ids", expanding=True))
 
     agent_rows = db.execute(agent_query, {
         "start": start_date,
-        "end": end_date
+        "end": end_date,
+        "campaign_ids": tuple(campaign_ids)
     }).mappings().all()
 
     # -------------------------------
@@ -1933,8 +1982,47 @@ def closer_log_report(
 def closer_log_report_by_campaign(
     start_date: date = Query(...),
     end_date: date = Query(...),
-    db: Session = Depends(get_db2)
+    is_shared: str = Query("all"),
+    db: Session = Depends(get_db2),
+    db4: Session = Depends(get_db4)
 ) -> Dict:
+    
+    base_query = """
+        SELECT campaignid 
+        FROM registration_master
+        WHERE status = 'A'
+        AND campaignid IS NOT NULL
+    """
+
+    is_shared = is_shared.lower()
+
+    if is_shared == "true":
+        base_query += " AND is_shared = 1"
+    elif is_shared == "false":
+        base_query += " AND is_shared = 0"
+    elif is_shared == "all":
+        pass
+    else:
+        raise HTTPException(status_code=400, detail="is_shared must be true, false, or all")
+
+    rows = db4.execute(text(base_query)).fetchall()
+
+    campaign_ids = []
+    for row in rows:
+        if row[0]:
+            campaign_ids.extend([
+                cid.strip()
+                for cid in row[0].replace("'", "").split(",")
+                if cid.strip()
+            ])
+
+    # ✅ handle empty
+    if not campaign_ids:
+        return {
+            "overall": {},
+            "campaigns_date_wise": {},
+            "campaigns_users_date_wise": {}
+        }
 
     # 🔹 Overall (same)
     overall_query = text("""
@@ -1945,11 +2033,13 @@ def closer_log_report_by_campaign(
         FROM vicidial_closer_log
         WHERE DATE(call_date) BETWEEN :start AND :end
         AND user != 'VDCL'
-    """)
+        AND campaign_id IN :campaign_ids
+    """).bindparams(bindparam("campaign_ids", expanding=True))
 
     overall = db.execute(overall_query, {
         "start": start_date,
-        "end": end_date
+        "end": end_date,
+        "campaign_ids": tuple(campaign_ids)
     }).mappings().first()
 
     # 🔹 Campaign-wise (same)
@@ -1962,13 +2052,15 @@ def closer_log_report_by_campaign(
         FROM vicidial_closer_log
         WHERE DATE(call_date) BETWEEN :start AND :end
         AND user != 'VDCL'
+        AND campaign_id IN :campaign_ids
         GROUP BY DATE(call_date), campaign_id
         ORDER BY call_date, campaign_id ASC
-    """)
+    """).bindparams(bindparam("campaign_ids", expanding=True))
 
     campaign_rows = db.execute(campaign_query, {
         "start": start_date,
-        "end": end_date
+        "end": end_date,
+        "campaign_ids": tuple(campaign_ids)
     }).mappings().all()
 
     # 🔹 Agent query (same)
@@ -1984,13 +2076,15 @@ def closer_log_report_by_campaign(
             ON vcl.user = vu.user
         WHERE DATE(vcl.call_date) BETWEEN :start AND :end
         AND vcl.user != 'VDCL'
+        AND vcl.campaign_id IN :campaign_ids
         GROUP BY DATE(vcl.call_date), vcl.user, vu.full_name, vcl.campaign_id
         ORDER BY call_date, campaign_id, full_name
-    """)
+    """).bindparams(bindparam("campaign_ids", expanding=True))
 
     agent_rows = db.execute(agent_query, {
         "start": start_date,
-        "end": end_date
+        "end": end_date,
+        "campaign_ids": tuple(campaign_ids)
     }).mappings().all()
 
     # -------------------------------
@@ -2054,13 +2148,15 @@ def closer_log_report_by_campaign(
 def closer_log_report_excel(
     start_date: date = Query(...),
     end_date: date = Query(...),
-    db: Session = Depends(get_db2)
+    is_shared: str = Query("all"),
+    db: Session = Depends(get_db2),
+    db4: Session = Depends(get_db4),
 ):
 
     # -------------------------------
     # 🔹 KEEP YOUR EXISTING LOGIC
     # -------------------------------
-    response = closer_log_report(start_date, end_date, db)
+    response = closer_log_report(start_date, end_date, is_shared, db, db4)
 
     agents_data = response["agents_date_wise"]
 
@@ -2195,7 +2291,7 @@ def closer_log_report_excel(
     # -------------------------------
     # 🔹 SECOND SHEET (Campaign → Users)
     # -------------------------------
-    campaign_response = closer_log_report_by_campaign(start_date, end_date, db)
+    campaign_response = closer_log_report_by_campaign(start_date, end_date, is_shared, db, db4)
     campaign_users_data = campaign_response["campaigns_users_date_wise"]
 
     ws2 = wb.create_sheet(title="Client Wise")

@@ -6,6 +6,7 @@ import api from "../api";
 const AgentClientWise = () => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [isShared, setIsShared] = useState("all");
   const [loading, setLoading] = useState(false);
 
   const formatDate = (date) => {
@@ -33,7 +34,7 @@ const AgentClientWise = () => {
     try {
         setLoading(true);
       const response = await api.get(
-        `/report/closer-log-report/excel?start_date=${start}&end_date=${end}`,
+        `/report/closer-log-report/excel?start_date=${start}&end_date=${end}&is_shared=${isShared}`,
         {
           responseType: "blob", // IMPORTANT for file download
         }
@@ -88,11 +89,26 @@ const AgentClientWise = () => {
     <div className="row">
       <div className="col-12">
         <div className="card p-4 mb-4">
-          <h5 className="mb-3">Date Range Filter</h5>
+          <h5 className="mb-3">Agent Client Wise Report</h5>
 
-          <div className="d-flex flex-wrap align-items-center gap-3">
+          <div className="d-flex flex-wrap align-items-end gap-3">
+
+            <div className="col-md-2">
+                <label className="form-label">Select Type</label>
+                <select
+                    className="form-control"
+                    value={isShared}
+                    onChange={(e) => setIsShared(e.target.value)}
+                    >
+                    <option value="all">All</option>
+                    <option value="false">Dedicated</option>
+                    <option value="true">Shared</option>
+                </select>
+              </div>
+
             {/* Start Date */}
             <div style={{ maxWidth: "220px" }}>
+              <label className="form-label">Start Date</label>
               <DatePicker
                 selected={startDate}
                 onChange={setStartDate}
@@ -104,6 +120,7 @@ const AgentClientWise = () => {
 
             {/* End Date */}
             <div style={{ maxWidth: "220px" }}>
+              <label className="form-label">End Date</label>
               <DatePicker
                 selected={endDate}
                 onChange={setEndDate}
