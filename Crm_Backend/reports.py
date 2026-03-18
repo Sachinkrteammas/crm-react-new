@@ -17,7 +17,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 from io import BytesIO
 from collections import defaultdict
-
+import calendar
 
 router = APIRouter()
 
@@ -1212,141 +1212,110 @@ def rl_internal_report(
 
 
 
-@router.post("/company_consumption_range")
-def company_consumption_range(
+@router.post("/company_consumption_month")
+def company_consumption_month(
     request: dict,
-    db: Session = Depends(get_db4),
-    db2: Session = Depends(get_db2)
+    db: Session = Depends(get_db4)
 ):
-    company_id = request.get("company_id")  # can be None
-    from_date = request.get("from_date")
-    to_date = request.get("to_date")
+    company_id = request.get("company_id")
+    year = request.get("year")
+    month = request.get("month")  # 1–12
 
-    if not from_date or not to_date:
-        raise HTTPException(status_code=400, detail="from_date and to_date required")
+    if not year or not month:
+        raise HTTPException(status_code=400, detail="year and month required")
 
-    # --------------------------------------------------
-    # 1️⃣ GET COMPANY LIST
-    # --------------------------------------------------
+    # ===============================
+    # DATE RANGE
+    # ===============================
+    start_date = f"{year}-{str(month).zfill(2)}-01"
+    last_day = calendar.monthrange(int(year), int(month))[1]
+    end_date = f"{year}-{str(month).zfill(2)}-{last_day}"
+
+    # ===============================
+    # COMPANY LIST (SORTED)
+    # ===============================
     if company_id:
         company_q = text("""
-            SELECT company_id, campaignid, company_name
+            SELECT company_id, campaignid, company_name, is_shared
             FROM registration_master
             WHERE company_id = :company_id
             AND status = 'A'
-            ORDER BY company_name ASC
+            ORDER BY company_name
         """)
         companies = db.execute(
             company_q, {"company_id": company_id}
         ).mappings().fetchall()
-
     else:
-        # ALL ACTIVE CLIENTS
         company_q = text("""
-            SELECT company_id, campaignid, company_name
+            SELECT company_id, campaignid, company_name, is_shared
             FROM registration_master
             WHERE status = 'A'
-            ORDER BY company_name ASC
+            ORDER BY company_name
         """)
         companies = db.execute(company_q).mappings().fetchall()
 
-    if not companies:
-        raise HTTPException(status_code=404, detail="No active companies found")
-
     final_result = []
 
-    # --------------------------------------------------
-    # 2️⃣ LOOP EACH COMPANY
-    # --------------------------------------------------
+    # ===============================
+    # LOOP EACH COMPANY
+    # ===============================
     for comp in companies:
         comp_id = comp["company_id"]
         company_name = comp["company_name"]
-        raw_campaign = comp.get("campaignid")
 
-        if not raw_campaign:
-            print(f"No campaign found for company_id={comp['company_id']}")
+        # ✅ FIX: Shared / Dedicated
+        company_type = "Shared" if str(comp.get("is_shared")) == "1" else "Dedicated"
+
+        # ===============================
+        # GET PLAN
+        # ===============================
+        bal_row = db.execute(text("""
+            SELECT PlanId FROM balance_master
+            WHERE clientId = :cid LIMIT 1
+        """), {"cid": comp_id}).mappings().fetchone()
+
+        if not bal_row:
             continue
 
-        campaign_list = [
-            c.strip().strip("'") for c in str(raw_campaign).split(",") if c.strip()
-        ]
-
-        if not campaign_list:
-            continue
-
-        # --------------------------------------------------
-        # 3️⃣ GET PLAN + PULSE RATE
-        # --------------------------------------------------
-        bal_q = text("""
-            SELECT PlanId
-            FROM balance_master
-            WHERE clientId = :client_id
-            LIMIT 1
-        """)
-        bal_row = db.execute(bal_q, {"client_id": comp_id}).mappings().fetchone()
-
-        if not bal_row or not bal_row.get("PlanId"):
-            continue
-
-        plan_q = text("""
-            SELECT rate_per_pulse_day_shift, rate_per_pulse_night_shift
+        plan_row = db.execute(text("""
+            SELECT rate_per_pulse_day_shift
             FROM plan_master
-            WHERE Id = :plan_id
-        """)
-        plan_row = db.execute(
-            plan_q, {"plan_id": bal_row["PlanId"]}
-        ).mappings().fetchone()
+            WHERE Id = :pid
+        """), {"pid": bal_row["PlanId"]}).mappings().fetchone()
 
-        if not plan_row:
-            continue
+        day_rate = float(plan_row.get("rate_per_pulse_day_shift") or 0)
 
-        try:
-            day_rate = round(float(Decimal(plan_row.get("rate_per_pulse_day_shift") or 0)), 4)
-        except:
-            day_rate = 0
-
-        try:
-            night_rate = round(float(Decimal(plan_row.get("rate_per_pulse_night_shift") or 0)), 4)
-        except:
-            night_rate = 0
-
-        # --------------------------------------------------
-        # 4️⃣ BILLING CONSUME (DATE RANGE)
-        # --------------------------------------------------
-        consume_q = text("""
+        # ===============================
+        # CONSUMPTION DATA
+        # ===============================
+        consume = db.execute(text("""
             SELECT
-                DATE_FORMAT(cm_date, '%Y-%m') as month_key,
-                DATE_FORMAT(cm_date, '%M %Y') as month_name,
                 COALESCE(SUM(ib_total + ibn_total), 0) AS total_consume,
                 COALESCE(SUM(ib_pulse + ibn_pulse), 0) AS total_talktime
             FROM billing_consume_daily_new
-            WHERE client_id = :company_id
-            AND DATE(cm_date) BETWEEN :from_date AND :to_date
-            GROUP BY YEAR(cm_date), MONTH(cm_date)
-            ORDER BY YEAR(cm_date), MONTH(cm_date)
-        """)
+            WHERE client_id = :cid
+            AND DATE(cm_date) BETWEEN :start_date AND :end_date
+        """), {
+            "cid": comp_id,
+            "start_date": start_date,
+            "end_date": end_date
+        }).fetchone()
 
-        consume_rows = db.execute(
-            consume_q,
-            {
-                "company_id": comp_id,
-                "from_date": from_date,
-                "to_date": to_date
-            }
-        ).fetchall()
+        final_result.append({
+            "Company_Name": company_name,
+            "Company_Type": company_type,
+            "Month": f"{calendar.month_name[int(month)]} {year}",
+            "Total_Consume": round(float(consume.total_consume or 0), 2),
+            "Total_Talk_Minutes": float(consume.total_talktime or 0),
+            "Call_Rate": round(day_rate, 2)
+        })
 
-        for row in consume_rows:
-            final_result.append({
-                "Company_Name": company_name,
-                "Month": row.month_name,  # January 2026, February 2026
-                "Total_Consume": round((row.total_consume or 0),2),
-                "Total_Talk_Minutes": float(row.total_talktime or 0),
-                "Call_Rate": day_rate
-            })
-
+    # ===============================
+    # FINAL RESPONSE
+    # ===============================
     return {
-        "From_Date": from_date,
-        "To_Date": to_date,
+        "year": year,
+        "month": month,
         "data": final_result
     }
 

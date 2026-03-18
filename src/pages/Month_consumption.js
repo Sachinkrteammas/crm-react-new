@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import api from "../api";
@@ -13,15 +11,17 @@ const MonthConsumption = () => {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState("");
 
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const currentYear = new Date().getFullYear();
+
+  const [year, setYear] = useState(currentYear);
+  const [month, setMonth] = useState(new Date().getMonth() + 1);
 
   const [data, setData] = useState([]);
   const [showTable, setShowTable] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // ===============================
-  // FETCH CLIENT LIST (ADMIN ONLY)
+  // FETCH CLIENT LIST
   // ===============================
   useEffect(() => {
     if (userType === "Super-Admin" || userType === "Admin") {
@@ -40,32 +40,14 @@ const MonthConsumption = () => {
   }, []);
 
   // ===============================
-  // FORMAT DATE → yyyy-mm-dd
-  // ===============================
-  const formatDate = (date) => {
-    if (!date) return "";
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  };
-
-  const handleStartDateChange = (date) => setStartDate(formatDate(date));
-  const handleEndDateChange = (date) => setEndDate(formatDate(date));
-
-  // ===============================
   // API CALL
   // ===============================
   const fetchReport = async () => {
-    const payload = {
-      from_date: startDate,
-      to_date: endDate,
-    };
-
+    const payload = { year, month };
     if (selectedClient) payload.company_id = selectedClient;
 
     const res = await api.post(
-      "/report/company_consumption_range",
+      "/report/company_consumption_month",
       payload
     );
 
@@ -76,11 +58,6 @@ const MonthConsumption = () => {
   // VIEW DATA
   // ===============================
   const handleView = async () => {
-    if (!startDate || !endDate) {
-      alert("Select date range");
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -91,9 +68,9 @@ const MonthConsumption = () => {
         return;
       }
 
-      // map API response → UI structure
       const rows = res.data.map((row) => ({
         companyName: row.Company_Name,
+        companyType: row.Company_Type,
         month: row.Month,
         talkMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
         callRate: Number(row.Call_Rate || 0).toFixed(2),
@@ -113,20 +90,7 @@ const MonthConsumption = () => {
   // ===============================
   // EXPORT EXCEL
   // ===============================
-  const formatDisplayDate = (dateStr) => {
-  if (!dateStr) return "";
-
-  const [year, month, day] = dateStr.split("-");
-  return `${day}-${month}-${year}`;
-};
-
-
   const handleExport = async () => {
-    if (!startDate || !endDate) {
-      alert("Select date range");
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -139,6 +103,7 @@ const MonthConsumption = () => {
 
       const exportRows = res.data.map((row) => ({
         ClientName: row.Company_Name,
+        Type: row.Company_Type,
         Month: row.Month,
         TalkTimeMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
         CallRate: Number(row.Call_Rate || 0).toFixed(2),
@@ -153,11 +118,16 @@ const MonthConsumption = () => {
         ? selectedClientObj.company_name
         : "All Clients";
 
+      const monthName = [
+        "Jan","Feb","Mar","Apr","May","Jun",
+        "Jul","Aug","Sep","Oct","Nov","Dec"
+      ][month - 1];
+
       const headerRows = [
         [
           "Month Consumption Report",
           `Client: ${clientLabel}`,
-           `Date Range: ${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`
+          `Month: ${monthName} ${year}`
         ],
         [],
       ];
@@ -182,7 +152,7 @@ const MonthConsumption = () => {
 
       saveAs(
         new Blob([buffer]),
-        `MonthConsumption_${formatDisplayDate(startDate)}_to_${formatDisplayDate(endDate)}.xlsx`
+        `MonthConsumption_${monthName}_${year}.xlsx`
       );
     } catch (err) {
       console.error(err);
@@ -194,6 +164,7 @@ const MonthConsumption = () => {
 
   return (
     <>
+      {/* LOADER */}
       {loading && (
         <div className="loader-overlay">
           <div className="bar"></div>
@@ -208,7 +179,7 @@ const MonthConsumption = () => {
 
           <div className="d-flex gap-3 flex-wrap align-items-center">
 
-            {/* CLIENT DROPDOWN */}
+            {/* CLIENT */}
             {(userType === "Super-Admin" || userType === "Admin") && (
               <select
                 className="form-control w-25"
@@ -224,23 +195,34 @@ const MonthConsumption = () => {
               </select>
             )}
 
-            {/* START DATE */}
-            <DatePicker
-              selected={startDate ? new Date(startDate) : null}
-              onChange={handleStartDateChange}
-              placeholderText="Start Date"
-              className="form-control"
-              dateFormat="dd-MM-yyyy"
-            />
+            {/* YEAR (DYNAMIC) */}
+            <select
+              className="form-control w-auto"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+            >
+              {Array.from({ length: 10 }, (_, i) => currentYear - 5 + i).map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
 
-            {/* END DATE */}
-            <DatePicker
-              selected={endDate ? new Date(endDate) : null}
-              onChange={handleEndDateChange}
-              placeholderText="End Date"
-              className="form-control"
-              dateFormat="dd-MM-yyyy"
-            />
+            {/* MONTH */}
+            <select
+              className="form-control w-auto"
+              value={month}
+              onChange={(e) => setMonth(e.target.value)}
+            >
+              {[
+                "Jan","Feb","Mar","Apr","May","Jun",
+                "Jul","Aug","Sep","Oct","Nov","Dec"
+              ].map((m, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {m}
+                </option>
+              ))}
+            </select>
 
             <button className="btn btn-primary" onClick={handleView}>
               View
@@ -263,6 +245,7 @@ const MonthConsumption = () => {
                 <thead>
                   <tr>
                     <th>Client Name</th>
+                    <th>Type</th>
                     <th>Month</th>
                     <th>Talk Time (Minutes)</th>
                     <th>Call Rate</th>
@@ -275,6 +258,7 @@ const MonthConsumption = () => {
                     data.map((row, i) => (
                       <tr key={i}>
                         <td>{row.companyName}</td>
+                        <td>{row.companyType}</td>
                         <td>{row.month}</td>
                         <td>{row.talkMinutes}</td>
                         <td>{row.callRate}</td>
@@ -283,7 +267,7 @@ const MonthConsumption = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="text-center">
+                      <td colSpan="6" className="text-center">
                         No data available
                       </td>
                     </tr>
