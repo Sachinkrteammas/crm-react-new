@@ -99,7 +99,7 @@ const MonthConsumption = () => {
         companyName: row.Company_Name || "-",
         companyType: row.Company_Type || "-",
         talkMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
-        callRate: Number(row.Call_Rate || 0).toFixed(2),
+        callRate: Number(row.Call_Rate || 0),
         totalValue: Number(row.Total_Consume || 0).toFixed(2),
       }));
 
@@ -130,7 +130,7 @@ const MonthConsumption = () => {
       ClientName: row.Company_Name || "-",
       Type: row.Company_Type || "-",
       TalkMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
-      CallRate: Number(row.Call_Rate || 0).toFixed(2),
+      CallRate: Number(row.Call_Rate || 0),
       TotalValue: Number(row.Total_Consume || 0).toFixed(2),
     }));
 

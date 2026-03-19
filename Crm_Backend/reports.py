@@ -1278,11 +1278,12 @@ def company_consumption_month(
             continue
 
         plan_row = db.execute(text("""
-            SELECT rate_per_pulse_day_shift
+            SELECT rate_per_pulse_day_shift,rate_per_pulse_night_shift
             FROM plan_master WHERE Id = :pid
         """), {"pid": bal_row["PlanId"]}).mappings().fetchone()
 
         day_rate = float(plan_row.get("rate_per_pulse_day_shift") or 0)
+        night_rate = float(plan_row.get("rate_per_pulse_night_shift") or 0)
 
         # --------------------------------------------------
         # 3️⃣ CONSUME DATA
@@ -1306,7 +1307,7 @@ def company_consumption_month(
             "Month": f"{calendar.month_name[int(month)]} {year}",
             "Total_Consume": round(float(consume.total_consume or 0), 2),
             "Total_Talk_Minutes": float(consume.total_talktime or 0),
-            "Call_Rate": round(day_rate, 2)
+            "Call_Rate": day_rate
         })
 
     # --------------------------------------------------
