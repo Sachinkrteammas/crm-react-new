@@ -145,6 +145,7 @@ import CampaignListUI from "./pages/List_id";
 import MonthConsumption from "./pages/Month_consumption";
 import OutboundReport from "./pages/outbound_report";
 import AgentClientWise from "./pages/Agent_client_wise_report";
+import RLReportClient from "./pages/RL_Report";
 
 
 
@@ -402,6 +403,7 @@ function App() {
               <Route path="/MonthConsumption" element={<MonthConsumption />} />
               <Route path="/Outbound-report" element={<OutboundReport />} />
               <Route path="/Agent-report" element={<AgentClientWise />} />
+              <Route path="/RL-report" element={<RLReportClient />} />
               <></>
           </Route>
       </Route>

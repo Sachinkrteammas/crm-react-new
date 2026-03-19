@@ -7,7 +7,7 @@ from database import get_db2, get_db4
 from schemas import *
 from passlib.context import CryptContext
 from jose import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from auth_utils import get_current_user
 from sqlalchemy import text
 from urllib.parse import quote_plus
@@ -1595,7 +1595,7 @@ def generate_outbound_excel(company_id, start_date, db, db2):
     # --------------------------------
     wb = Workbook()
     ws = wb.active
-    ws.title = "DIGICOFFER SOFTWARE PRIVATE LIMITED REPORT"
+    ws.title = "DIGICOFFER REPORT"
 
     thin_border = Border(
         left=Side(style='thin'),
@@ -1617,7 +1617,7 @@ def generate_outbound_excel(company_id, start_date, db, db2):
     # --------------------------------
     # Report Title
     # --------------------------------
-    title = f"DIGICOFFER SOFTWARE PRIVATE LIMITED REPORT ({start_date})"
+    title = f"DIGICOFFER REPORT ({start_date})"
 
     ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=4)
     ws.cell(row=row, column=1, value=title).font = Font(bold=True)
@@ -2409,5 +2409,264 @@ def closer_log_report_excel(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
             "Content-Disposition": f"attachment; filename=Agent_{start_date}_to_{end_date}.xlsx"
+        }
+    )
+
+
+
+
+@router.get("/abandon-callback-report")
+def abandon_callback_report(
+    client_id: int,
+    report_date: date,
+    db=Depends(get_db2),
+    db4=Depends(get_db4)
+):
+    # 🔹 Step 1: Fetch abandon data
+    aband_data = db4.execute(text("""
+        SELECT 
+            CompanyName,
+            PhoneNo,
+            EntryDate
+        FROM aband_call_master
+        WHERE ClientId = :client_id
+        AND DATE(CallDate) = :report_date
+    """), {
+        "client_id": client_id,
+        "report_date": report_date
+    }).mappings().all()
+
+    if not aband_data:
+        return {"count": 0, "data": []}
+
+    # 🔹 Step 2: Prepare phone list (last 10 digits)
+    phone_map = {}
+    phone_list = []
+
+    for row in aband_data:
+        clean_phone = str(row["PhoneNo"])[-10:]
+        phone_map[clean_phone] = []
+        phone_list.append(clean_phone)
+
+    # 🔹 Step 3: Fetch ALL logs in ONE query
+    logs = db.execute(text(f"""
+        SELECT 
+            t2.call_date,
+            t2.user,
+            RIGHT(t2.phone_number, 10) as phone,
+            mcl.id as manual_id
+        FROM vicidial_log t2
+        LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
+        LEFT JOIN vicidial_users t4 ON t2.user = t4.user
+        LEFT JOIN asterisk.manual_call_log mcl 
+            ON RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10) 
+            AND mcl.uniqueid = t2.uniqueid
+        WHERE t2.campaign_id IN ('dialdesk','Cryst002','Ajmal000','Superher')
+        AND DATE(t2.call_date) = :report_date
+        AND t2.list_id IN ('998','2001')
+        AND t2.lead_id IS NOT NULL
+        AND RIGHT(t2.phone_number, 10) IN :phones
+        ORDER BY t2.call_date ASC
+    """), {
+        "report_date": report_date,
+        "phones": tuple(phone_list)
+    }).mappings().all()
+
+    # 🔹 Step 4: Group logs by phone
+    log_map = defaultdict(list)
+
+    for log in logs:
+        if log["user"] == "VDAD":
+            continue
+
+        phone = log["phone"]
+
+        if len(log_map[phone]) < 3:
+            log_map[phone].append({
+                "time": log["call_date"],
+                "status": "Connected" if log["manual_id"] is not None else "Not connected"
+            })
+
+    now = datetime.now()
+    today = now.date()
+
+    result = []
+
+    # 🔹 Step 5: Process data
+    for row in aband_data:
+        phone_raw = row["PhoneNo"]
+        phone = str(phone_raw)[-10:]
+        call_time = row["EntryDate"]
+
+        attempts = log_map.get(phone, [])
+        attempt_count = len(attempts)
+
+        # Default
+        first_time = second_time = third_time = None
+        first_status = second_status = third_status = None
+
+        # 🔥 Connected
+        if any(a["status"] == "Connected" for a in attempts):
+            final_status = "Connected"
+
+            while len(attempts) < 3:
+                attempts.append({"time": None, "status": None})
+
+            first_time, first_status = attempts[0]["time"], attempts[0]["status"]
+            second_time, second_status = attempts[1]["time"], attempts[1]["status"]
+            third_time, third_status = attempts[2]["time"], attempts[2]["status"]
+
+        elif report_date != today:
+            final_status = "No callback attempted" if attempt_count == 0 else "Not connected"
+
+            while len(attempts) < 3:
+                attempts.append({"time": None, "status": None})
+
+            first_time, first_status = attempts[0]["time"], attempts[0]["status"]
+            second_time, second_status = attempts[1]["time"], attempts[1]["status"]
+            third_time, third_status = attempts[2]["time"], attempts[2]["status"]
+
+        else:
+
+            # 🔥 Fresh Abandon
+            if attempt_count == 0:
+                first_status = "Callback Attempt 1 Pending"
+                second_status = "Callback Attempt 2 Pending"
+                third_status = "Callback Attempt 3 Pending"
+                final_status = "Fresh Abandon"
+
+            else:
+                final_status = "Not connected"
+
+                while len(attempts) < 3:
+                    attempts.append({"time": None, "status": None})
+
+                first_time, first_status = attempts[0]["time"], attempts[0]["status"]
+                second_time, second_status = attempts[1]["time"], attempts[1]["status"]
+                third_time, third_status = attempts[2]["time"], attempts[2]["status"]
+
+        result.append({
+            "client_name": row["CompanyName"],
+            "date": call_time.date(),
+            "phone_number": phone,
+            "call_abandon_time": call_time.strftime("%Y-%m-%d %H:%M:%S"),
+
+            "first_attempt_time": first_time.strftime("%Y-%m-%d %H:%M:%S") if first_time else None,
+            "first_status": first_status,
+
+            "second_attempt_time": second_time.strftime("%Y-%m-%d %H:%M:%S") if second_time else None,
+            "second_status": second_status,
+
+            "third_attempt_time": third_time.strftime("%Y-%m-%d %H:%M:%S") if third_time else None,
+            "third_status": third_status,
+
+            "final_status": final_status
+        })
+
+    return {
+        "count": len(result),
+        "data": result
+    }
+
+
+
+
+
+
+
+
+
+@router.get("/abandon-callback-report/excel")
+def abandon_callback_report_excel(
+    client_id: int,
+    report_date: date,
+    db=Depends(get_db2),
+    db4=Depends(get_db4)
+):
+    # 🔹 Get data from your existing API function
+    response = abandon_callback_report(client_id, report_date, db, db4)
+    data = response["data"]
+
+    company_name = data[0]["client_name"] if data else "Report"
+    safe_company_name = company_name[:10]
+
+    # 🔹 Create Workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "RL Report"
+
+    # 🔹 Header
+    headers = [
+        "Client Name", "Date", "Phone Number", "Call Abandon time",
+        "First Attempt Time", "Status",
+        "Second Attempt Time", "Status",
+        "Third Attempt Time", "Status",
+        "Final Status"
+    ]
+
+    # 🔹 Blue Header Style
+    header_fill = PatternFill(start_color="1F4E78", end_color="1F4E78", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+
+    # Write header
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+
+    # 🔹 Fill Data
+    for row_num, row in enumerate(data, 2):
+        ws.cell(row=row_num, column=1, value=row["client_name"])
+        ws.cell(row=row_num, column=2, value=str(row["date"]))
+        ws.cell(row=row_num, column=3, value=row["phone_number"])
+        ws.cell(row=row_num, column=4, value=row["call_abandon_time"])
+
+        ws.cell(row=row_num, column=5, value=row["first_attempt_time"])
+        ws.cell(row=row_num, column=6, value=row["first_status"])
+
+        ws.cell(row=row_num, column=7, value=row["second_attempt_time"])
+        ws.cell(row=row_num, column=8, value=row["second_status"])
+
+        ws.cell(row=row_num, column=9, value=row["third_attempt_time"])
+        ws.cell(row=row_num, column=10, value=row["third_status"])
+
+        ws.cell(row=row_num, column=11, value=row["final_status"])
+
+    # 🔹 Auto adjust column width
+    for col in ws.columns:
+        max_length = 0
+        col_letter = col[0].column_letter
+        for cell in col:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+        ws.column_dimensions[col_letter].width = max_length + 2
+
+
+    # --------------------------------
+    # Column Widths (ADD HERE)
+    # --------------------------------
+    ws.column_dimensions['A'].width = 22
+    ws.column_dimensions['B'].width = 22
+    ws.column_dimensions['C'].width = 18
+    ws.column_dimensions['D'].width = 22
+    ws.column_dimensions['E'].width = 32
+    ws.column_dimensions['F'].width = 22
+    ws.column_dimensions['G'].width = 22
+    ws.column_dimensions['H'].width = 22
+    ws.column_dimensions['I'].width = 22
+    ws.column_dimensions['J'].width = 22
+    ws.column_dimensions['K'].width = 22
+
+    # 🔹 Save to memory
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+
+    # 🔹 Return file
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename={safe_company_name}_RL_Report_{report_date}.xlsx"
         }
     )
