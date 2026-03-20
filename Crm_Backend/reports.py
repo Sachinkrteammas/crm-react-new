@@ -1278,20 +1278,30 @@ def company_consumption_month(
             continue
 
         plan_row = db.execute(text("""
-            SELECT rate_per_pulse_day_shift,rate_per_pulse_night_shift
+            SELECT rate_per_pulse_day_shift,rate_per_pulse_night_shift,pulse_night_shift,pulse_day_shift,
+            pulse_outbound_call_shift,
+            rate_per_pulse_outbound_call_shift
             FROM plan_master WHERE Id = :pid
         """), {"pid": bal_row["PlanId"]}).mappings().fetchone()
 
         day_rate = float(plan_row.get("rate_per_pulse_day_shift") or 0)
         night_rate = float(plan_row.get("rate_per_pulse_night_shift") or 0)
+        ab_rate = float(plan_row.get("rate_per_pulse_outbound_call_shift") or 0)
+
+        pulse_night_shift = float(plan_row.get("pulse_night_shift") or 0)
+        pulse_day_shift = float(plan_row.get("pulse_day_shift") or 0)
+        pulse_ab_shift = float(plan_row.get("pulse_outbound_call_shift") or 0)
 
         # --------------------------------------------------
         # 3️⃣ CONSUME DATA
         # --------------------------------------------------
         consume = db.execute(text("""
             SELECT
-                COALESCE(SUM(ib_total + ibn_total), 0) AS total_consume,
-                COALESCE(SUM(ib_pulse + ibn_pulse), 0) AS total_talktime
+                COALESCE(SUM(ib_total + ibn_total + ob_total), 0) AS total_consume,
+                COALESCE(SUM(ib_pulse), 0) AS ib_talktime,
+                COALESCE(SUM(ibn_pulse), 0) AS ibn_talktime,
+                COALESCE(SUM(ob_pulse), 0) AS ob_talktime
+
             FROM billing_consume_daily_new
             WHERE client_id = :cid
             AND DATE(cm_date) BETWEEN :start_date AND :end_date
@@ -1304,10 +1314,14 @@ def company_consumption_month(
         final_result.append({
             "Company_Name": company_name,
             "Company_Type": company_type,
-            "Month": f"{calendar.month_name[int(month)]} {year}",
             "Total_Consume": round(float(consume.total_consume or 0), 2),
-            "Total_Talk_Minutes": float(consume.total_talktime or 0),
-            "Call_Rate": day_rate
+            "IB_Talk_Minutes": float(consume.ib_talktime or 0),
+            "IBN_Talk_Minutes": float(consume.ibn_talktime or 0),
+            "OB_Talk_Minutes": float(consume.ob_talktime or 0),
+
+            "day_Rate": f"{day_rate} Rs/ {pulse_day_shift} Sec.",
+            "night_Rate": f"{night_rate} Rs/ {pulse_night_shift} Sec.",
+            "ab_Rate": f"{ab_rate} Rs/ {pulse_ab_shift} Sec."
         })
 
     # --------------------------------------------------
@@ -1318,7 +1332,6 @@ def company_consumption_month(
         "month": month,
         "data": final_result
     }
-
 
 
 

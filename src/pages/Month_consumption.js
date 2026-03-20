@@ -85,33 +85,40 @@ const MonthConsumption = () => {
   // VIEW
   // ===============================
   const handleView = async () => {
-    setLoading(true);
-    try {
-      const res = await fetchReport();
+      setLoading(true);
+      try {
+        const res = await fetchReport();
 
-      if (!res?.data?.length) {
-        alert("No data found");
-        setShowTable(false);
-        return;
+        if (!res?.data?.length) {
+          alert("No data found");
+          setShowTable(false);
+          return;
+        }
+
+        const rows = res.data.map((row) => ({
+          client: row.Company_Name || "-",
+          type: row.Company_Type || "-",
+
+          pulseDay: Number(row.IB_Talk_Minutes || 0),
+          pulseNight: Number(row.IBN_Talk_Minutes || 0),
+          pulseAb: Number(row.OB_Talk_Minutes || 0),
+
+          dayRate: row.day_Rate || "-",
+          nightRate: row.night_Rate || "-",
+          abRate: row.ab_Rate || "-",
+
+          total: Number(row.Total_Consume || 0).toFixed(2),
+        }));
+
+        setData(rows);
+        setShowTable(true);
+      } catch (err) {
+        console.error(err);
+        alert("Error fetching data");
+      } finally {
+        setLoading(false);
       }
-
-      const rows = res.data.map((row) => ({
-        companyName: row.Company_Name || "-",
-        companyType: row.Company_Type || "-",
-        talkMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
-        callRate: Number(row.Call_Rate || 0),
-        totalValue: Number(row.Total_Consume || 0).toFixed(2),
-      }));
-
-      setData(rows);
-      setShowTable(true);
-    } catch (err) {
-      console.error(err);
-      alert("Error fetching data");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
   // ===============================
   // EXPORT
@@ -127,11 +134,18 @@ const MonthConsumption = () => {
     }
 
     const exportRows = res.data.map((row) => ({
-      ClientName: row.Company_Name || "-",
-      Type: row.Company_Type || "-",
-      TalkMinutes: Number(row.Total_Talk_Minutes || 0).toFixed(2),
-      CallRate: Number(row.Call_Rate || 0),
-      TotalValue: Number(row.Total_Consume || 0).toFixed(2),
+      "Client": row.Company_Name || "-",
+      "Type": row.Company_Type || "-",
+
+      "Pulse Day": Number(row.IB_Talk_Minutes || 0),
+      "Pulse Night": Number(row.IBN_Talk_Minutes || 0),
+      "Pulse AB": Number(row.OB_Talk_Minutes || 0),
+
+      "Day Rate": row.day_Rate || "-",
+      "Night Rate": row.night_Rate || "-",
+      "AB Rate": row.ab_Rate || "-",
+
+      "Total (Rs.)": Number(row.Total_Consume || 0).toFixed(2),
     }));
 
     const monthName = [
@@ -296,20 +310,28 @@ const MonthConsumption = () => {
                   <tr>
                     <th>Client</th>
                     <th>Type</th>
-                    <th>Talk</th>
-                    <th>Rate</th>
-                    <th>Total</th>
+                    <th>Pulse Day</th>
+                    <th>Pulse Night</th>
+                    <th>Pulse AB</th>
+                    <th>Day Rate</th>
+                    <th>Night Rate</th>
+                    <th>AB Rate</th>
+                    <th>Total (Rs.)</th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {data.map((r, i) => (
                     <tr key={i}>
-                      <td>{r.companyName}</td>
-                      <td>{r.companyType}</td>
-                      <td>{r.talkMinutes}</td>
-                      <td>{r.callRate}</td>
-                      <td>{r.totalValue}</td>
+                      <td>{r.client}</td>
+                      <td>{r.type}</td>
+                      <td>{r.pulseDay}</td>
+                      <td>{r.pulseNight}</td>
+                      <td>{r.pulseAb}</td>
+                      <td>{r.dayRate}</td>
+                      <td>{r.nightRate}</td>
+                      <td>{r.abRate}</td>
+                      <td>{r.total}</td>
                     </tr>
                   ))}
                 </tbody>
