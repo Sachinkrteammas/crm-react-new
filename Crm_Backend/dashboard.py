@@ -319,13 +319,27 @@ def get_active_services(
     ).mappings().first()
     if not pm:
         raise HTTPException(status_code=404, detail="Plan details not found")
+    
+    # 3) Normalize PeriodType
+    period_type_raw = pm["PeriodType"] or ""
+    period_type = period_type_raw.strip().lower()
 
-    # 3) Build and return the response
+    rental_amount = pm["RentalAmount"]
+
+    # 4) Adjust RentalAmount based on PeriodType
+    if period_type == "quater":
+        rental_amount /= 4
+    elif period_type == "half":
+        rental_amount /= 2
+    elif period_type == "month":
+        rental_amount /= 12
+
+    # 5) Build and return the response
     return ActiveService(
         plan_name=pm["PlanName"],
-        period_type=pm["PeriodType"],
+        period_type=(pm["PeriodType"] + "ly").upper(),
         credit_value=pm["CreditValue"],
-        subscription_value=pm["CreditValue"],       # or compute per your logic
+        subscription_value=rental_amount,       # or compute per your logic
         inbound_call_day_charge=pm["inbound_day"],
         inbound_call_night_charge=pm["inbound_night"],
         outbound_call_charge=pm["outbound"],

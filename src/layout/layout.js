@@ -442,7 +442,7 @@ useEffect(() => {
         <div className="layout-page">
           {/* Header */}
           <nav
-            className="layout-navbar container-xxl navbar-detached navbar navbar-expand-xl align-items-center bg-navbar-theme"
+            className="layout-navbar container-fluid navbar-detached navbar navbar-expand-xl align-items-center bg-navbar-theme"
             id="layout-navbar"
           >
             <div className="layout-menu-toggle navbar-nav align-items-xl-center me-3 me-xl-0 d-xl-none">
@@ -639,7 +639,7 @@ useEffect(() => {
           </nav>
 
           <div className="content-wrapper">
-            <div className="container-xxl flex-grow-1 container-p-y">                              
+            <div className="container-fluid flex-grow-1 container-p-y">                              
               <Outlet /> {/* Routes will render here */}
             </div>
             <div className="content-backdrop fade"></div>
