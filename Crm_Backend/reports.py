@@ -2440,7 +2440,9 @@ def abandon_callback_report(
         SELECT 
             CompanyName,
             PhoneNo,
-            EntryDate
+            EntryDate,
+            call_status,
+            call_attempt_time
         FROM aband_call_master
         WHERE ClientId = :client_id
         AND DATE(CallDate) = :report_date
@@ -2510,6 +2512,30 @@ def abandon_callback_report(
         phone_raw = row["PhoneNo"]
         phone = str(phone_raw)[-10:]
         call_time = row["EntryDate"]
+        call_status = row["call_status"]
+        call_attempt_time = row["call_attempt_time"]
+
+        # 🔥 RULE: If DONE → override everything
+        if call_status == "DONE":
+            result.append({
+                "client_name": row["CompanyName"],
+                "date": call_time.date(),
+                "phone_number": phone,
+                "call_abandon_time": call_time.strftime("%Y-%m-%d %H:%M:%S"),
+
+                "first_attempt_time": None,
+                "first_status": None,
+
+                "second_attempt_time": None,
+                "second_status": None,
+
+                "third_attempt_time": None,
+                "third_status": None,
+
+                "final_status": "DONE",
+                "call_attempt_time": call_attempt_time
+            })
+            continue  # 🚨 skip remaining logic
 
         attempts = log_map.get(phone, [])
         attempt_count = len(attempts)
@@ -2573,7 +2599,8 @@ def abandon_callback_report(
             "third_attempt_time": third_time.strftime("%Y-%m-%d %H:%M:%S") if third_time else None,
             "third_status": third_status,
 
-            "final_status": final_status
+            "final_status": final_status,
+            "call_attempt_time": call_attempt_time
         })
 
     return {
@@ -2614,7 +2641,7 @@ def abandon_callback_report_excel(
         "First Attempt Time", "Status",
         "Second Attempt Time", "Status",
         "Third Attempt Time", "Status",
-        "Final Status"
+        "Final Status", "Call Attempt Time"
     ]
 
     # 🔹 Blue Header Style
@@ -2644,6 +2671,7 @@ def abandon_callback_report_excel(
         ws.cell(row=row_num, column=10, value=row["third_status"])
 
         ws.cell(row=row_num, column=11, value=row["final_status"])
+        ws.cell(row=row_num, column=12, value=row["call_attempt_time"])
 
     # 🔹 Auto adjust column width
     for col in ws.columns:
@@ -2669,6 +2697,7 @@ def abandon_callback_report_excel(
     ws.column_dimensions['I'].width = 22
     ws.column_dimensions['J'].width = 22
     ws.column_dimensions['K'].width = 22
+    ws.column_dimensions['L'].width = 22
 
     # 🔹 Save to memory
     stream = BytesIO()
