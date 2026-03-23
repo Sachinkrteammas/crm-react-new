@@ -252,7 +252,7 @@ def scheduled_daily_billing():
 # ✅ Create scheduler
 scheduler = BackgroundScheduler()
 #scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
-scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
+# scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
 scheduler.add_job(run_report_scheduler, "interval", minutes=1)
 
 
