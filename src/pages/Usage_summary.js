@@ -103,6 +103,13 @@ useEffect(() => {
     if (!hasFetched) return; // ✅ don't fetch until user clicks button
     if (!clientId || !startDate || !endDate ) return; // wait till all selected
 
+    const minDate = getMinDate();
+
+    // ✅ STOP if date is not yet corrected
+    if (startDate < minDate || endDate < minDate) {
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -234,6 +241,24 @@ const handleDownloadExcel = () => {
 
 
 
+  const getMinDate = () => {
+    if (String(selectedClient) === "395") {
+      return "2025-04-01";
+    }
+    return "2025-09-01";
+  };
+
+  useEffect(() => {
+    const minDate = getMinDate();
+
+    if (startDate && startDate < minDate) {
+      setStartDate(minDate);
+    }
+    if (endDate && endDate < minDate) {
+      setEndDate(minDate);
+    }
+  }, [selectedClient]);
+
 
   return (
     <>
@@ -301,7 +326,7 @@ const handleDownloadExcel = () => {
             className="form-control"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            min="2025-04-01"
+            min={getMinDate()}
             max={new Date().toISOString().split("T")[0]} // not exceeds today's date
           />
         </div>
@@ -313,7 +338,7 @@ const handleDownloadExcel = () => {
             className="form-control"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            min="2025-04-01"
+            min={getMinDate()}
             max={new Date().toISOString().split("T")[0]} // not exceeds today's date
           />
         </div>

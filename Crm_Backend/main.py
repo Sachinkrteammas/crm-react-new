@@ -73,6 +73,7 @@ from call_flow import router as call_flow_router
 from create_manual_ob_call import router as create_manual_ob_call_router
 from list_id import router as list_id_router
 from manage_mis_report import router as manage_mis_report_router
+from abandon_report import router as abandon_report_router
 
 
 app = FastAPI(title="CRM Backend")
@@ -142,6 +143,7 @@ app.include_router(call_flow_router, tags=["Call Flow"], dependencies=[Depends(v
 app.include_router(create_manual_ob_call_router, tags=["Create Manual OB Call"], dependencies=[Depends(verify_token)])
 app.include_router(list_id_router, tags=["List ID"], dependencies=[Depends(verify_token)])
 app.include_router(manage_mis_report_router, tags=["Manage Mis Report"], dependencies=[Depends(verify_token)])
+app.include_router(abandon_report_router, tags=["Abandon Report"], dependencies=[Depends(verify_token)])
 
 app.include_router(dialer_router, prefix="/api")
 
@@ -250,14 +252,14 @@ def scheduled_daily_billing():
 # ✅ Create scheduler
 scheduler = BackgroundScheduler()
 #scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
-#scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
+scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
 scheduler.add_job(run_report_scheduler, "interval", minutes=1)
 
 
 @app.on_event("startup")
 def on_startup():
         scheduler.start()
-        print("🚀 Scheduler started — Call Summary job will run daily at 9:30 PM")
+        # print("🚀 Scheduler started — Call Summary job will run daily at 9:30 PM")
         print("🚀 Scheduler started — Daily Billing active will run daily at 3:00 AM")
 
 @app.on_event("shutdown")

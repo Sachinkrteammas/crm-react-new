@@ -146,6 +146,8 @@ import MonthConsumption from "./pages/Month_consumption";
 import OutboundReport from "./pages/outbound_report";
 import AgentClientWise from "./pages/Agent_client_wise_report";
 import RLReportClient from "./pages/RL_Report";
+import AbandonTrend from "./pages/Abandon_trend";
+import AbandonCallData from "./pages/Abandon_call_datewise";
 
 
 
@@ -404,6 +406,8 @@ function App() {
               <Route path="/Outbound-report" element={<OutboundReport />} />
               <Route path="/Agent-report" element={<AgentClientWise />} />
               <Route path="/RL-report" element={<RLReportClient />} />
+              <Route path="/AbandonReports/abandon_trend" element={<AbandonTrend />} />
+              <Route path="/CdrReports/abandon_call" element={<AbandonCallData />} />
               <></>
           </Route>
       </Route>
