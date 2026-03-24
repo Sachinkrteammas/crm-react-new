@@ -2486,7 +2486,6 @@ def abandon_callback_report(
             RIGHT(t2.phone_number, 10) as phone,
             mcl.id as manual_id
         FROM vicidial_log t2
-        LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
         LEFT JOIN vicidial_users t4 ON t2.user = t4.user
         LEFT JOIN asterisk.manual_call_log mcl 
             ON RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10) 
