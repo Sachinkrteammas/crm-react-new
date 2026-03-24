@@ -142,6 +142,9 @@ const RLReportClient = () => {
                       onChange={(e) => setClientId(e.target.value)}
                     >
                       <option value="">-- Select Client --</option>
+
+                      <option value="ALL">ALL</option>
+                      
                       {clients.map((c) => (
                         <option key={c.company_id} value={c.company_id}>
                           {c.company_name}

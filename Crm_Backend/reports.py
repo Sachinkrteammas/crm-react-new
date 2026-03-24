@@ -2430,13 +2430,14 @@ def closer_log_report_excel(
 
 @router.get("/abandon-callback-report")
 def abandon_callback_report(
-    client_id: int,
+    client_id: str,
     report_date: date,
     db=Depends(get_db2),
     db4=Depends(get_db4)
 ):
     # 🔹 Step 1: Fetch abandon data
-    aband_data = db4.execute(text("""
+    if client_id == "ALL":
+        aband_data = db4.execute(text("""
         SELECT 
             CompanyName,
             PhoneNo,
@@ -2444,12 +2445,26 @@ def abandon_callback_report(
             call_status,
             call_attempt_time
         FROM aband_call_master
-        WHERE ClientId = :client_id
-        AND DATE(CallDate) = :report_date
-    """), {
-        "client_id": client_id,
-        "report_date": report_date
-    }).mappings().all()
+        WHERE DATE(CallDate) = :report_date
+        """), {
+            "report_date": report_date
+        }).mappings().all()
+    
+    else:
+        aband_data = db4.execute(text("""
+            SELECT 
+                CompanyName,
+                PhoneNo,
+                CallDate,
+                call_status,
+                call_attempt_time
+            FROM aband_call_master
+            WHERE ClientId = :client_id
+            AND DATE(CallDate) = :report_date
+        """), {
+            "client_id": client_id,
+            "report_date": report_date
+        }).mappings().all()
 
     if not aband_data:
         return {"count": 0, "data": []}
@@ -2515,27 +2530,8 @@ def abandon_callback_report(
         call_status = row["call_status"]
         call_attempt_time = row["call_attempt_time"]
 
-        # 🔥 RULE: If DONE → override everything
-        if call_status == "DONE":
-            result.append({
-                "client_name": row["CompanyName"],
-                "date": call_time.date(),
-                "phone_number": phone,
-                "call_abandon_time": call_time.strftime("%Y-%m-%d %H:%M:%S"),
+        is_done = (call_status == "DONE")
 
-                "first_attempt_time": None,
-                "first_status": None,
-
-                "second_attempt_time": None,
-                "second_status": None,
-
-                "third_attempt_time": None,
-                "third_status": None,
-
-                "final_status": "DONE",
-                "call_attempt_time": call_attempt_time
-            })
-            continue  # 🚨 skip remaining logic
 
         attempts = log_map.get(phone, [])
         attempt_count = len(attempts)
@@ -2569,10 +2565,15 @@ def abandon_callback_report(
 
             # 🔥 Fresh Abandon
             if attempt_count == 0:
-                first_status = "Callback Attempt 1 Pending"
-                second_status = "Callback Attempt 2 Pending"
-                third_status = "Callback Attempt 3 Pending"
-                final_status = "Fresh Abandon"
+                if not is_done:
+                    first_status = "Callback Attempt 1 Pending"
+                    second_status = "Callback Attempt 2 Pending"
+                    third_status = "Callback Attempt 3 Pending"
+                    final_status = "Fresh Abandon"
+                else:
+                    # 🔥 DONE + no attempts → no pending
+                    first_status = second_status = third_status = None
+                    final_status = "DONE"
 
             else:
                 final_status = "Not connected"
@@ -2583,6 +2584,9 @@ def abandon_callback_report(
                 first_time, first_status = attempts[0]["time"], attempts[0]["status"]
                 second_time, second_status = attempts[1]["time"], attempts[1]["status"]
                 third_time, third_status = attempts[2]["time"], attempts[2]["status"]
+
+        if is_done:
+            final_status = "DONE"
 
         result.append({
             "client_name": row["CompanyName"],
@@ -2618,7 +2622,7 @@ def abandon_callback_report(
 
 @router.get("/abandon-callback-report/excel")
 def abandon_callback_report_excel(
-    client_id: int,
+    client_id: str,
     report_date: date,
     db=Depends(get_db2),
     db4=Depends(get_db4)
@@ -2627,8 +2631,11 @@ def abandon_callback_report_excel(
     response = abandon_callback_report(client_id, report_date, db, db4)
     data = response["data"]
 
-    company_name = data[0]["client_name"] if data else "Report"
-    safe_company_name = company_name[:10]
+    if client_id == "ALL":
+        safe_company_name = "ALL"
+    else:
+        company_name = data[0]["client_name"] if data else "Report"
+        safe_company_name = company_name[:10]
 
     # 🔹 Create Workbook
     wb = Workbook()
