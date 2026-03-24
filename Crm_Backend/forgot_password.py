@@ -75,7 +75,7 @@ def forgot_password(email: str, db: Session = Depends(get_db4)):
     # 2️⃣ Create reset token
     token = create_reset_token(email)
 
-    reset_link = f"http://ddcrm.dialdesk.in/reset-password?token={token}"
+    reset_link = f"https://crm.dialdesk.in/reset-password?token={token}"
     # reset_link = f"http://localhost:3000/reset-password?token={token}"
 
     # 3️⃣ Send Email (pseudo – plug your SMTP here)
