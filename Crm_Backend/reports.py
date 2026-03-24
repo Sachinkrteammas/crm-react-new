@@ -2440,7 +2440,7 @@ def abandon_callback_report(
         SELECT 
             CompanyName,
             PhoneNo,
-            EntryDate,
+            CallDate,
             call_status,
             call_attempt_time
         FROM aband_call_master
@@ -2511,7 +2511,7 @@ def abandon_callback_report(
     for row in aband_data:
         phone_raw = row["PhoneNo"]
         phone = str(phone_raw)[-10:]
-        call_time = row["EntryDate"]
+        call_time = row["CallDate"]
         call_status = row["call_status"]
         call_attempt_time = row["call_attempt_time"]
 
