@@ -79,7 +79,7 @@ def send_reset_password_email(to_email: str, reset_link: str):
     """
 
     send_email(
-        to_email=to_email,
+        to_emails=to_email,
         subject=subject,
         html_content=html_content
     )
