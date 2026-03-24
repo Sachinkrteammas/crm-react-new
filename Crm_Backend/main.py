@@ -127,7 +127,7 @@ app.include_router(logincreation_master_router, tags=["Login Creation Master"], 
 app.include_router(corrective_report_router, tags=["Corrective Report"], dependencies=[Depends(verify_token)])
 app.include_router(allocate_plan_router, tags=["Allocate Plan"], dependencies=[Depends(verify_token)])
 app.include_router(reallocate_plan_router, tags=["Re Allocate Plan"], dependencies=[Depends(verify_token)])
-app.include_router(forgot_password_router, tags=["Forgot Password"], dependencies=[Depends(verify_token)])
+app.include_router(forgot_password_router, tags=["Forgot Password"])
 app.include_router(usage_summary_router, tags=["Usage Summary"], dependencies=[Depends(verify_token)])
 app.include_router(statement_summary_router, tags=["Statement Summary"], dependencies=[Depends(verify_token)])
 app.include_router(invoice_router, tags=["Invoice"], dependencies=[Depends(verify_token)])
