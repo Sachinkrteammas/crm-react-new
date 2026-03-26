@@ -347,7 +347,7 @@ const ManageMISReports = () => {
                 onChange={handleChange}
               />
               <small className="form-text text-muted">
-                (e.g. abc@gmail.com, xyz@gmail.com)
+                (e.g. abc@gmail.com,xyz@gmail.com)
               </small>
             </div>
 
@@ -361,7 +361,7 @@ const ManageMISReports = () => {
                 onChange={handleChange}
               />
               <small className="form-text text-muted">
-                (e.g. abc@gmail.com, xyz@gmail.com)
+                (e.g. abc@gmail.com,xyz@gmail.com)
               </small>              
             </div>
 
@@ -553,7 +553,7 @@ const ManageMISReports = () => {
                         value={editData.email}
                         onChange={(e)=>setEditData({...editData,email:e.target.value})}
                       />
-                      <small className="text-muted">(e.g. abc@gmail.com, xyz@gmail.com)</small>
+                      <small className="text-muted">(e.g. abc@gmail.com,xyz@gmail.com)</small>
                     </div>
 
                     <div className="col-md-6">
@@ -563,7 +563,7 @@ const ManageMISReports = () => {
                         value={editData.cc}
                         onChange={(e)=>setEditData({...editData,cc:e.target.value})}
                       />
-                      <small className="text-muted">(e.g. abc@gmail.com, xyz@gmail.com)</small>
+                      <small className="text-muted">(e.g. abc@gmail.com,xyz@gmail.com)</small>
                     </div>
 
                     <div className="col-md-6">

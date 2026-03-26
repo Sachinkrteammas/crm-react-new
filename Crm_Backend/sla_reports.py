@@ -390,32 +390,14 @@ def export_sla_day_wise(
 
         qry = f"""
         SELECT 
-            COUNT(*) Total,
-            SUM(IF(t2.user!='VDCL' AND t2.queue_seconds<=20,1,0)) WIthinSLA,
-            SUM(IF(t2.user!='VDCL',1,0)) Answered,
-            COUNT(DISTINCT IF(t2.user!='VDCL',t2.user,NULL)) Manpower,
-
-            GROUP_CONCAT(DISTINCT IF(t2.user!='VDCL',t2.user,NULL)) agents,
-            GROUP_CONCAT(DISTINCT IF(t2.user!='VDCL' AND vu.user_nickname='1',t2.user,NULL)) Shared_ag,
-            COUNT(DISTINCT IF(t2.user!='VDCL' AND vu.user_nickname='1',t2.user,NULL)) Shared,
-
-            GROUP_CONCAT(DISTINCT IF(t2.user!='VDCL' AND vu.user_nickname='0',t2.user,NULL)) Dedicated_ag,
-            COUNT(DISTINCT IF(t2.user!='VDCL' AND vu.user_nickname='0',t2.user,NULL)) Dedicated,
-
-            GROUP_CONCAT(DISTINCT IF(t2.user!='VDCL' AND vu.user_nickname NOT IN('0','1'),t2.user,NULL)) Other_ag,
-            COUNT(DISTINCT IF(t2.user!='VDCL' AND vu.user_nickname NOT IN('0','1'),t2.user,NULL)) Other,
-
-            SUM(t1.talk_sec) Talk,
-            SUM(t1.wait_sec) wait,
-            SUM(t1.dispo_sec) dispo,
-            SUM(t1.pause_sec) pause,
-            SUM(IFNULL(t3.p,0)) hold,
-
-            SUM(IF(t2.user!='VDCL',1,0))/COUNT(*)*100 Al,
-            SUM(t1.talk_sec+t1.wait_sec+t1.dispo_sec+t1.pause_sec+IFNULL(t3.p,0)) `Total_login`,
-            SUM(t1.talk_sec+t1.wait_sec+t1.dispo_sec+IFNULL(t3.p,0)) `Net_login`,
-            (SUM(t1.talk_sec+t1.dispo_sec+IFNULL(t3.p,0)) /
-             SUM(t1.talk_sec+t1.wait_sec+t1.dispo_sec+IFNULL(t3.p,0))) *100 Utilization
+            t2.user,
+            t2.queue_seconds,
+            vu.user_nickname,
+            t1.talk_sec,
+            t1.wait_sec,
+            t1.dispo_sec,
+            t1.pause_sec,
+            IFNULL(t3.p,0) as hold
 
         FROM vicidial_closer_log t2
         LEFT JOIN vicidial_users vu ON t2.user=vu.user
@@ -434,7 +416,18 @@ def export_sla_day_wise(
           AND {campaignId}
         """
 
-        row = db2.execute(text(qry)).fetchone()
+        row = db2.execute(text(qry)).fetchall()
+
+        Total = 0
+        WithinSLA = 0
+        Answered = 0
+
+        agents = set()
+        shared_agents = set()
+        dedicated_agents = set()
+        other_agents = set()
+
+        Talk = wait = dispo = pause = hold = 0
 
         # ---------------- Agent Name Mapping ----------------
         def map_agents(csv):
@@ -443,6 +436,61 @@ def export_sla_day_wise(
             return ",".join(
                 [f"{ag_list.get(a,a)}({a})" for a in csv.split(",") if a]
             )
+        
+        for r in row:
+            Total += 1
+
+            user = r.user
+            queue = r.queue_seconds or 0
+            nickname = r.user_nickname
+
+            talk_sec = r.talk_sec or 0
+            wait_sec = r.wait_sec or 0
+            dispo_sec = r.dispo_sec or 0
+            pause_sec = r.pause_sec or 0
+            hold_sec = r.hold or 0
+
+            if user != 'VDCL':
+                Answered += 1
+                agents.add(user)
+
+                if queue <= 20:
+                    WithinSLA += 1
+
+                if nickname == '1':
+                    shared_agents.add(user)
+                elif nickname == '0':
+                    dedicated_agents.add(user)
+                else:
+                    other_agents.add(user)
+
+            Talk += talk_sec
+            wait += wait_sec
+            dispo += dispo_sec
+            pause += pause_sec
+            hold += hold_sec
+
+        
+        Manpower = len(agents)
+        Shared = len(shared_agents)
+        Dedicated = len(dedicated_agents)
+        Other = len(other_agents)
+
+        Al = (Answered / Total * 100) if Total else 0
+
+        Total_login = Talk + wait + dispo + pause + hold
+        Net_login = Talk + wait + dispo + hold
+
+        Utilization = (
+            (Talk + dispo + hold) / Net_login * 100
+            if Net_login else 0
+        )
+
+
+        agents_str = ",".join(agents)
+        shared_str = ",".join(shared_agents)
+        dedicated_str = ",".join(dedicated_agents)
+        other_str = ",".join(other_agents)
 
         # ---------------- RL ----------------
         rl = db1.execute(
@@ -457,29 +505,57 @@ def export_sla_day_wise(
         ).scalar()
 
         # ---------------- Final Data ----------------
+        # data[dateLabel] = {
+        #     "Total": row.Total,
+        #     "Answered": row.Answered,
+        #     "Manpower": row.Manpower,
+        #     "Shared": row.Shared,
+        #     "Dedicated": row.Dedicated,
+        #     "Other": row.Other,
+        #     "Talk": row.Talk,
+        #     "wait": row.wait,
+        #     "dispo": row.dispo,
+        #     "hold": row.hold,
+        #     "Al %": round(row.Al, 2),
+        #     "SL %": round((row.WIthinSLA / row.Answered) * 100, 2) if row.Answered else 0,
+        #     "RL": rl,
+        #     "RL %": round(((rl + row.Answered) / row.Total) * 100, 2) if row.Total else 0,
+        #     "Total login": row.Total_login,
+        #     "Net login": row.Net_login,
+        #     "Utilization %": round(row.Utilization, 2),
+        #     "Manpower Agents": map_agents(row.agents),
+        #     "Shared Agents": map_agents(row.Shared_ag),
+        #     "Dedicated Agents": map_agents(row.Dedicated_ag),
+        #     "Other Agents": map_agents(row.Other_ag),
+        #     "WIthinSLA": row.WIthinSLA,
+        # }
+
+
         data[dateLabel] = {
-            "Total": row.Total,
-            "Answered": row.Answered,
-            "Manpower": row.Manpower,
-            "Shared": row.Shared,
-            "Dedicated": row.Dedicated,
-            "Other": row.Other,
-            "Talk": row.Talk,
-            "wait": row.wait,
-            "dispo": row.dispo,
-            "hold": row.hold,
-            "Al %": round(row.Al, 2),
-            "SL %": round((row.WIthinSLA / row.Answered) * 100, 2) if row.Answered else 0,
+            "Total": Total,
+            "Answered": Answered,
+            "Manpower": Manpower,
+            "Shared": Shared,
+            "Dedicated": Dedicated,
+            "Other": Other,
+            "Talk": Talk,
+            "wait": wait,
+            "dispo": dispo,
+            "hold": hold,
+            "Al %": round(Al, 2),
+            "SL %": round((WithinSLA / Answered) * 100, 2) if Answered else 0,
             "RL": rl,
-            "RL %": round(((rl + row.Answered) / row.Total) * 100, 2) if row.Total else 0,
-            "Total login": row.Total_login,
-            "Net login": row.Net_login,
-            "Utilization %": round(row.Utilization, 2),
-            "Manpower Agents": map_agents(row.agents),
-            "Shared Agents": map_agents(row.Shared_ag),
-            "Dedicated Agents": map_agents(row.Dedicated_ag),
-            "Other Agents": map_agents(row.Other_ag),
-            "WIthinSLA": row.WIthinSLA,
+            "RL %": round(((rl + Answered) / Total) * 100, 2) if Total else 0,
+            "Total login": Total_login,
+            "Net login": Net_login,
+            "Utilization %": round(Utilization, 2),
+
+            "Manpower Agents": map_agents(agents_str),
+            "Shared Agents": map_agents(shared_str),
+            "Dedicated Agents": map_agents(dedicated_str),
+            "Other Agents": map_agents(other_str),
+
+            "WIthinSLA": WithinSLA,
         }
 
     return data
@@ -554,7 +630,7 @@ def slot_wise_utilization(
     cur = from_dt
     while cur < to_dt:
         date_label = cur.strftime("%Y-%m-%d")
-        time_label = cur.strftime("%H")
+        time_label = int(cur.strftime("%H"))
 
         start_time = cur.strftime("%Y-%m-%d %H:%M:%S")
         end_time = (cur + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
@@ -564,27 +640,15 @@ def slot_wise_utilization(
         datetimeArray.setdefault(date_label, []).append(time_label)
 
         qry = text(f"""
-            SELECT COUNT(*) Total,
-            SUM(IF(t2.user!='VDCL' AND t2.queue_seconds<=20,1,0)) WIthinSLA,
-            SUM(IF(t2.user!='VDCL',1,0)) Answered,
-            COUNT(DISTINCT IF(t2.user!='vdcl', t2.user, NULL)) Manpower,
-            GROUP_CONCAT(DISTINCT IF(t2.user!='vdcl', t2.user, NULL)) agents,
-            GROUP_CONCAT(DISTINCT IF(t2.user!='vdcl' AND vu.user_nickname='1', t2.user, NULL)) Shared_ag,
-            COUNT(DISTINCT IF(t2.user!='vdcl' AND vu.user_nickname='1', t2.user, NULL)) Shared,
-            GROUP_CONCAT(DISTINCT IF(t2.user!='vdcl' AND vu.user_nickname='0', t2.user, NULL)) Dedicated_ag,
-            COUNT(DISTINCT IF(t2.user!='vdcl' AND vu.user_nickname='0', t2.user, NULL)) Dedicated,
-            GROUP_CONCAT(DISTINCT IF(t2.user!='vdcl' AND vu.user_nickname NOT IN ('0','1'), t2.user, NULL)) Other_ag,
-            COUNT(DISTINCT IF(t2.user!='vdcl' AND vu.user_nickname NOT IN ('0','1'), t2.user, NULL)) Other,
-            SUM(t1.talk_sec) Talk,
-            SUM(t1.wait_sec) wait,
-            SUM(t1.dispo_sec) dispo,
-            SUM(t1.pause_sec) pause,
-            SUM(IFNULL(t3.p,0)) hold,
-            SUM(IF(t2.user!='VDCL',1,0))/COUNT(*)*100 Al,
-            SUM(t1.talk_sec)+SUM(t1.wait_sec)+SUM(t1.dispo_sec)+SUM(t1.pause_sec)+SUM(IFNULL(t3.p,0)) Total_login,
-            SUM(t1.talk_sec)+SUM(t1.wait_sec)+SUM(t1.dispo_sec)+SUM(IFNULL(t3.p,0)) Net_login,
-            (SUM(t1.talk_sec)+SUM(t1.dispo_sec)+SUM(IFNULL(t3.p,0))) /
-            (SUM(t1.talk_sec)+SUM(t1.wait_sec)+SUM(t1.dispo_sec)+SUM(IFNULL(t3.p,0))) * 100 Utilization
+            SELECT 
+                t2.user,
+                t2.queue_seconds,
+                vu.user_nickname,
+                t1.talk_sec,
+                t1.wait_sec,
+                t1.dispo_sec,
+                t1.pause_sec,
+                IFNULL(t3.p,0) AS hold
             FROM asterisk.vicidial_closer_log t2
             LEFT JOIN asterisk.vicidial_users vu ON t2.user=vu.user
             LEFT JOIN asterisk.vicidial_agent_log t1 ON t1.uniqueid=t2.uniqueid AND t2.user=t1.user
@@ -601,30 +665,101 @@ def slot_wise_utilization(
             AND {campaign_cond}
         """)
 
-        r = db2.execute(qry).fetchone()
+        rows = db2.execute(qry).fetchall()
+
+        total = 0
+        within_sla = 0
+        answered = 0
+
+        agents_set = set()
+        shared_set = set()
+        dedicated_set = set()
+        other_set = set()
+
+        talk = wait = dispo = pause = hold = 0
+
+        for r in rows:
+            user = (r.user or "")
+            nickname = str(r.user_nickname) if r.user_nickname else ""
+
+            total += 1
+
+            if user != "VDCL":
+                answered += 1
+                agents_set.add(user)
+
+                if (r.queue_seconds or 0) <= 20:
+                    within_sla += 1
+
+                if nickname == "1":
+                    shared_set.add(user)
+                elif nickname == "0":
+                    dedicated_set.add(user)
+                else:
+                    other_set.add(user)
+
+            talk += r.talk_sec or 0
+            wait += r.wait_sec or 0
+            dispo += r.dispo_sec or 0
+            pause += r.pause_sec or 0
+            hold += r.hold or 0
+
+        # data.setdefault(date_label, {})[time_label] = {
+        #     "Total": r.Total,
+        #     "Answered": r.Answered,
+        #     "Manpower": r.Manpower,
+        #     "Shared": r.Shared,
+        #     "Dedicated": r.Dedicated,
+        #     "Other": r.Other,
+        #     "Talk": r.Talk,
+        #     "wait": r.wait,
+        #     "dispo": r.dispo,
+        #     "pause": r.pause,
+        #     "hold": r.hold,
+        #     "Al %": round(r.Al or 0, 2),
+        #     "SL %": round((r.WIthinSLA / r.Answered) * 100, 2) if r.Answered else 0,
+        #     "Total login": r.Total_login,
+        #     "Net login": r.Net_login,
+        #     "Utilization %": round(r.Utilization or 0, 2),
+        #     "WIthinSLA": r.WIthinSLA,
+        #     "Manpower Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.agents or "").split(",") if a]),
+        #     "Shared Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.Shared_ag or "").split(",") if a]),
+        #     "Dedicated Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.Dedicated_ag or "").split(",") if a]),
+        #     "Other Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.Other_ag or "").split(",") if a]),
+        # }
+
 
         data.setdefault(date_label, {})[time_label] = {
-            "Total": r.Total,
-            "Answered": r.Answered,
-            "Manpower": r.Manpower,
-            "Shared": r.Shared,
-            "Dedicated": r.Dedicated,
-            "Other": r.Other,
-            "Talk": r.Talk,
-            "wait": r.wait,
-            "dispo": r.dispo,
-            "pause": r.pause,
-            "hold": r.hold,
-            "Al %": round(r.Al or 0, 2),
-            "SL %": round((r.WIthinSLA / r.Answered) * 100, 2) if r.Answered else 0,
-            "Total login": r.Total_login,
-            "Net login": r.Net_login,
-            "Utilization %": round(r.Utilization or 0, 2),
-            "WIthinSLA": r.WIthinSLA,
-            "Manpower Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.agents or "").split(",") if a]),
-            "Shared Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.Shared_ag or "").split(",") if a]),
-            "Dedicated Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.Dedicated_ag or "").split(",") if a]),
-            "Other Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.Other_ag or "").split(",") if a]),
+            "Total": total,
+            "Answered": answered,
+            "Manpower": len(agents_set),
+            "Shared": len(shared_set),
+            "Dedicated": len(dedicated_set),
+            "Other": len(other_set),
+
+            "Talk": talk,
+            "wait": wait,
+            "dispo": dispo,
+            "pause": pause,
+            "hold": hold,
+
+            "Al %": round((answered / total * 100) if total else 0, 2),
+            "SL %": round((within_sla / answered * 100) if answered else 0, 2),
+
+            "Total login": talk + wait + dispo + pause + hold,
+            "Net login": talk + wait + dispo + hold,
+
+            "Utilization %": round(
+                ((talk + dispo + hold) / (talk + wait + dispo + hold) * 100)
+                if (talk + wait + dispo + hold) else 0, 2
+            ),
+
+            "WIthinSLA": within_sla,
+
+            "Manpower Agents": ",".join([f"{ag_list.get(a)}({a})" for a in agents_set]),
+            "Shared Agents": ",".join([f"{ag_list.get(a)}({a})" for a in shared_set]),
+            "Dedicated Agents": ",".join([f"{ag_list.get(a)}({a})" for a in dedicated_set]),
+            "Other Agents": ",".join([f"{ag_list.get(a)}({a})" for a in other_set]),
         }
 
         # --- RL and RL % calculation ---
@@ -637,7 +772,7 @@ def slot_wise_utilization(
             AND calldate < '{end_time}'
         """)
         rl_count = db1.execute(rl_sql).fetchone().cnt or 0
-        rl_percent = round(((rl_count + r.Answered) / r.Total) * 100, 2) if r.Total else 0
+        rl_percent = round(((rl_count + answered) / total) * 100, 2) if total else 0
 
         data[date_label][time_label].update({
             "RL": rl_count,

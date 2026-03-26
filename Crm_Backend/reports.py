@@ -1068,6 +1068,153 @@ def get_after_hours_calls(
     }
 
 
+# @router.post("/rl_internal_report")
+# def rl_internal_report(
+#     from_date: date,
+#     to_date: date,
+#     report_type: str = "company",
+#     company_id: Optional[int] = None,
+#     db: Session = Depends(get_db4),
+#     db2: Session = Depends(get_db2)
+# ):
+
+#     # ---------------- VALIDATE REPORT TYPE ----------------
+#     if report_type not in ["company", "entry"]:
+#         raise HTTPException(400, "report_type must be 'company' or 'entry'")
+
+#     # ---------------- GET CDR DATA ----------------
+#     cdr_rows = db2.execute(text("""
+#         SELECT
+#             DATE(t2.call_date) AS call_date,
+#             RIGHT(t2.phone_number,10) AS phone_number,
+#             IF(mcl.id IS NOT NULL,'Connected','Not Connected') AS call_type
+#         FROM vicidial_log t2
+#         LEFT JOIN asterisk.manual_call_log mcl
+#             ON RIGHT(mcl.phone_number,10)=RIGHT(t2.phone_number,10)
+#             AND mcl.uniqueid=t2.uniqueid
+#         WHERE DATE(t2.call_date) BETWEEN :from_dt AND :to_dt
+#           AND t2.campaign_id IN ('dialdesk','Cryst002','Ajmal000','Superher')
+#           AND t2.list_id IN ('998','2001')
+#           AND t2.lead_id IS NOT NULL
+#     """), {
+#         "from_dt": from_date,
+#         "to_dt": to_date
+#     }).mappings().all()
+
+#     # ---------------- GET ABANDON DATA ----------------
+#     # if company_id passed → filter client
+#     if company_id:
+#         aband_query = text("""
+#             SELECT
+#                 RIGHT(PhoneNo,10) AS PhoneNo,
+#                 DATE(EntryDate) AS EntryDate,
+#                 DATE(CallDate) AS CallDate,
+#                 CompanyName,
+#                 Callbackdate
+#             FROM aband_call_master
+#             WHERE DATE(CallDate) BETWEEN :from_dt AND :to_dt
+#               AND ClientId = :company_id
+#         """)
+#         aband_params = {
+#             "from_dt": from_date,
+#             "to_dt": to_date,
+#             "company_id": company_id
+#         }
+#     else:
+#         # all clients (current behavior)
+#         aband_query = text("""
+#             SELECT
+#                 RIGHT(PhoneNo,10) AS PhoneNo,
+#                 DATE(EntryDate) AS EntryDate,
+#                 DATE(CallDate) AS CallDate,
+#                 CompanyName,
+#                 Callbackdate
+#             FROM aband_call_master
+#             WHERE DATE(CallDate) BETWEEN :from_dt AND :to_dt
+#         """)
+#         aband_params = {
+#             "from_dt": from_date,
+#             "to_dt": to_date
+#         }
+
+#     aband_rows = db.execute(aband_query, aband_params).mappings().all()
+
+#     # ---------------- BUILD LOOKUPS ----------------
+#     stats_map = {}
+#     abandon_lookup = {}
+
+#     for row in aband_rows:
+#         phone = row["PhoneNo"]
+#         entry_date = str(row["EntryDate"])
+#         call_date = str(row["CallDate"])
+#         company = row["CompanyName"]
+#         callback = row["Callbackdate"]
+
+#         # grouping key
+#         group_key = company if report_type == "company" else entry_date
+
+#         abandon_lookup[(phone, call_date)] = group_key
+
+#         if group_key not in stats_map:
+#             stats_map[group_key] = {
+#                 "TotalAbandon": 0,
+#                 "Callback": 0,
+#                 "FailedAttempt": 0,
+#                 "Connected": 0,
+#                 "NotConnected": 0,
+#                 "UniquePhones": set()
+#             }
+
+#         stats_map[group_key]["TotalAbandon"] += 1
+
+#         if callback:
+#             stats_map[group_key]["Callback"] += 1
+#         else:
+#             stats_map[group_key]["FailedAttempt"] += 1
+
+#     # ---------------- APPLY CDR LOGIC ----------------
+#     for row in cdr_rows:
+#         phone = row["phone_number"]
+#         call_date = str(row["call_date"])
+#         call_type = row["call_type"]
+
+#         key = (phone, call_date)
+
+#         if key not in abandon_lookup:
+#             continue
+
+#         group_key = abandon_lookup[key]
+#         stats = stats_map[group_key]
+
+#         stats["UniquePhones"].add(phone)
+
+#         if call_type == "Connected":
+#             stats["Connected"] += 1
+#         else:
+#             stats["NotConnected"] += 1
+
+#     # ---------------- FORMAT RESPONSE (OLD FRONTEND FORMAT) ----------------
+#     result = []
+
+#     for group, stats in stats_map.items():
+#         row = {
+#             ("CompanyName" if report_type == "company" else "EntryDate"): group,
+#             "Total_Abandon": stats["TotalAbandon"],
+#             "Abandon_Unique": len(stats["UniquePhones"]),
+#             "Total_Callback": stats["Callback"],
+#             "Connected": stats["Connected"],
+#             "Not_Connected": stats["NotConnected"],
+#             "Failed_Attempt": stats["FailedAttempt"]
+#         }
+#         result.append(row)
+
+#     return result
+
+
+
+
+
+
 @router.post("/rl_internal_report")
 def rl_internal_report(
     from_date: date,
@@ -1078,9 +1225,120 @@ def rl_internal_report(
     db2: Session = Depends(get_db2)
 ):
 
-    # ---------------- VALIDATE REPORT TYPE ----------------
     if report_type not in ["company", "entry"]:
         raise HTTPException(400, "report_type must be 'company' or 'entry'")
+
+    # ---------------- GET ABANDON MASTER ----------------
+    if company_id:
+        aband_query = text("""
+            SELECT
+                RIGHT(PhoneNo,10) AS PhoneNo,
+                DATE(EntryDate) AS EntryDate,
+                DATE(CallDate) AS CallDate,
+                CompanyName,
+                Callbackdate,
+                call_status
+            FROM aband_call_master
+            WHERE DATE(CallDate) BETWEEN :from_dt AND :to_dt
+              AND ClientId = :company_id
+            ORDER BY CompanyName ASC
+        """)
+        aband_params = {
+            "from_dt": from_date,
+            "to_dt": to_date,
+            "company_id": company_id
+        }
+    else:
+        aband_query = text("""
+            SELECT
+                RIGHT(PhoneNo,10) AS PhoneNo,
+                DATE(EntryDate) AS EntryDate,
+                DATE(CallDate) AS CallDate,
+                CompanyName,
+                Callbackdate,
+                call_status
+            FROM aband_call_master
+            WHERE DATE(CallDate) BETWEEN :from_dt AND :to_dt
+            ORDER BY CompanyName ASC
+        """)
+        aband_params = {
+            "from_dt": from_date,
+            "to_dt": to_date
+        }
+
+    aband_rows = db.execute(aband_query, aband_params).mappings().all()
+
+    # # ---------------- GET TOTAL ABANDON FROM CLOSER LOG ----------------
+    # closer_rows = db2.execute(text("""
+    #     SELECT 
+    #         DATE(t2.call_date) AS call_date,
+    #         COUNT(t2.phone_number) AS total_abandon
+    #     FROM asterisk.vicidial_closer_log t2
+    #     LEFT JOIN vicidial_agent_log t3 
+    #         ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+    #     LEFT JOIN (
+    #         SELECT uniqueid, SUM(parked_sec) AS p 
+    #         FROM park_log 
+    #         WHERE STATUS = 'GRABBED'
+    #           AND DATE(parked_time) BETWEEN :from_dt AND :to_dt
+    #         GROUP BY uniqueid
+    #     ) t6 ON t2.uniqueid = t6.uniqueid
+    #     LEFT JOIN vicidial_users vc ON t2.user = vc.user
+    #     WHERE DATE(t2.call_date) BETWEEN :from_dt AND :to_dt
+    #       AND t2.campaign_id IN ('Karaulidiagnostics0001','Karau0001')
+    #       AND t2.lead_id IS NOT NULL
+    #       AND t2.user = 'VDCL'
+    #     GROUP BY DATE(t2.call_date)
+    # """), {
+    #     "from_dt": from_date,
+    #     "to_dt": to_date
+    # }).mappings().all()
+
+    # # Map: date → total_abandon
+    # closer_map = {str(r["call_date"]): r["total_abandon"] for r in closer_rows}
+
+    # ---------------- INIT ----------------
+    stats_map = {}
+    abandon_lookup = {}
+
+    # ---------------- PROCESS ABAND MASTER ----------------
+    for row in aband_rows:
+        phone = row["PhoneNo"]
+        entry_date = str(row["EntryDate"])
+        call_date = str(row["CallDate"])
+        company = row["CompanyName"]
+        callback = row["Callbackdate"]
+
+        group_key = company if report_type == "company" else entry_date
+
+        abandon_lookup[(phone, call_date)] = group_key
+
+        if group_key not in stats_map:
+            stats_map[group_key] = {
+                "TotalAbandon": 0,
+                "Callback": 0,
+                "FailedAttempt": 0,
+                "Connected": 0,
+                "NotConnected": 0,
+                "AbandonUnique": 0
+            }
+
+        # ✅ SIMPLE COUNT
+        stats_map[group_key]["AbandonUnique"] += 1
+
+        call_status = row["call_status"]
+
+        if callback:
+            stats_map[group_key]["Callback"] += 1
+        else:
+            # ✅ only count failed when NOT DONE
+            if not call_status or call_status != "DONE":
+                stats_map[group_key]["FailedAttempt"] += 1
+
+    # # ---------------- APPLY TOTAL ABANDON FROM SQL ----------------
+    # for (phone, call_date), group_key in abandon_lookup.items():
+    #     if call_date in closer_map:
+    #         stats_map[group_key]["TotalAbandon"] = closer_map[call_date]
 
     # ---------------- GET CDR DATA ----------------
     cdr_rows = db2.execute(text("""
@@ -1101,78 +1359,7 @@ def rl_internal_report(
         "to_dt": to_date
     }).mappings().all()
 
-    # ---------------- GET ABANDON DATA ----------------
-    # if company_id passed → filter client
-    if company_id:
-        aband_query = text("""
-            SELECT
-                RIGHT(PhoneNo,10) AS PhoneNo,
-                DATE(EntryDate) AS EntryDate,
-                DATE(Callbackdate) AS CallDate,
-                CompanyName,
-                Callbackdate
-            FROM aband_call_master
-            WHERE DATE(EntryDate) BETWEEN :from_dt AND :to_dt
-              AND ClientId = :company_id
-        """)
-        aband_params = {
-            "from_dt": from_date,
-            "to_dt": to_date,
-            "company_id": company_id
-        }
-    else:
-        # all clients (current behavior)
-        aband_query = text("""
-            SELECT
-                RIGHT(PhoneNo,10) AS PhoneNo,
-                DATE(EntryDate) AS EntryDate,
-                DATE(Callbackdate) AS CallDate,
-                CompanyName,
-                Callbackdate
-            FROM aband_call_master
-            WHERE DATE(EntryDate) BETWEEN :from_dt AND :to_dt
-        """)
-        aband_params = {
-            "from_dt": from_date,
-            "to_dt": to_date
-        }
-
-    aband_rows = db.execute(aband_query, aband_params).mappings().all()
-
-    # ---------------- BUILD LOOKUPS ----------------
-    stats_map = {}
-    abandon_lookup = {}
-
-    for row in aband_rows:
-        phone = row["PhoneNo"]
-        entry_date = str(row["EntryDate"])
-        call_date = str(row["CallDate"])
-        company = row["CompanyName"]
-        callback = row["Callbackdate"]
-
-        # grouping key
-        group_key = company if report_type == "company" else entry_date
-
-        abandon_lookup[(phone, call_date)] = group_key
-
-        if group_key not in stats_map:
-            stats_map[group_key] = {
-                "TotalAbandon": 0,
-                "Callback": 0,
-                "FailedAttempt": 0,
-                "Connected": 0,
-                "NotConnected": 0,
-                "UniquePhones": set()
-            }
-
-        stats_map[group_key]["TotalAbandon"] += 1
-
-        if callback:
-            stats_map[group_key]["Callback"] += 1
-        else:
-            stats_map[group_key]["FailedAttempt"] += 1
-
-    # ---------------- APPLY CDR LOGIC ----------------
+    # ---------------- APPLY CDR ----------------
     for row in cdr_rows:
         phone = row["phone_number"]
         call_date = str(row["call_date"])
@@ -1186,25 +1373,23 @@ def rl_internal_report(
         group_key = abandon_lookup[key]
         stats = stats_map[group_key]
 
-        stats["UniquePhones"].add(phone)
-
         if call_type == "Connected":
             stats["Connected"] += 1
         else:
             stats["NotConnected"] += 1
 
-    # ---------------- FORMAT RESPONSE (OLD FRONTEND FORMAT) ----------------
+    # ---------------- FINAL RESPONSE ----------------
     result = []
 
     for group, stats in stats_map.items():
         row = {
             ("CompanyName" if report_type == "company" else "EntryDate"): group,
-            "Total_Abandon": stats["TotalAbandon"],
-            "Abandon_Unique": len(stats["UniquePhones"]),
+            "Total_Abandon": stats["AbandonUnique"],
             "Total_Callback": stats["Callback"],
             "Connected": stats["Connected"],
             "Not_Connected": stats["NotConnected"],
-            "Failed_Attempt": stats["FailedAttempt"]
+            "Failed_Attempt": stats["FailedAttempt"],
+            "Abandon_Unique": stats["AbandonUnique"],
         }
         result.append(row)
 

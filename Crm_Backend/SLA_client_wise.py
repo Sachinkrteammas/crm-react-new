@@ -49,11 +49,23 @@ class Companies(BaseModel):
 
 
 
-def timedelta_to_seconds(td):
-    if td is None:
-        return 0
-    return int(td.total_seconds())
+# def timedelta_to_seconds(td):
+#     if td is None:
+#         return 0
+#     return int(td.total_seconds())
 
+
+
+def timedelta_to_seconds(td):
+    if isinstance(td, int):  # ✅ already seconds
+        return td
+
+    if isinstance(td, str):  # ✅ "HH:MM:SS"
+        h, m, s = map(int, td.split(":"))
+        return h * 3600 + m * 60 + s
+
+    # ✅ timedelta case
+    return int(td.total_seconds())
 
 
 def seconds_to_hms(seconds):
@@ -64,6 +76,11 @@ def seconds_to_hms(seconds):
     return f"{h:02d}:{m:02d}:{s:02d}"
 
 
+def sec_to_time(seconds):
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = int(seconds % 60)
+    return f"{h:02}:{m:02}:{s:02}"
 
 
 
@@ -189,23 +206,34 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
     total_offered = 0
     rl_list = set()
 
+
+    grand_totals = {
+        "Offered": 0,
+        "Handled": 0,
+        "Total Talk Time": "00:00:00",
+        "Calls Ans (20 Sec)": 0,
+        "Calls Ans (10 Sec)": 0,
+        "Total Calls Abandoned": 0,
+        "Abnd Within (20)": 0,
+        "AHT_total_sec": 0,
+        "Amount": 0,
+        "RL": 0,
+        "Call Rate": 0
+    }
+
     for company_id, campaigns in client_campaigns.items():
         rate_info = company_rates[company_id]
         for campaign in campaigns:
             sql = f"""
                 SELECT 
                     t2.campaign_id,
-                    COUNT(*) AS Total,
-                    SEC_TO_TIME(LEFT(SUM(talk_sec)+SUM(pause_sec)+SUM(wait_sec)+SUM(dispo_sec),6)) AS TalkTime,
-                    SEC_TO_TIME(LEFT(SUM(dispo_sec),6)) AS dispo_time,
-                    SEC_TO_TIME(LEFT(SUM(dispo_sec),5)) AS WrapTime,
-                    SUM(IF(t2.user <> 'VDCL',1,0)) AS Answered,
-                    SUM(IF(t2.user = 'VDCL',1,0)) AS Abandon,
-                    SUM(IF(t2.user <> 'VDCL', t1.length_in_sec, 0)) AS TotalAcht,
-                    SUM(IF(t2.user <> 'VDCL' AND t2.queue_seconds <= 20,1,0)) AS WIthinSLA,
-                    SUM(IF(t2.user <> 'VDCL' AND t2.queue_seconds <= 10,1,0)) AS WIthinSLATen,
-                    SUM(IF(t2.user = 'VDCL' AND t2.queue_seconds <= 20,1,0)) AS AbndWithinThresold,
-                    SUM(IF(t2.user = 'VDCL' AND t2.queue_seconds > 20,1,0)) AS AbndAfterThresold
+                    t2.user,
+                    t2.queue_seconds,
+                    dispo_sec,
+                    talk_sec,
+                    pause_sec,
+                    wait_sec,
+                    t1.length_in_sec
                 FROM asterisk.vicidial_closer_log t2
                 LEFT JOIN asterisk.vicidial_users vu ON t2.user = vu.user
                 LEFT JOIN asterisk.call_log t1 ON t1.uniqueid = t2.uniqueid
@@ -215,20 +243,75 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
                   AND t2.lead_id IS NOT NULL
                   AND t2.campaign_id = :campaign
             """
-            row = db2.execute(text(sql), {"from_date": req.from_date, "to_date": req.to_date, "campaign": campaign}).mappings().first()
+            row = db2.execute(text(sql), {"from_date": req.from_date, "to_date": req.to_date, "campaign": campaign}).mappings().all()
+
+            # if not row:
+            #     row = {k: 0 for k in ["Total","Answered","Abandon","TotalAcht","WIthinSLA","WIthinSLATen","AbndWithinThresold"]}
+            #     row["TalkTime"] = "00:00:00"
 
             if not row:
-                row = {k: 0 for k in ["Total","Answered","Abandon","TotalAcht","WIthinSLA","WIthinSLATen","AbndWithinThresold"]}
-                row["TalkTime"] = "00:00:00"
+                row = []   # ✅ must be list
 
 
-            abandon = float(row["Abandon"] or 0)
-            total_acht_row = float(row["TotalAcht"] or 0)
-            offered = float(row["Total"] or 0)
-            handled = float(row["Answered"] or 0)
-            wi_thin_sla = float(row["WIthinSLA"] or 0)
-            wi_thin_sla_ten = float(row["WIthinSLATen"] or 0)
-            abnd_within = float(row["AbndWithinThresold"] or 0)
+            total = 0
+            answered = 0
+            abandon = 0
+            total_acht_row = 0
+
+            within_sla = 0
+            within_sla_ten = 0
+            abnd_within = 0
+            abnd_after = 0
+
+            talk_time_sec = 0
+            dispo_time_sec = 0
+            wrap_time_sec = 0
+
+            for r in row:
+                total += 1
+
+                user = r["user"]
+                queue_sec = r["queue_seconds"] or 0
+                dispo_sec = r["dispo_sec"] or 0
+                talk_sec = r["talk_sec"] or 0
+                pause_sec = r["pause_sec"] or 0
+                wait_sec = r["wait_sec"] or 0
+                length_sec = r["length_in_sec"] or 0
+
+                # Time calculations
+                talk_time_sec += (talk_sec + pause_sec + wait_sec + dispo_sec)
+                dispo_time_sec += dispo_sec
+                wrap_time_sec += dispo_sec
+
+                if user != "VDCL":
+                    answered += 1
+                    total_acht_row += length_sec
+
+                    if queue_sec <= 20:
+                        within_sla += 1
+                    if queue_sec <= 10:
+                        within_sla_ten += 1
+                else:
+                    abandon += 1
+
+                    if queue_sec <= 20:
+                        abnd_within += 1
+                    else:
+                        abnd_after += 1
+
+            # ✅ KEEP SAME VARIABLE NAMES USED BELOW
+            offered = total
+            handled = answered
+            wi_thin_sla = within_sla
+            wi_thin_sla_ten = within_sla_ten
+
+            # abandon = float(row["Abandon"] or 0)
+            # total_acht_row = float(row["TotalAcht"] or 0)
+            # offered = float(row["Total"] or 0)
+            # handled = float(row["Answered"] or 0)
+            # wi_thin_sla = float(row["WIthinSLA"] or 0)
+            # wi_thin_sla_ten = float(row["WIthinSLATen"] or 0)
+            # abnd_within = float(row["AbndWithinThresold"] or 0)
 
             # ---------------- RL & RL% calculation ----------------
             rl = 0
@@ -264,19 +347,19 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
             if req.filter_type == "without_0" and offered <= 0:
                 continue
 
-            grand_totals = {
-                "Offered": 0,
-                "Handled": 0,
-                "Total Talk Time": "00:00:00",
-                "Calls Ans (20 Sec)": 0,
-                "Calls Ans (10 Sec)": 0,
-                "Total Calls Abandoned": 0,
-                "Abnd Within (20)": 0,
-                "AHT_total_sec": 0,   # for weighted AHT
-                "Amount": 0,
-                "RL": 0,
-                "Call Rate": 0
-            }
+            # grand_totals = {
+            #     "Offered": 0,
+            #     "Handled": 0,
+            #     "Total Talk Time": "00:00:00",
+            #     "Calls Ans (20 Sec)": 0,
+            #     "Calls Ans (10 Sec)": 0,
+            #     "Total Calls Abandoned": 0,
+            #     "Abnd Within (20)": 0,
+            #     "AHT_total_sec": 0,   # for weighted AHT
+            #     "Amount": 0,
+            #     "RL": 0,
+            #     "Call Rate": 0
+            # }
 
 
             all_data[campaign] = {
@@ -287,7 +370,7 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
                 "Calls Ans (10 Sec)": wi_thin_sla_ten,
                 "Total Calls Abandoned": abandon,
                 "Abnd Within (20)": abnd_within,
-                "Total Talk Time": row["TalkTime"],
+                "Total Talk Time": seconds_to_hms(talk_time_sec),
                 "Average Aband Time": "",
                 "SL% (20 Sec)": f"{round(wi_thin_sla*100/handled) if handled else 0}%",
                 "SL% (10 Sec)": f"{round(wi_thin_sla_ten*100/handled) if handled else 0}%",
