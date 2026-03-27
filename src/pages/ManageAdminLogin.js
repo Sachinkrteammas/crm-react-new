@@ -421,7 +421,7 @@ const handleDelete = async (id) => {
         </div>
       <div className="card mb-4">
         <div className="card-header d-flex justify-content-between align-items-center">
-        <h6 className="mt-4">MANAGE USER LOGINS</h6>
+        <h6 className="mt-4">MANAGE ADMIN LOGINS</h6>
         {/*
         {(userType === "Super-Admin" || userType === "Admin") && (
                 <div style={{ maxWidth: "250px" }}>
