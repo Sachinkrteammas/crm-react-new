@@ -9,7 +9,7 @@ import {
   getClientCampaignTypes,
 } from "../services/authService";
 import { Eye } from "lucide-react";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { saveAs } from "file-saver";
 import "../styles/loader.css";
 import api from "../api";
@@ -368,6 +368,109 @@ export default function OutCallDetails() {
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Out Call Details");
+
+
+      // ==========================
+      // ✅ Create Counts Sheet (Clean)
+      // ==========================
+      const countsSource =
+        counts && Object.keys(counts).length > 0
+          ? counts
+          : calculateCounts(dataToExport);
+
+      const countsData = [];
+      const headerRows = []; // 👈 track header row indexes
+
+      SCENARIO_KEYS.forEach((key) => {
+        if (countsSource[key]) {
+          // Header row
+          headerRows.push(countsData.length);
+
+          countsData.push({
+            Name: key.toUpperCase(),
+            Total: "",
+          });
+
+          // Data rows
+          countsSource[key].forEach((c) => {
+            countsData.push({
+              Name: c.name,
+              Total: c.total,
+            });
+          });
+
+          // Space row
+          countsData.push({});
+        }
+      });
+
+      // Grand Total
+      headerRows.push(countsData.length);
+      countsData.push({
+        Name: "GRAND TOTAL",
+        Total: countsSource.total || 0,
+      });
+
+      // Create sheet
+      const countsSheet = XLSX.utils.json_to_sheet(countsData);
+
+      // ==========================
+      // ✅ Apply Styling
+      // ==========================
+      const range = XLSX.utils.decode_range(countsSheet["!ref"]);
+
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        const nameCellRef = XLSX.utils.encode_cell({ r: R, c: 0 });
+        const totalCellRef = XLSX.utils.encode_cell({ r: R, c: 1 });
+
+        const rowName = countsSheet[nameCellRef]?.v;
+        const isScenarioHeader = SCENARIO_KEYS
+          .map(k => k.toUpperCase())
+          .includes(rowName);
+
+        const isGrandTotal = rowName === "GRAND TOTAL";
+        const isHeader = isScenarioHeader || isGrandTotal;
+
+        if (isHeader) {
+          // ✅ Scenario headers bold + colored
+          if (countsSheet[nameCellRef]) {
+            countsSheet[nameCellRef].s = {
+              font: { bold: true, sz: 12 },
+              fill: { fgColor: { rgb: "BDD7EE" } },
+            };
+          }
+
+          if (countsSheet[totalCellRef]) {
+            countsSheet[totalCellRef].s = {
+              font: { bold: true, sz: 12 },
+              fill: { fgColor: { rgb: "BDD7EE" } },
+              alignment: { horizontal: "center" },
+            };
+          }
+        } else {
+          // Normal rows
+          if (countsSheet[nameCellRef]) {
+            countsSheet[nameCellRef].s = {
+              alignment: { horizontal: "left" },
+            };
+          }
+
+          if (countsSheet[totalCellRef]) {
+            countsSheet[totalCellRef].s = {
+              alignment: { horizontal: "center" },
+            };
+          }
+        }
+      }
+
+      // Column width
+      countsSheet["!cols"] = [
+        { wch: 35 },
+        { wch: 15 },
+      ];
+
+      // Append sheet
+      XLSX.utils.book_append_sheet(workbook, countsSheet, "Counts");
 
       const excelBuffer = XLSX.write(workbook, {
         bookType: "xlsx",
