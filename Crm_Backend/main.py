@@ -74,6 +74,7 @@ from create_manual_ob_call import router as create_manual_ob_call_router
 from list_id import router as list_id_router
 from manage_mis_report import router as manage_mis_report_router
 from abandon_report import router as abandon_report_router
+from manage_admin_login import router as manage_admin_login_router
 
 
 app = FastAPI(title="CRM Backend")
@@ -144,6 +145,7 @@ app.include_router(create_manual_ob_call_router, tags=["Create Manual OB Call"],
 app.include_router(list_id_router, tags=["List ID"], dependencies=[Depends(verify_token)])
 app.include_router(manage_mis_report_router, tags=["Manage Mis Report"], dependencies=[Depends(verify_token)])
 app.include_router(abandon_report_router, tags=["Abandon Report"], dependencies=[Depends(verify_token)])
+app.include_router(manage_admin_login_router, tags=["Admin Creation Master"], dependencies=[Depends(verify_token)])
 
 app.include_router(dialer_router, prefix="/api")
 

@@ -50,6 +50,7 @@ import ManageCustomizedMIS from "./pages/ManageCustomizedMIS";
 import AddCallFlow from "./pages/AddCallFlow";
 import PromptCreation from "./pages/PromptCreation";
 import ManageUserLogin from "./pages/ManageUserLogin";
+import ManageAdminLogin from "./pages/ManageAdminLogin";
 import ManageInCallActionAlerts from "./pages/ManageInCallActionAlerts";
 import ManageMISReports from "./pages/ManageMISReports";
 import ManageTrainingDocs from "./pages/ManageTrainingDocs";
@@ -312,6 +313,7 @@ function App() {
               <Route path="/add_call_flow" element={<AddCallFlow />} />
               <Route path="/Ecrs/prompt" element={<PromptCreation />} />
               <Route path="/LoginCreations" element={<ManageUserLogin />} />
+              <Route path="/AdminLoginCreations" element={<ManageAdminLogin />} />
               <Route path="/IncallactionAlerts/view_fields" element={<ManageInCallActionAlerts />} />
               <Route path="/MisAndReportMatrixs" element={<ManageMISReports />} />
               <Route path="/manage_training_docs" element={<ManageTrainingDocs />} />
