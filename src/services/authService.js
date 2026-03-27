@@ -228,13 +228,53 @@ export const getScenarios = async (company_id, allocation, scenario_level = 1, p
 // Get outcall details with filters
 export const getOutCallDetails = async (company_id, filters = {}) => {
   try {
-    const response = await api.get("/call/outcalls", { params: { CLIENT_ID: company_id, ...filters } });
-    return response.data || { data: [], countsFiltered: {}, countsAll: {}, breadcrumb: [] };
+    const params = new URLSearchParams();
+
+    // ✅ Add CLIENT_ID
+    params.append("CLIENT_ID", company_id);
+
+    // ✅ Loop filters
+    Object.keys(filters).forEach((key) => {
+      const value = filters[key];
+
+      if (Array.isArray(value)) {
+        // ✅ multiple values → repeat param
+        value.forEach((v) => {
+          params.append(key, v);
+        });
+      } else if (value !== "" && value !== null && value !== undefined) {
+        params.append(key, value);
+      }
+    });
+
+    const response = await api.get(`/call/outcalls?${params.toString()}`);
+
+    return response.data || {
+      data: [],
+      countsFiltered: {},
+      countsAll: {},
+      breadcrumb: [],
+    };
   } catch (error) {
     console.error("Error fetching out call details:", error);
-    return { data: [], countsFiltered: {}, countsAll: {}, breadcrumb: [] };
+    return {
+      data: [],
+      countsFiltered: {},
+      countsAll: {},
+      breadcrumb: [],
+    };
   }
 };
+
+// export const getOutCallDetails = async (company_id, filters = {}) => {
+//   try {
+//     const response = await api.get("/call/outcalls", { params: { CLIENT_ID: company_id, ...filters } });
+//     return response.data || { data: [], countsFiltered: {}, countsAll: {}, breadcrumb: [] };
+//   } catch (error) {
+//     console.error("Error fetching out call details:", error);
+//     return { data: [], countsFiltered: {}, countsAll: {}, breadcrumb: [] };
+//   }
+// };
 
 // Add aband call setting
 export const addAbandCallSetting = async (payload) => {

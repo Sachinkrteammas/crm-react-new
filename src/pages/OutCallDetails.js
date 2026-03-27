@@ -24,7 +24,7 @@ export default function OutCallDetails() {
   const [form, setForm] = useState({
     campaignType: "",
     campaign: "",
-    allocation: "",
+    allocation: [],
     scenario: "",
     subScenario1: "",
     subScenario2: "",
@@ -168,7 +168,7 @@ export default function OutCallDetails() {
 
       if (name === "campaign") {
         setAllocs([]);
-        updateForm("allocation", "");
+        updateForm("allocation", []);
         if (value) {
           const allocRes = await getAllocations(activeCompanyId, value);
           setAllocs(allocRes || []);
@@ -221,8 +221,8 @@ export default function OutCallDetails() {
       return;
     }
 
-    if(!form.allocation) {
-      alert("Please select Allocation.")
+    if (!form.allocation || form.allocation.length === 0) {
+      alert("Please select at least one Allocation.")
       return;
     }
 
@@ -303,6 +303,30 @@ export default function OutCallDetails() {
 
 
   const handleExport = async () => {
+    if (!activeCompanyId || activeCompanyId === 'null') return;
+
+    if(!form.campaignType) {
+      alert("Please select Campaign Type.")
+      return;
+    }
+
+    if(!form.campaign) {
+      alert("Please select Campaign.")
+      return;
+    }
+
+    if (!form.allocation || form.allocation.length === 0) {
+      alert("Please select at least one Allocation.")
+      return;
+    }
+
+    if (!form.startDate || !form.endDate) {
+      setDateError("Please select both Start Date and End Date.");
+      setTableData([]);
+      setCounts({});
+      setBreadcrumb([]);
+      return;
+    }
     try {
       setLoading(true);
 
@@ -466,10 +490,37 @@ export default function OutCallDetails() {
                   className="form-select"
                   name={f.name}
                   value={form[f.name]}
-                  onChange={handleChange}
                   disabled={f.disabled}
+                  onChange={(e) => {
+                    if (f.name === "allocation") {
+                      let selected = Array.from(
+                        e.target.selectedOptions,
+                        (opt) => opt.value
+                      );
+
+                      // ✅ If ALL selected → send all allocation IDs
+                      if (selected.includes("ALL")) {
+                        const allIds = allocs.map((a) => String(a.id)); // ensure string
+                        updateForm("allocation", allIds);
+                      } else {
+                        updateForm("allocation", selected);
+                      }
+                    } else {
+                      handleChange(e);
+                    }
+                  }}
                 >
-                  <option value="">Select {f.label}</option>
+                  {f.name === "allocation" ? (
+                    <>
+                      <option value="" disabled>
+                        Select Allocation
+                      </option>
+                      <option value="ALL">ALL</option>
+                    </>
+                  ) : (
+                    <option value="">Select {f.label}</option>
+                  )}
+
                   {f.options.length > 0 ? (
                     f.options.map((o) => (
                       <option key={o.id} value={o.id}>

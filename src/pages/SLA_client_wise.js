@@ -156,7 +156,8 @@ const SLAClientWise = () => {
                 <DatePicker
                   selected={filters.startDate}
                   onChange={(date) => handleChange("startDate", date)}
-                  className="form-control"
+                  className="form-control w-100"
+                  wrapperClassName="w-100"
                   placeholderText="Start Date"
                   dateFormat="dd-MM-yyyy"
                 />
@@ -168,7 +169,8 @@ const SLAClientWise = () => {
                 <DatePicker
                   selected={filters.endDate}
                   onChange={(date) => handleChange("endDate", date)}
-                  className="form-control"
+                  className="form-control w-100"
+                  wrapperClassName="w-100"
                   placeholderText="End Date"
                   dateFormat="dd-MM-yyyy"
                 />

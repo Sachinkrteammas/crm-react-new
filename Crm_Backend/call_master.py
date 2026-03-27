@@ -370,7 +370,7 @@ def get_outcalls(
     CLIENT_ID: int = Query(...),
     campaignType: Optional[str] = None,
     campaign: Optional[int] = None,
-    allocation: Optional[int] = None,
+    allocation: Optional[List[int]] = Query(None),
     scenario: Optional[str] = None,
     subScenario1: Optional[str] = None,
     subScenario2: Optional[str] = None,
@@ -474,7 +474,7 @@ def get_outcalls(
         "FROM call_master_out o",
         "JOIN ob_allocation_name a ON o.AllocationId = a.id",
         "JOIN ob_campaign c ON a.CampaignId = c.id",
-        "LEFT JOIN ob_campaign_data d ON d.AllocationId = o.AllocationId AND d.Field1 = o.MSISDN",
+        "LEFT JOIN ob_campaign_data d ON d.AllocationId = o.AllocationId AND d.id = o.DataId",
         "WHERE o.ClientId = :cid",
         "AND c.CampaignName = :campaignType"
     ]
@@ -490,8 +490,11 @@ def get_outcalls(
             sql_parts.append("AND c.id = :campaign")
             params["campaign"] = value
         elif key == "allocation":
-            sql_parts.append("AND a.id = :allocation")
-            params["allocation"] = value
+            placeholders = ", ".join([f":alloc_{i}" for i in range(len(value))])
+            sql_parts.append(f"AND a.id IN ({placeholders})")
+
+            for i, v in enumerate(value):
+                params[f"alloc_{i}"] = v
         elif key == "scenario":
             sql_parts.append("AND o.Category1 = :scenario")
             params["scenario"] = value
