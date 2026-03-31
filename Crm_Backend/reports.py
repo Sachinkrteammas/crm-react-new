@@ -1320,13 +1320,19 @@ def rl_internal_report(
                 "FailedAttempt": 0,
                 "Connected": 0,
                 "NotConnected": 0,
-                "AbandonUnique": 0
+                "AbandonUnique": 0,
+                "Done": 0
             }
 
         # ✅ SIMPLE COUNT
         stats_map[group_key]["AbandonUnique"] += 1
 
         call_status = row["call_status"]
+
+        # count DONE separately
+        if call_status == "DONE":
+            stats_map[group_key]["Done"] += 1
+
 
         if callback:
             stats_map[group_key]["Callback"] += 1
@@ -1385,11 +1391,12 @@ def rl_internal_report(
         row = {
             ("CompanyName" if report_type == "company" else "EntryDate"): group,
             "Total_Abandon": stats["AbandonUnique"],
+            "Abandon_Unique": stats["AbandonUnique"],
             "Total_Callback": stats["Callback"],
             "Connected": stats["Connected"],
             "Not_Connected": stats["NotConnected"],
-            "Failed_Attempt": stats["FailedAttempt"],
-            "Abandon_Unique": stats["AbandonUnique"],
+            "Failed_Attempt": stats["FailedAttempt"],            
+            # "Total_Done": stats["Done"], 
         }
         result.append(row)
 

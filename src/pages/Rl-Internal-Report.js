@@ -274,7 +274,7 @@ const formatDisplayDate = (dateStr) => {
           <div className="card p-4">
             <div className="table-responsive"
             style={{
-                maxHeight: "500px",
+                maxHeight: "550px",
                 overflowY: "auto",
                 overflowX: "auto",
               }}>
@@ -292,6 +292,7 @@ const formatDisplayDate = (dateStr) => {
                     <th>Connected</th>
                     <th>Not Connected</th>
                     <th>Failed Attempt</th>
+                    {/* <th>Customer Connected</th> */}
                   </tr>
                 </thead>
 
@@ -310,6 +311,7 @@ const formatDisplayDate = (dateStr) => {
                         <td>{row.Connected}</td>
                         <td>{row.Not_Connected}</td>
                         <td>{row.Failed_Attempt}</td>
+                        {/* <td>{row.Total_Done}</td> */}
                       </tr>
                     ))
                   ) : (
