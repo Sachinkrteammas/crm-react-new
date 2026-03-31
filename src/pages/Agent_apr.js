@@ -7,6 +7,7 @@ import api from "../api";
 const AgentAprExport = () => {
   const [agentType, setAgentType] = useState("");
   const [dialer, setDialer] = useState("ALL");
+  const [processType, setProcessType] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -14,59 +15,51 @@ const AgentAprExport = () => {
   // Function to download Excel file
 
     const handleExport = async () => {
-    if (!startDate || !endDate || !agentType) {
+      if (!startDate || !endDate || !agentType || !processType) {
         alert("Please select all filters before exporting.");
         return;
-    }
+      }
 
-    setLoading(true);
+      setLoading(true);
 
-    try {
-        // Format date locally to avoid one-day-back issue
+      try {
         const formatDate = (date) => {
-        const d = new Date(date);
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, "0");
-        const day = String(d.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
+          const d = new Date(date); 
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, "0");
+          const day = String(d.getDate()).padStart(2, "0");
+          return `${year}-${month}-${day}`;
         };
 
-        // Build query string
         const query = new URLSearchParams({
-        start_date: formatDate(startDate),
-        end_date: formatDate(endDate),
-        agent_type: agentType,
-        dialer: dialer,
+          query_date: formatDate(startDate),  // changed
+          end_date: formatDate(endDate),
+          agent_type: agentType,
+          process: processType,              // changed
+          shift: "ALL",                      // new param
         });
 
-        // Use api.get like in OverallAgentSkills
-        const response = await api.get(`/agent-apr-export?${query.toString()}`, {
-        responseType: "blob", // important for binary files
+        const response = await api.get(`/apr-report/xlsx?${query.toString()}`, {
+          responseType: "blob",
         });
 
-        // Convert to blob
         const blob = new Blob([response.data], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         });
 
-        // Extract filename from content-disposition header
         let filename = "APR_Report.xlsx";
         const disposition = response.headers["content-disposition"];
         if (disposition && disposition.includes("filename=")) {
-        filename = disposition
-            .split("filename=")[1]
-            .replace(/"/g, "")
-            .trim();
+          filename = disposition.split("filename=")[1].replace(/"/g, "").trim();
         }
 
-        // Save using file-saver
         saveAs(blob, filename);
-    } catch (err) {
+      } catch (err) {
         console.error("Error exporting Excel:", err);
         alert("Failed to export Excel");
-    } finally {
+      } finally {
         setLoading(false);
-    }
+      }
     };
 
 
@@ -90,7 +83,7 @@ const AgentAprExport = () => {
 
           <div className="d-flex flex-wrap align-items-center gap-3">
             {/* Dialer */}
-            <div style={{ maxWidth: "220px" }}>
+            {/* <div style={{ maxWidth: "220px" }}>
               <select
                 className="form-select"
                 value={dialer}
@@ -99,7 +92,7 @@ const AgentAprExport = () => {
                 <option value="ALL">Dialer 5</option>
                 <option value="Dialer 8">Dialer 8</option>
               </select>
-            </div>
+            </div> */}
 
 
             {/* Agent Type */}
@@ -115,6 +108,25 @@ const AgentAprExport = () => {
                 <option value="Unit 2">Unit 2</option>
               </select>
             </div>
+
+            {/* Process Type */}
+            <div style={{ maxWidth: "220px" }}>
+              <select
+                className="form-select"
+                value={processType}
+                onChange={(e) => setProcessType(e.target.value)}
+              >
+                <option value="">Select Process</option>
+                <option value="All">All</option>
+                <option value="C2P">C2P</option>
+                <option value="Dialdesk DSC">Dialdesk DSC</option>
+                <option value="IB Dedicated">IB Dedicated</option>
+                <option value="MAS/Others">MAS/Others</option>
+                <option value="OB Dedicated">OB Dedicated</option>
+                <option value="Others">Others</option>
+                <option value="Shared IB">Shared IB</option>
+              </select>
+            </div>                      
             
 
             {/* Start Date */}

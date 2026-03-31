@@ -252,11 +252,11 @@ const IVRReport = () => {
           <table className="table table-bordered table-sm">
             <thead className="table-light">
               <tr>
-                <th>DATE</th>
-                <th>CALL TYPE</th>
+                <th style={{ minWidth: "140px" }}>DATE</th>
+                <th style={{ minWidth: "140px" }}>CALL TYPE</th>
                 <th>FROM</th>
-                <th>START TIME</th>
-                <th>END TIME</th>
+                <th style={{ minWidth: "140px" }}>START TIME</th>
+                <th style={{ minWidth: "140px" }}>END TIME</th>
                 <th>DURATION (SEC.)</th>
                 <th>OUTCOME</th>
                 <th>OPTIONS CHOSEN</th>
