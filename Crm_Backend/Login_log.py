@@ -73,6 +73,7 @@ def get_login_log_report(
             login_log_new lg
         WHERE 
             DATE(lg.hit_time) BETWEEN :start_date AND :end_date
+        ORDER BY lg.hit_time DESC
     """)
 
     # ✅ Step 2: Execute query
