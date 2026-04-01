@@ -1,10 +1,58 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from datetime import date
+from datetime import date, datetime
 from database import get_db4
 
 router = APIRouter()
+
+
+
+
+@router.post("/track-activity")
+async def track_activity(request: Request, payload: dict, db: Session = Depends(get_db4)):
+    try:
+        # ✅ Get IP Address
+        ip_address = request.client.host
+
+        # If behind proxy (production)
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            ip_address = forwarded.split(",")[0]
+
+        # ✅ Extract data from payload
+        user_type = payload.get("user_type")
+        name = payload.get("name")
+        page_name = payload.get("page_name")
+        page_url = payload.get("page_url")
+
+        # ✅ Insert query
+        query = text("""
+            INSERT INTO login_log_new 
+            (user_name, type, ip_address, page_name, page_url, hit_time)
+            VALUES 
+            (:user_name, :type, :ip_address, :page_name, :page_url, :hit_time)
+        """)
+
+        db.execute(query, {
+            "user_name": name,
+            "type": user_type,
+            "ip_address": ip_address,
+            "page_name": page_name,
+            "page_url": page_url,
+            "hit_time": datetime.now()
+        })
+
+        db.commit()
+
+        return {"message": "Activity logged successfully"}
+
+    except Exception as e:
+        db.rollback()
+        return {"error": str(e)}
+
+
+
 
 @router.get("/login-log-report")
 def get_login_log_report(
@@ -22,7 +70,7 @@ def get_login_log_report(
             lg.page_url AS `Page Url`,
             lg.hit_time AS `Hit Time`
         FROM 
-            login_log lg
+            login_log_new lg
         WHERE 
             DATE(lg.hit_time) BETWEEN :start_date AND :end_date
     """)

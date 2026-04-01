@@ -1,6 +1,6 @@
 //.. Show Dynamic menu according Client company_id..///
 import { Outlet } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 
@@ -68,6 +68,23 @@ const Layout = () => {
     return count;
   };
 
+  const findPageName = (items, path) => {
+    for (const item of items) {
+      // ✅ match current item
+      if (`/${item.page_url}` === path) {
+        return item.page_name;
+      }
+
+      // ✅ search children
+      if (item.children && item.children.length > 0) {
+        const found = findPageName(item.children, path);
+        if (found) return found;
+      }
+    }
+
+    return null; // ✅ DO NOT return path here
+  };
+
 
 useEffect(() => {
   const fetchMenu = async () => {
@@ -111,6 +128,65 @@ useEffect(() => {
 
   fetchMenu();
 }, []);
+
+
+  const lastTracked = useRef("");
+
+  useEffect(() => {
+    const trackPage = async () => {
+      try {
+        const userData = JSON.parse(localStorage.getItem("userData"));
+        if (!userData) return;
+
+        // ❌ avoid duplicate calls
+        if (lastTracked.current === location.pathname) return;
+        lastTracked.current = location.pathname;
+
+        let pageName = "";
+
+        // ✅ 1. Child page (submenu child)
+        if (location.state?.childName) {
+          pageName = location.state.childName;
+        }
+
+        // ✅ 2. Submenu parent
+        else if (location.state?.parentName) {
+          pageName = location.state.parentName;
+        }
+
+        // ✅ 3. Find from menuData (MAIN FIX)
+        else {
+          pageName = findPageName(menuData, location.pathname);
+        }
+
+        // ✅ 4. FINAL fallback (clean format, not raw URL)
+        if (!pageName) {
+          pageName = location.pathname
+            .replace("/", "")
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase()); 
+        }
+
+        const payload = {
+          user_type: userData.user_type,
+          name: userData.auth_person,
+          page_name: pageName,
+          page_url: location.pathname
+        };
+
+        await api.post("/track-activity", payload);
+
+        console.log("📊 Activity Logged:", payload);
+      } catch (err) {
+        console.error("❌ Tracking failed:", err);
+      }
+    };
+
+    // ✅ wait until menu is loaded (important for page_name)
+    if (menuData.length > 0) {
+      trackPage();
+    }
+  }, [location.pathname, menuData]);
 
 
 

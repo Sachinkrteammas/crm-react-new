@@ -117,7 +117,6 @@ def get_dashboard_report(
             FROM aband_call_master
             WHERE ClientId = :cid
               AND DATE(Callbackdate) BETWEEN :from_date AND :to_date
-              AND (TagStatus='yes' OR TagStatus='1')
         """)
         cb_params = {
             "cid": req.company_id,
@@ -132,7 +131,6 @@ def get_dashboard_report(
             FROM aband_call_master acm
             WHERE acm.ClientId = :cid
               AND {cond}
-              AND (acm.TagStatus='yes' OR acm.TagStatus='1')
         """)
         cb_params = {"cid": req.company_id}
 
@@ -255,7 +253,6 @@ def get_dashboard_report_previous(
             FROM aband_call_master
             WHERE ClientId = :cid
               AND DATE(Callbackdate) BETWEEN :from_date AND :to_date
-              AND (TagStatus='yes' OR TagStatus='1')
         """)
         cb_params = {
             "cid": req.company_id,
@@ -270,7 +267,6 @@ def get_dashboard_report_previous(
             FROM aband_call_master acm
             WHERE acm.ClientId = :cid
               AND {cond}
-              AND (acm.TagStatus='yes' OR acm.TagStatus='1')
         """)
         cb_params = {"cid": req.company_id}
 

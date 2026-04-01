@@ -28,9 +28,18 @@ const SubMenuPage = () => {
                   className="d-flex align-items-center gap-2"
                   style={{ cursor: "pointer", whiteSpace: "nowrap" }}
                 >
-                  <input type="radio" name="submenu" onClick={() => navigate(child.page_url ? `/${child.page_url}` : "#")}/>
+                  <input type="radio" name="submenu" onClick={() => navigate(child.page_url ? `/${child.page_url}` : "#", {
+                    state: {
+                      parentName: parentName,
+                      childName: child.page_name   // optional (very useful 🔥)
+                    }
+                  })}/>
                   <Link
                     to={child.page_url ? `/${child.page_url}` : "#"}
+                    state={{
+                      parentName: parentName,
+                      childName: child.page_name
+                    }}
                     className="text-decoration-none text-dark fw-semibold"
                   >
                     {child.page_name}
