@@ -3,12 +3,15 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
 import api from "../api";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 const LoginLog = () => {
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [logData, setLogData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -53,21 +56,38 @@ const LoginLog = () => {
       const formattedStart = format(startDate, "yyyy-MM-dd");
       const formattedEnd = format(endDate, "yyyy-MM-dd");
 
-      const res = await api.post(
-        `/login-log-report?start_date=${formattedStart}&end_date=${formattedEnd}`,
-        {},
-        { responseType: "blob" }
+      // 🔥 Always fetch fresh data (independent of VIEW)
+      const res = await api.get(
+        `/login-log-report?start_date=${formattedStart}&end_date=${formattedEnd}`
       );
 
-      const blob = new Blob([res.data], { type: "application/vnd.ms-excel" });
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = downloadUrl;
-      link.download = `login_log_${formattedStart}_to_${formattedEnd}.xls`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      const data = res.data?.Data || [];
+
+      if (!data.length) {
+        alert("No data found for export.");
+        return;
+      }
+
+      // 🔥 Convert JSON → Excel
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Login Log");
+
+      // 🔥 Generate buffer
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+
+      // 🔥 Save file
+      const file = new Blob([excelBuffer], {
+        type: "application/octet-stream",
+      });
+
+      const fileName = `Login_Log_${formattedStart}_to_${formattedEnd}.xlsx`;
+
+      saveAs(file, fileName);
+
     } catch (error) {
       console.error("Error exporting login log:", error);
       alert("Export failed. Please try again.");
@@ -76,9 +96,15 @@ const LoginLog = () => {
     }
   };
 
-  // Pagination logic
-  const totalPages = Math.max(1, Math.ceil(logData.length / rowsPerPage));
-  const currentData = logData.slice(
+  // 🔍 Filter by Name
+  const filteredData = logData.filter((item) =>
+    item.Name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Pagination based on filtered data
+  const totalPages = Math.max(1, Math.ceil(filteredData.length / rowsPerPage));
+
+  const currentData = filteredData.slice(
     (currentPage - 1) * rowsPerPage,
     currentPage * rowsPerPage
   );
@@ -159,6 +185,19 @@ const LoginLog = () => {
                 <h6 className="fw-semibold mb-0">VIEW LOGIN LOG</h6>
 
                 <div className="d-flex align-items-center gap-2">
+
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      placeholder="Search by name..."
+                      style={{ width: "200px" }}
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setCurrentPage(1); // reset page on search
+                      }}
+                    />
+
                     <label className="fw-semibold mb-0">Rows per page:</label>
                     <select
                     className="form-select form-select-sm"
@@ -176,7 +215,7 @@ const LoginLog = () => {
               <div className="card-body">
                 {loading ? (
                   <p className="text-center text-muted my-3">Loading data...</p>
-                ) : logData.length === 0 ? (
+                ) : filteredData.length === 0 ? (
                   <p className="text-center text-muted my-3">
                     No records found.
                   </p>
@@ -218,8 +257,8 @@ const LoginLog = () => {
                       
                       <span>
                         Showing {(currentPage - 1) * rowsPerPage + 1} to{" "}
-                        {Math.min(currentPage * rowsPerPage, logData.length)} of{" "}
-                        {logData.length} entries
+                        {Math.min(currentPage * rowsPerPage, filteredData.length)} of{" "}
+                        {filteredData.length} entries
                       </span>
 
                       <div>

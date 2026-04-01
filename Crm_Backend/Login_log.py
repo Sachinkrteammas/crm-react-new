@@ -80,8 +80,8 @@ def get_login_log_report(
     result = db.execute(query, {"start_date": start_date, "end_date": end_date}).mappings().all()
 
     # ✅ Step 3: Handle empty result
-    if not result:
-        raise HTTPException(status_code=404, detail="No records found for the given date range")
+    # if not result:
+    #     raise HTTPException(status_code=404, detail="No records found for the given date range")
 
     # ✅ Step 4: Format response
     logs = [
