@@ -35,7 +35,7 @@ def create_access_token(data: dict):
 @router.post("/login", response_model=LoginResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db4)):
     # Step 1: Superadmin case
-    query_user = text("SELECT * FROM tbl_user WHERE Email = :email")
+    query_user = text("SELECT * FROM tbl_user WHERE Email = :email AND user_active = '1'")
     user = db.execute(query_user, {"email": request.email}).mappings().fetchone()
 
     if user and verify_password(request.password, user["hash_password"]):

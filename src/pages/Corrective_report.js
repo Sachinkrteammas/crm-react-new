@@ -112,7 +112,7 @@ const CorrectiveReport = () => {
     setGrandTotals(apiData.grand_total);
 
   } catch (err) {
-    console.error("Error fetching Corrective Report:", err);
+    console.error("Error fetching Ticket Status Report:", err);
     alert("Failed to fetch report.");
   } finally {
     setLoading(false);
@@ -269,7 +269,7 @@ const CorrectiveReport = () => {
 
     const worksheet = XLSX.utils.json_to_sheet(flattenedData);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Corrective Report");
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Ticket Status Report");
 
     const excelBuffer = XLSX.write(workbook, {
       bookType: "xlsx",
@@ -290,7 +290,7 @@ const CorrectiveReport = () => {
       }
     }
 
-    const fileName = `${selectedCompanyName}_corrective_report_${format(
+    const fileName = `${selectedCompanyName}_Ticket_status_report_${format(
       startDate,
       "dd-MM-yyyy"
     )}_to_${format(endDate, "dd-MM-yyyy")}.xlsx`;
@@ -404,7 +404,7 @@ const CorrectiveReport = () => {
       <div className="col-12">
         {/* Top Filter Card */}
         <div className="card p-4 mb-4">
-          <h5 className="mb-3">Corrective Report</h5>
+          <h5 className="mb-3">Ticket Status Report</h5>
 
           <div className="d-flex flex-wrap align-items-center gap-3">
             {/* Client Select */}
