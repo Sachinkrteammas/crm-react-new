@@ -91,7 +91,7 @@ def get_all_clients_rights_is_dial(
                                     SUM(bpp.net_amount)
                                     - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
                             ELSE
-                                SUM(ti.total)
+                                SUM(bpp.net_amount)
                         END AS release_sum
                     FROM bill_pay_particulars bpp
                     INNER JOIN tbl_invoice ti
@@ -255,7 +255,7 @@ def get_all_clients_rights_is_dial(
                                             SUM(bpp.net_amount)
                                             - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
                                     ELSE
-                                        SUM(ti.total)
+                                        SUM(bpp.net_amount)
                                 END AS total
                             FROM bill_pay_particulars bpp
                             INNER JOIN tbl_invoice ti
@@ -476,7 +476,7 @@ def get_clients_rights_search(
                             SUM(bpp.net_amount)
                             - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
                     ELSE
-                        SUM(ti.total)
+                        SUM(bpp.net_amount)
                 END AS release_sum
             FROM bill_pay_particulars bpp
             INNER JOIN tbl_invoice ti
@@ -666,7 +666,7 @@ def get_clients_rights_search(
                                     SUM(bpp.net_amount)
                                     - (IFNULL(ti.igst,0) + IFNULL(ti.cgst,0) + IFNULL(ti.sgst,0))
                             ELSE
-                                SUM(ti.total)
+                                SUM(bpp.net_amount)
                         END AS total
                     FROM bill_pay_particulars bpp
                     INNER JOIN tbl_invoice ti
