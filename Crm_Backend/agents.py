@@ -74,6 +74,14 @@ def get_all_clients_rights_is_dial(
         month_opening_date = "2025-09-01"
 
         # Compute all releases before the chosen start_date
+        cost_master_name = text("""SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id""")
+        cost_master_name_value = db.execute(
+            cost_master_name,
+            {
+                "client_id": client_id
+            }
+        ).mappings().first()
+        cost_value = cost_master_name_value["cost_center"] if cost_master_name_value else None
         release_query = text("""
                         SELECT ti.bill_no,
                         ti.Category,
@@ -90,8 +98,7 @@ def get_all_clients_rights_is_dial(
                         ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
                         AND bpp.financial_year = ti.finance_year
                         AND bpp.branch_name = ti.branch_name
-                    WHERE ti.cost_center IN (
-                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
+                    WHERE ti.cost_center = :cost_value
                     AND DATE(ti.invoiceDate) >='2025-09-01'
                     AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND date_sub(DATE(:start_date),interval 1 day)
                     GROUP BY
@@ -107,7 +114,7 @@ def get_all_clients_rights_is_dial(
         release_rows = db.execute(
             release_query,
             {
-                "client_id": client_id,
+                "cost_value": cost_value,
                 "month_opening_date": month_opening_date,
                 "start_date": start_date,
             }
@@ -133,16 +140,14 @@ def get_all_clients_rights_is_dial(
         #################################################################################
 
         release_query_billing = text("""select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
-            ti WHERE ti.cost_center IN (
-                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
-                        )
+            ti WHERE ti.cost_center = :cost_value
                         AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND 
                         DATE(:start_date)-1  AND Category IN ('talktime','subscription') group by Category""")
 
         release_rows_billing = db.execute(
             release_query_billing,
             {
-                "client_id": client_id,
+                "cost_value": cost_value,
                 "month_opening_date": month_opening_date,
                 "start_date": start_date,
             }
@@ -220,9 +225,7 @@ def get_all_clients_rights_is_dial(
 
             ############################  Krishna ####################################################
             bill_query_billing = text(""" select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
-            ti WHERE ti.cost_center IN (
-                            SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
-                        )
+            ti WHERE ti.cost_center = :cost_center
                         AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date  
                         AND Category IN ('talktime','subscription') group by Category""")
             bill_rows_billing = db.execute(bill_query_billing, {
@@ -431,7 +434,7 @@ def get_clients_rights_search(
     """
     Fetch detailed DD client summary (single client search only).
     """
-
+    print("Test")
     base_query = """
         SELECT
             rm.company_id,
@@ -456,6 +459,14 @@ def get_clients_rights_search(
     month_opening_date = "2025-09-01"
 
     # Compute all releases before the chosen start_date
+    cost_master_name = text("""SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id""")
+    cost_master_name_value = db.execute(
+        cost_master_name,
+        {
+            "client_id": client_id
+        }
+    ).mappings().first()
+    cost_value = cost_master_name_value["cost_center"] if cost_master_name_value else None
     release_query = text("""
                 SELECT ti.bill_no,
                 ti.Category,
@@ -472,8 +483,7 @@ def get_clients_rights_search(
                 ON bpp.bill_no = SUBSTRING_INDEX(ti.bill_no, '/', 1)
                 AND bpp.financial_year = ti.finance_year
                 AND bpp.branch_name = ti.branch_name
-            WHERE ti.cost_center IN (
-                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id)
+            WHERE ti.cost_center = :cost_value
             AND DATE(ti.invoiceDate) >='2025-09-01'
             AND DATE(bpp.pay_dates) BETWEEN :month_opening_date AND date_sub(DATE(:start_date),interval 1 day)
             GROUP BY
@@ -489,7 +499,7 @@ def get_clients_rights_search(
     release_rows = db.execute(
         release_query,
         {
-            "client_id": client_id,
+            "cost_value": cost_value,
             "month_opening_date": month_opening_date,
             "start_date": start_date,
         }
@@ -516,16 +526,14 @@ def get_clients_rights_search(
 #################################################################################
 
     release_query_billing = text("""select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
-    ti WHERE ti.cost_center IN (
-                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
-                )
+    ti WHERE ti.cost_center = :cost_value
                 AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :month_opening_date AND 
                 DATE(:start_date)-1  AND Category IN ('talktime','subscription') group by Category""")
 
     release_rows_billing = db.execute(
         release_query_billing,
         {
-            "client_id": client_id,
+            "cost_value": cost_value,
             "month_opening_date": month_opening_date,
             "start_date": start_date,
         }
@@ -627,9 +635,7 @@ def get_clients_rights_search(
             continue
 ############################  Krishna ####################################################
         bill_query_billing = text(""" select ti.Category,COALESCE(SUM(ti.total), 0) AS release_billing from tbl_invoice 
-    ti WHERE ti.cost_center IN (
-                    SELECT cost_center FROM cost_master WHERE dialdesk_client_id = :client_id
-                )
+    ti WHERE ti.cost_center = :cost_center
                 AND DATE(ti.invoiceDate)>='2025-09-01' AND DATE(ti.invoiceDate) BETWEEN :start_date AND :end_date  
                 AND Category IN ('talktime','subscription') group by Category""")
         bill_rows_billing = db.execute(bill_query_billing, {
