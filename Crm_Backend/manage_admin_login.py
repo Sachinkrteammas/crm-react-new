@@ -60,12 +60,20 @@ def create_login_user(
 
     # 3. Check if email already exists
     check_query = text("""
-        SELECT id FROM tbl_user WHERE username = :email
+        SELECT id FROM tbl_user WHERE username = :email AND user_active = '1'
     """)
     existing = db.execute(check_query, {"email": body.email}).fetchone()
 
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
+    
+    check_name = text("""
+        SELECT id FROM tbl_user WHERE name = :name AND user_active = '1'
+    """)
+    existing_name = db.execute(check_name, {"name": body.name}).fetchone()
+
+    if existing_name:
+        raise HTTPException(status_code=400, detail="Name already exists")
 
     # 🔐 4. HASH ONLY password, keep confirm password as plain text
     hashed_password = hash_password(body.password)
@@ -144,6 +152,34 @@ def update_login_user(
 
     if not existing:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    if body.name:
+        name_check = text("""
+            SELECT id FROM tbl_user
+            WHERE name = :name AND id != :id AND user_active = '1'
+        """)
+
+        name_exists = db.execute(name_check, {
+            "name": body.name,
+            "id": user_id
+        }).fetchone()
+
+        if name_exists:
+            raise HTTPException(status_code=400, detail="Name already exists")
+        
+    if body.email:
+        email_check = text("""
+            SELECT id FROM tbl_user
+            WHERE email = :email AND id != :id AND user_active = '1'
+        """)
+
+        email_exists = db.execute(email_check, {
+            "email": body.email,
+            "id": user_id
+        }).fetchone()
+
+        if email_exists:
+            raise HTTPException(status_code=400, detail="Email already exists")
 
     # Password validation
     if body.password or body.confirm_password:
