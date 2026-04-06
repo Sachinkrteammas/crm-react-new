@@ -18,6 +18,7 @@ from openpyxl.styles import Font, PatternFill, Border, Side
 from io import BytesIO
 from collections import defaultdict
 import calendar
+from datetime import time
 
 router = APIRouter()
 
@@ -2822,6 +2823,55 @@ def abandon_callback_report_excel(
     response = abandon_callback_report(client_id, report_date, db, db4)
     data = response["data"]
 
+    campaigns = []
+
+    if client_id != "ALL":
+        campaign_result = db4.execute(text("""
+            SELECT campaignid 
+            FROM registration_master 
+            WHERE company_id = :client_id
+        """), {"client_id": client_id}).mappings().fetchone()
+
+        # campaigns = [row[0] for row in campaign_result]
+        raw_campaign = campaign_result["campaignid"]
+        campaigns = [c.strip().strip("'") for c in raw_campaign.split(",") if c.strip()]
+
+
+    if client_id == "ALL":
+        total_abandoned_calls = db.execute(text("""
+            SELECT COUNT(phone_number) AS total
+            FROM asterisk.vicidial_closer_log t2
+            WHERE DATE(t2.call_date) = :report_date
+            AND t2.lead_id IS NOT NULL
+            AND t2.user = 'VDCL'
+        """), {"report_date": report_date}).scalar()
+        
+
+    else:
+        total_abandoned_calls = db.execute(text(f"""
+            SELECT COUNT(phone_number) AS total
+            FROM asterisk.vicidial_closer_log t2
+            WHERE DATE(t2.call_date) = :report_date
+            AND t2.lead_id IS NOT NULL
+            AND t2.user = 'VDCL'
+            AND t2.campaign_id IN :campaigns
+        """), {
+            "report_date": report_date,
+            "campaigns": tuple(campaigns)
+        }).scalar()
+
+
+    after_8pm_count = 0
+    failed_before_8pm = 0
+    failed_after_8pm = 0
+    called_not_connected = 0
+    connected_count = 0
+    need_to_callback = 0
+    inbound_received = 0
+    unique_phones = set()
+
+    cutoff_time = time(20, 0, 0)  # 8 PM
+
     if client_id == "ALL":
         safe_company_name = "ALL"
     else:
@@ -2835,10 +2885,10 @@ def abandon_callback_report_excel(
 
     # 🔹 Header
     headers = [
-        "Client Name", "Date", "Phone Number", "Call Abandon time",
-        "First Attempt Time", "Status",
-        "Second Attempt Time", "Status",
-        "Third Attempt Time", "Status",
+        "Client Name", "Abandoned Call Back", "Phone Number", "Call Abandon time",
+        "First Attempt Time", "Call Back Done Successfully",
+        "Second Attempt Time", "Call Back Done Successfully",
+        "Third Attempt Time", "Call Back Done Successfully",
         "Final Status", "Call Attempt Time"
     ]
 
@@ -2889,13 +2939,95 @@ def abandon_callback_report_excel(
     ws.column_dimensions['C'].width = 18
     ws.column_dimensions['D'].width = 22
     ws.column_dimensions['E'].width = 32
-    ws.column_dimensions['F'].width = 22
+    ws.column_dimensions['F'].width = 24
     ws.column_dimensions['G'].width = 22
-    ws.column_dimensions['H'].width = 22
+    ws.column_dimensions['H'].width = 24
     ws.column_dimensions['I'].width = 22
-    ws.column_dimensions['J'].width = 22
+    ws.column_dimensions['J'].width = 24
     ws.column_dimensions['K'].width = 22
     ws.column_dimensions['L'].width = 22
+
+
+    for row in data:
+        if not row["call_abandon_time"]:
+            continue
+
+        raw_time = row["call_abandon_time"]
+
+        # ✅ Track unique phone numbers
+        if row["phone_number"]:
+            unique_phones.add(row["phone_number"])
+
+        # ✅ Safe parsing
+        if isinstance(raw_time, datetime):
+            call_time = raw_time.time()
+        else:
+            call_time = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S").time()
+
+        final_status = row["final_status"]
+
+        # -----------------------------
+        # Existing Logic (8 PM split)
+        # -----------------------------
+        if call_time >= cutoff_time:
+            after_8pm_count += 1
+
+        if final_status not in ["Connected", "Not connected", "DONE"]:
+            if call_time < cutoff_time:
+                failed_before_8pm += 1
+            else:
+                failed_after_8pm += 1
+
+        # -----------------------------
+        # ✅ NEW COUNTS
+        # -----------------------------
+
+        # 1. Called but not connected
+        if final_status == "Not connected":
+            called_not_connected += 1
+
+        # 2. Connected
+        elif final_status == "Connected":
+            connected_count += 1
+
+        # 3. Need to callback
+        elif final_status in ["Fresh Abandon", "No callback attempted"]:
+            need_to_callback += 1
+
+        # 4. Inbound Received (DONE)
+        elif final_status == "DONE":
+            inbound_received += 1
+
+    unique_phone_count = len(unique_phones)
+
+
+    ws2 = wb.create_sheet(title="Summary")
+
+    summary_headers = ["CATEGORY", "COUNT"]
+
+    for col_num, header in enumerate(summary_headers, 1):
+        cell = ws2.cell(row=1, column=col_num, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+
+    summary_data = [
+        ("CALLED AFTER 8 PM", after_8pm_count),
+        ("TOTAL ABANDONED CALLS", total_abandoned_calls),
+        ("UNIQUE ABANDONED CALLS", unique_phone_count),
+        ("INBOUND RECEIVED", inbound_received),
+        ("NEED TO BE CALLED BACK", need_to_callback),
+        ("CONNECTED SUCCESSFULLY", connected_count),
+        ("CALLED BUT NOT CONNECTED", called_not_connected),       
+        ("MISSED RL (PRE-8 PM – NO AGENT AVAILABILITY)", failed_before_8pm),
+        ("MISSED CALLS AFTER 8 PM", failed_after_8pm),        
+    ]
+
+    for row_num, (category, value) in enumerate(summary_data, 2):
+        ws2.cell(row=row_num, column=1, value=category)
+        ws2.cell(row=row_num, column=2, value=value)
+
+    ws2.column_dimensions['A'].width = 35
+    ws2.column_dimensions['B'].width = 20
 
     # 🔹 Save to memory
     stream = BytesIO()
