@@ -6,6 +6,8 @@ from datetime import date, datetime, timedelta
 from database import get_db2, get_db4  # adjust to your actual import path
 from call_scenario import send_call_summary  # adjust path
 from report_scheduler import run_report_scheduler
+# from configure_report import run_cdr_scheduler, run_agent_apr_scheduler
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from logger import logger
 import os
@@ -13,6 +15,7 @@ from sqlalchemy import text
 from daily_consume import BillingDailyRequest, compute_ib_consumption
 from auth import router as auth_router
 from reports import router as reports_router
+# from report_old import router as report_old_router
 from core_api import router as core_api
 from call_master import router as call_master_router
 from dashboard import router as dashboard_router
@@ -75,9 +78,14 @@ from list_id import router as list_id_router
 from manage_mis_report import router as manage_mis_report_router
 from abandon_report import router as abandon_report_router
 from manage_admin_login import router as manage_admin_login_router
+# from Old_reports import router as Old_reports_router
+# from configure_report import router as configure_report_router
+# from backup_reports import router as backup_reports_router
 
 
 app = FastAPI(title="CRM Backend")
+
+app.mount("/training_file", StaticFiles(directory="uploads/training_file"), name="training_file")
 
 app.add_middleware(
     CORSMiddleware,
@@ -91,6 +99,7 @@ app.add_middleware(
 # Register all routers
 app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(reports_router, prefix="/report", tags=["Reports"], dependencies=[Depends(verify_token)])
+# app.include_router(report_old_router, prefix="/report", tags=["Reports old"], dependencies=[Depends(verify_token)])
 app.include_router(core_api, prefix="/core_api", tags=["core_api"], dependencies=[Depends(verify_token)])
 app.include_router(call_master_router, prefix="/call", tags=["Call Master"], dependencies=[Depends(verify_token)])
 app.include_router(dashboard_router, prefix="/dashboard", tags=["Home2"], dependencies=[Depends(verify_token)])
@@ -146,6 +155,9 @@ app.include_router(list_id_router, tags=["List ID"], dependencies=[Depends(verif
 app.include_router(manage_mis_report_router, tags=["Manage Mis Report"], dependencies=[Depends(verify_token)])
 app.include_router(abandon_report_router, tags=["Abandon Report"], dependencies=[Depends(verify_token)])
 app.include_router(manage_admin_login_router, tags=["Admin Creation Master"], dependencies=[Depends(verify_token)])
+# app.include_router(Old_reports_router, tags=["Old Reports"], dependencies=[Depends(verify_token)])
+# app.include_router(configure_report_router, tags=["Configure Reports"], dependencies=[Depends(verify_token)])
+# app.include_router(backup_reports_router, tags=["Backup Reports"], dependencies=[Depends(verify_token)])
 
 app.include_router(dialer_router, prefix="/api")
 
@@ -256,6 +268,8 @@ scheduler = BackgroundScheduler()
 #scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
 # scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
 scheduler.add_job(run_report_scheduler, "interval", minutes=1)
+# scheduler.add_job(run_cdr_scheduler, 'cron', hour=13, minute=15)
+# scheduler.add_job(run_agent_apr_scheduler, 'cron', hour=15, minute=52)
 
 
 @app.on_event("startup")
