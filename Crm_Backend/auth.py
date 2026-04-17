@@ -184,7 +184,6 @@ def search_by_phone(phone: str = Query(...), db: Session = Depends(get_db4)):
 from fastapi import FastAPI, UploadFile, File, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from database import SessionLocal
 import pandas as pd
 import io
 import math
