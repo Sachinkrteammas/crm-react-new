@@ -8,15 +8,21 @@ import AuthRegister from "./pages/auth-register-cover";
 import Dashboard from "./pages/dashboards-crm";
 import ForgotPassword from "./pages/auth-forgot-password-cover";
 import CDRReport from "./pages/cdr-report";
+// import CDRReportOld from "./pages/cdr-report-old";
 import OBCDRReport from "./pages/ob-cdr-report";
+// import OBCDRReportOld from "./pages/ob-cdr-report-old";
 import IVRReport from "./pages/ivr-report";
+// import IVRReportOld from "./pages/ivr-report-old";
 import OBSharedCDRReport from "./pages/ob-shared-cdr-report";
+// import OBSharedCDRReportOld from "./pages/ob-shared-cdr-report-old";
 import IVRFunnelReport from "./pages/ivr-funnel-report";
+// import IVRFunnelReportOld from "./pages/ivr-funnel-report-old";
 import CallDetails from "./pages/call_details";
 import Logout from "./pages/logout";
 import OutCallDetails from "./pages/OutCallDetails";
 import PriorityCalls from "./pages/PriorityCalls";
 import CsatView from "./pages/csat_view";
+// import CsatViewOld from "./pages/csat_view_old";
 import CurrentBillStatement from "./pages/CurrentBillStatement";
 import TaggingPage from "./pages/TaggingPage";
 import ManageAdminLogins from "./pages/ManageAdminLogins";
@@ -117,13 +123,16 @@ import ManageOutCallCloseField from "./pages/ManageOutCallCloseField";
 import ManageOutCallRequiredFilled from "./pages/ManageOutCallRequiredFilled";
 import ExposureView from "./pages/exposure_view";
 import ChannelUtilization from "./pages/ChannelUtilization";
+// import ChannelUtilizationOld from "./pages/ChannelUtilization_old";
 import DidLogsReports from "./pages/DidLogReports";
+// import DidLogsReportsOld from "./pages/DidLogReports_old";
 import AgentProductivity from "./pages/AgentProductivity";
 import SlaAgentsReports from "./pages/SlaAgentsReports";
 import CampaignsMapping from "./pages/CampaignsMapping";
 import DidClientCampaignsMapping from "./pages/DidClientCampaignsMapping";
 import SubMenuPage from "./pages/SubMenuPage";
 import CorrectiveReport from "./pages/Corrective_report";
+// import CorrectiveReportOld from "./pages/Corrective_report_old";
 // import AllocationPlan from "./pages/AllocationPlan";
 import ResetPassword from "./pages/Reset_password";
 import UsageSummary from "./pages/Usage_summary";
@@ -131,24 +140,43 @@ import StatementSummary from "./pages/statement_summary";
 import CreateInvoice from "./pages/Invoice";
 import NewOutboundDashboard from "./pages/NewOutboundDashboard";
 import CustomerDateWiseDensity from "./pages/customer_date_wise_density_of_calls";
+// import CustomerDateWiseDensityOld from "./pages/customer_date_wise_density_of_calls_old";
 import SLAClientWise from "./pages/SLA_client_wise";
+// import SLAClientWiseOldReport from "./pages/SLA_client_wise_old";
 import SLADayWise from "./pages/SLA_day_wise";
 import SLASlotWise from "./pages/SLA_Slot_wise";
 import RealtimeAgentMapWithClients from "./pages/Realtime_agent_map";
 import OverallAgentSkills from "./pages/overall_agent_skills";
 import CampaignWiseAgentSkill from "./pages/campaign_wise_agent_skills";
 import AgentAprExport from "./pages/Agent_apr";
+// import AgentAprExportOld from "./pages/Agent_apr_old";
 import DashboardAnest from "./pages/DashboardAnest";
 import AfterHoursCalls from "./pages/After_hour_call";
+// import AfterHoursCallsOld from "./pages/After_hour_call_old";
 import RLReport from "./pages/Rl-Internal-Report";
+// import RLReportOld from "./pages/Rl-Internal-Report-old";
 import ObCampaignDetails from "./pages/Create_manual_OB_call";
 import CampaignListUI from "./pages/List_id";
 import MonthConsumption from "./pages/Month_consumption";
+// import MonthConsumptionOld from "./pages/Month_consumption_old";
 import OutboundReport from "./pages/outbound_report";
+// import OutboundReportOld from "./pages/outbound_report_old";
 import AgentClientWise from "./pages/Agent_client_wise_report";
+// import AgentClientWiseOld from "./pages/Agent_client_wise_report_old";
 import RLReportClient from "./pages/RL_Report";
+// import RLReportClientOld from "./pages/RL_Report_old";
 import AbandonTrend from "./pages/Abandon_trend";
+// import AbandonTrendOld from "./pages/Abandon_trend_old";
 import AbandonCallData from "./pages/Abandon_call_datewise";
+// import AbandonCallDataOld from "./pages/Abandon_call_datewise_old";
+// import SLAClientWiseOld from "./pages/SLA_Slot_wise_old";
+// import SLAClientWisesOld from "./pages/SLA_day_wise_old";
+// import ManageUserAccess from "./pages/Manage_user_access";
+// import ReportsAutomation from "./pages/Report_Automation";
+// import BackUpCdr from "./pages/backup_cdr_report";
+// import BackUpAgentApr from "./pages/backup_agent_apr";
+// import BackupStatement from "./pages/backup_statement_summary";
+import CheckOutReport from "./pages/Checkout_report";
 
 
 
@@ -265,6 +293,7 @@ function App() {
       <Route path="/reset-password" element={<ResetPassword  />} />
       <Route path="/logout" element={<Logout />} />
       <Route path="/company_registration" element={<CompanyRegistration />} />
+      <Route path="/checkout_report" element={<CheckOutReport />} />
       
 
       <Route element={<ProtectedRoute />}>
@@ -272,14 +301,20 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/real_time_report" element={<RealTimeDashboard />} />
               <Route path="CdrReports/cdrdataview" element={<CDRReport />} />
+              {/* <Route path="CdrReports/cdrdataview_old" element={<CDRReportOld />} /> */}
               <Route path="/ObCdrReports/detailscdr" element={<OBCDRReport />} />
+              {/* <Route path="/ObCdrReports/detailscdr_old" element={<OBCDRReportOld />} /> */}
               <Route path="/IvrReports" element={<IVRReport />} />
+              {/* <Route path="/IvrReports_old" element={<IVRReportOld />} /> */}
               <Route path="ObCdrReports/sharedscdr_external" element={<OBSharedCDRReport />} />
+              {/* <Route path="ObCdrReports/sharedscdr_external_old" element={<OBSharedCDRReportOld />} /> */}
               <Route path="/ivr-funnel-report" element={<IVRFunnelReport />} />
+              {/* <Route path="/ivr-funnel-report_old" element={<IVRFunnelReportOld />} /> */}
               <Route path="/SrDetails" element={<CallDetails />} />
               <Route path="/ObsrDetails" element={<OutCallDetails />} />
               <Route path="/priority_calls" element={<PriorityCalls />} />
               <Route path="/AbandCallback/csat_view" element={<CsatView />} />
+              {/* <Route path="/AbandCallback/csat_view_old" element={<CsatViewOld />} /> */}
               <Route path="/BillingReports/get_stmt" element={<CurrentBillStatement />} />
               <Route path="/tagging" element={<TaggingPage />} />
               <Route path="/admin_login" element={<ManageAdminLogins />} />
@@ -378,13 +413,16 @@ function App() {
               <Route path="/ObclientFields" element={<ManageOutCallRequiredFilled />} />
               <Route path="/exposure_view" element={<ExposureView />} />
               <Route path="/channel_utilization" element={<ChannelUtilization />} />
+              {/* <Route path="/channel_utilization_old" element={<ChannelUtilizationOld />} /> */}
               <Route path="/didlogs_reports"  element={<DidLogsReports />} />
+              {/* <Route path="/didlogs_reports_old"  element={<DidLogsReportsOld />} /> */}
               <Route path="/agent_avr" element={<AgentProductivity/>} />
               <Route path="/sla_agents_reports" element={<SlaAgentsReports/>} />
               <Route path="/campaigns_mapping" element={<CampaignsMapping/>} />
               <Route path="/mappings" element={<DidClientCampaignsMapping/>} />
               <Route path="/submenu/:id" element={<SubMenuPage />} />
               <Route path="/CorrectiveReport/index" element={<CorrectiveReport />} />
+              {/* <Route path="/CorrectiveReport/index_old" element={<CorrectiveReportOld />} /> */}
               <Route path="/company_registration" element={<CompanyRegistration />} />
               {/* <Route path="/allocation_plan" element={<AllocationPlan />} /> */}
               <Route path="/usage_summary" element={<UsageSummary />} />
@@ -392,24 +430,42 @@ function App() {
               <Route path="/InitialInvoices" element={<CreateInvoice />} />
               <Route path="/outbound_dashboard" element={<NewOutboundDashboard />} />
               <Route path="/AbandonReports/customer_wise" element={<CustomerDateWiseDensity />} />
+              {/* <Route path="/AbandonReports/customer_wise_old" element={<CustomerDateWiseDensityOld />} /> */}
               <Route path="/CdrReports/dd_clientwise" element={<SLAClientWise />} />
+              {/* <Route path="/CdrReports/dd_clientwise_old" element={<SLAClientWiseOldReport />} /> */}
               <Route path="/CdrReports/sla_day_wise" element={<SLADayWise />} />
               <Route path="/CdrReports/report" element={<SLASlotWise />} />
               <Route path="/AbandonReports/client_live_agent" element={<RealtimeAgentMapWithClients />} />
               <Route path="/AbandonReports/skill_wise_excel" element={<OverallAgentSkills />} />
               <Route path="/AbandonReports/agent_wise_skill_excel" element={<CampaignWiseAgentSkill />} />
               <Route path="/AbandonReports/agent_apr" element={<AgentAprExport />} />
+              {/* <Route path="/AbandonReports/agent_apr_old" element={<AgentAprExportOld />} /> */}
               <Route path="/DashboardAnest" element={<DashboardAnest />} />
               <Route path="/after_hour_calls" element={<AfterHoursCalls />} />
+              {/* <Route path="/after_hour_calls_old" element={<AfterHoursCallsOld />} /> */}
               <Route path="/RLReport" element={<RLReport />} />
+              {/* <Route path="/RLReport_old" element={<RLReportOld />} /> */}
               <Route path="/ManualOutbounds" element={<ObCampaignDetails />} />
               <Route path="/Outbounds/addcampaignlistid" element={<CampaignListUI />} />
               <Route path="/MonthConsumption" element={<MonthConsumption />} />
+              {/* <Route path="/MonthConsumption_old" element={<MonthConsumptionOld />} /> */}
               <Route path="/Outbound-report" element={<OutboundReport />} />
+              {/* <Route path="/Outbound-report_old" element={<OutboundReportOld />} /> */}
               <Route path="/Agent-report" element={<AgentClientWise />} />
+              {/* <Route path="/Agent-report_old" element={<AgentClientWiseOld />} /> */}
               <Route path="/RL-report" element={<RLReportClient />} />
+              {/* <Route path="/RL-report_old" element={<RLReportClientOld />} /> */}
               <Route path="/AbandonReports/abandon_trend" element={<AbandonTrend />} />
+              {/* <Route path="/AbandonReports/abandon_trend_old" element={<AbandonTrendOld />} /> */}
               <Route path="/CdrReports/abandon_call" element={<AbandonCallData />} />
+              {/* <Route path="/CdrReports/abandon_call_old" element={<AbandonCallDataOld />} />                                
+              <Route path="/CdrReports/report_old" element={<SLAClientWiseOld />} />  
+              <Route path="/CdrReports/sla_day_wise" element={<SLAClientWisesOld />} />
+              <Route path="/UserManages" element={<ManageUserAccess />} />
+              <Route path="/Report-Automation" element={<ReportsAutomation />} />
+              <Route path="/Backup-Cdr" element={<BackUpCdr />} />
+              <Route path="/Backup-AgentApr" element={<BackUpAgentApr />} />
+              <Route path="/Backup-Statement" element={<BackupStatement />} /> */}
               <></>
           </Route>
       </Route>

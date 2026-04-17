@@ -152,3 +152,202 @@ def verify_token(token: str = Depends(oauth2_scheme)):
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+
+
+
+
+
+# ✅ API: Search by Phone
+@router.get("/search-by-phone")
+def search_by_phone(phone: str = Query(...), db: Session = Depends(get_db4)):
+    query = text("""
+        SELECT *
+        FROM check_out_db
+        WHERE phone = :phone
+    """)
+
+    result = db.execute(query, {"phone": phone}).fetchall()
+
+    if not result:
+        return {"message": "No data found"}
+
+    # Convert to dict
+    data = [dict(row._mapping) for row in result]
+
+    return {
+        "count": len(data),
+        "data": data
+    }
+
+
+from fastapi import FastAPI, UploadFile, File, Depends
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from database import SessionLocal
+import pandas as pd
+import io
+import math
+
+def raw(val):
+    if isinstance(val, float) and math.isnan(val):
+        return None
+    return val
+
+
+
+
+@router.post("/upload-raw-excel")
+async def upload_raw_excel(file: UploadFile = File(...), db: Session = Depends(get_db4)):
+
+    contents = await file.read()
+
+    # ❗ No dtype=str → keep Excel original types
+    filename = file.filename.lower()
+
+    if filename.endswith(".xlsx"):
+        df = pd.read_excel(io.BytesIO(contents), engine="openpyxl")
+
+    elif filename.endswith(".xls"):
+        df = pd.read_excel(io.BytesIO(contents), engine="xlrd")
+
+    elif filename.endswith(".csv"):
+        df = pd.read_csv(io.BytesIO(contents))
+
+    else:
+        return {"error": "Unsupported file format"}
+
+    # ❗ Only normalize column names (required to match DB)
+    df.columns = [col.strip().replace(" ", "_") for col in df.columns]
+
+    df = df.where(pd.notnull(df), None)
+
+    inserted = 0
+
+    for _, row in df.iterrows():
+
+        # ✅ Convert entire row: NaN → None
+        row = row.where(pd.notnull(row), None)
+
+        query = text("""
+            INSERT INTO check_out_db (
+                NAME, Email, Financial_Status, Paid_at, Fulfillment_Status, Fulfilled_at,
+                Accepts_Marketing, Currency, Subtotal, Shipping, Taxes, Total,
+                Discount_Code, Discount_Amount, Shipping_Method, Created_at,
+                Lineitem_quantity, Lineitem_name, Lineitem_price, Lineitem_compare_at_price,
+                Lineitem_sku, Lineitem_requires_shipping, Lineitem_taxable,
+                Lineitem_fulfillment_status, Billing_Name, Billing_Street,
+                Billing_Address1, Billing_Address2, Billing_Company, Billing_City,
+                Billing_Zip, Billing_Province, Billing_Country, Billing_Phone,
+                Shipping_Name, Shipping_Street, Shipping_Address1, Shipping_Address2,
+                Shipping_Company, Shipping_City, Shipping_Zip, Shipping_Province,
+                Shipping_Country, Shipping_Phone, Notes, Note_Attributes,
+                Cancelled_at, Payment_Method, Payment_Reference, Refunded_Amount,
+                Vendor, Id, Tags, Risk_Level, Source, Lineitem_discount,
+                Tax_1_Name, Tax_1_Value, Tax_2_Name, Tax_2_Value,
+                Tax_3_Name, Tax_3_Value, Tax_4_Name, Tax_4_Value,
+                Tax_5_Name, Tax_5_Value, Phone, Receipt_Number,
+                Billing_Province_Name, Shipping_Province_Name
+            )
+            VALUES (
+                :Name, :Email, :Financial_Status, :Paid_at, :Fulfillment_Status, :Fulfilled_at,
+                :Accepts_Marketing, :Currency, :Subtotal, :Shipping, :Taxes, :Total,
+                :Discount_Code, :Discount_Amount, :Shipping_Method, :Created_at,
+                :Lineitem_quantity, :Lineitem_name, :Lineitem_price, :Lineitem_compare_at_price,
+                :Lineitem_sku, :Lineitem_requires_shipping, :Lineitem_taxable,
+                :Lineitem_fulfillment_status, :Billing_Name, :Billing_Street,
+                :Billing_Address1, :Billing_Address2, :Billing_Company, :Billing_City,
+                :Billing_Zip, :Billing_Province, :Billing_Country, :Billing_Phone,
+                :Shipping_Name, :Shipping_Street, :Shipping_Address1, :Shipping_Address2,
+                :Shipping_Company, :Shipping_City, :Shipping_Zip, :Shipping_Province,
+                :Shipping_Country, :Shipping_Phone, :Notes, :Note_Attributes,
+                :Cancelled_at, :Payment_Method, :Payment_Reference, :Refunded_Amount,
+                :Vendor, :Id, :Tags, :Risk_Level, :Source, :Lineitem_discount,
+                :Tax_1_Name, :Tax_1_Value, :Tax_2_Name, :Tax_2_Value,
+                :Tax_3_Name, :Tax_3_Value, :Tax_4_Name, :Tax_4_Value,
+                :Tax_5_Name, :Tax_5_Value, :Phone, :Receipt_Number,
+                :Billing_Province_Name, :Shipping_Province_Name
+            )
+            """)
+
+        db.execute(query, {
+            "Name": row["Name"],
+            "Email": row["Email"],
+            "Financial_Status": row["Financial_Status"],
+            "Paid_at": row["Paid_at"],
+            "Fulfillment_Status": row["Fulfillment_Status"],
+            "Fulfilled_at": row["Fulfilled_at"],
+            "Accepts_Marketing": row["Accepts_Marketing"],
+            "Currency": row["Currency"],
+            "Subtotal": row["Subtotal"],
+            "Shipping": row["Shipping"],
+            "Taxes": row["Taxes"],
+            "Total": row["Total"],
+            "Discount_Code": row["Discount_Code"],
+            "Discount_Amount": row["Discount_Amount"],
+            "Shipping_Method": row["Shipping_Method"],
+            "Created_at": row["Created_at"],
+            "Lineitem_quantity": row["Lineitem_quantity"],
+            "Lineitem_name": row["Lineitem_name"],
+            "Lineitem_price": row["Lineitem_price"],
+            "Lineitem_compare_at_price": row["Lineitem_compare_at_price"],
+            "Lineitem_sku": row["Lineitem_sku"],
+            "Lineitem_requires_shipping": row["Lineitem_requires_shipping"],
+            "Lineitem_taxable": row["Lineitem_taxable"],
+            "Lineitem_fulfillment_status": row["Lineitem_fulfillment_status"],
+            "Billing_Name": row["Billing_Name"],
+            "Billing_Street": row["Billing_Street"],
+            "Billing_Address1": row["Billing_Address1"],
+            "Billing_Address2": row["Billing_Address2"],
+            "Billing_Company": row["Billing_Company"],
+            "Billing_City": row["Billing_City"],
+            "Billing_Zip": row["Billing_Zip"],
+            "Billing_Province": row["Billing_Province"],
+            "Billing_Country": row["Billing_Country"],
+            "Billing_Phone": row["Billing_Phone"],
+            "Shipping_Name": row["Shipping_Name"],
+            "Shipping_Street": row["Shipping_Street"],
+            "Shipping_Address1": row["Shipping_Address1"],
+            "Shipping_Address2": row["Shipping_Address2"],
+            "Shipping_Company": row["Shipping_Company"],
+            "Shipping_City": row["Shipping_City"],
+            "Shipping_Zip": row["Shipping_Zip"],
+            "Shipping_Province": row["Shipping_Province"],
+            "Shipping_Country": row["Shipping_Country"],
+            "Shipping_Phone": row["Shipping_Phone"],
+            "Notes": row["Notes"],
+            "Note_Attributes": row["Note_Attributes"],
+            "Cancelled_at": row["Cancelled_at"],
+            "Payment_Method": row["Payment_Method"],
+            "Payment_Reference": row["Payment_Reference"],
+            "Refunded_Amount": row["Refunded_Amount"],
+            "Vendor": row["Vendor"],
+            "Id": row["Id"],
+            "Tags": row["Tags"],
+            "Risk_Level": row["Risk_Level"],
+            "Source": row["Source"],
+            "Lineitem_discount": row["Lineitem_discount"],
+            "Tax_1_Name": row["Tax_1_Name"],
+            "Tax_1_Value": row["Tax_1_Value"],
+            "Tax_2_Name": row["Tax_2_Name"],
+            "Tax_2_Value": row["Tax_2_Value"],
+            "Tax_3_Name": row["Tax_3_Name"],
+            "Tax_3_Value": row["Tax_3_Value"],
+            "Tax_4_Name": row["Tax_4_Name"],
+            "Tax_4_Value": row["Tax_4_Value"],
+            "Tax_5_Name": row["Tax_5_Name"],
+            "Tax_5_Value": row["Tax_5_Value"],
+            "Phone": row["Phone"],
+            "Receipt_Number": row["Receipt_Number"],
+            "Billing_Province_Name": row["Billing_Province_Name"],
+            "Shipping_Province_Name": row["Shipping_Province_Name"],
+        })
+
+        inserted += 1
+
+    db.commit()
+
+    return {
+        "message": "Raw upload successful",
+        "rows_inserted": inserted
+    }
