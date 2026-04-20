@@ -460,7 +460,7 @@ function App() {
               <Route path="/CdrReports/abandon_call" element={<AbandonCallData />} />
               <Route path="/CdrReports/abandon_call_old" element={<AbandonCallDataOld />} />                                
               <Route path="/CdrReports/report_old" element={<SLAClientWiseOld />} />  
-              <Route path="/CdrReports/sla_day_wise" element={<SLAClientWisesOld />} />
+              <Route path="/CdrReports/sla_day_wise_old" element={<SLAClientWisesOld />} />
               <Route path="/UserManages" element={<ManageUserAccess />} />
               <Route path="/Report-Automation" element={<ReportsAutomation />} />
               <Route path="/Backup-Cdr" element={<BackUpCdr />} />
