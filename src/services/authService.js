@@ -40,6 +40,10 @@ export const fetchCDRReport = async (payload) => {
   const response = await api.post("/report/cdr_report", payload);
   return response.data;
 };
+export const fetchCDRReportOld = async (payload) => {
+  const response = await api.post("/report/cdr_report_old", payload);
+  return response.data;
+};
 
 
 
@@ -67,11 +71,29 @@ export const getOBCDRReport = async (payload) => {
     throw error.response?.data?.detail || "Error fetching OB CDR Report";
   }
 };
+export const getOBCDRReportOld = async (payload) => {
+  try {
+    const response = await api.post("report/ob_cdr_report_old", payload);
+    return response.data;
+  } catch (error) {
+    console.error(error);
+    throw error.response?.data?.detail || "Error fetching OB CDR Report";
+  }
+};
 
 
 export const getOBSharedCDRReport = async (payload) => {
   try {
     const response = await api.post("/report/ob_shared_cdr_report", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching OB Shared CDR report:", error);
+    throw error.response?.data?.detail || "Failed to fetch report";
+  }
+};
+export const getOBSharedCDRReportOld = async (payload) => {
+  try {
+    const response = await api.post("/report/ob_shared_cdr_report_old", payload);
     return response.data;
   } catch (error) {
     console.error("Error fetching OB Shared CDR report:", error);
@@ -84,10 +106,23 @@ export const getIVRReport = async (payload) => {
   const response = await api.post("/report/ivr_report", payload);
   return response.data;
 };
+export const getIVRReportOld = async (payload) => {
+  const response = await api.post("/report/ivr_report_old", payload);
+  return response.data;
+};
 
 export const getIVRFunnelReport = async (payload) => {
   try {
     const response = await api.post("/report/ivr_funnel_report", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching IVR Funnel Report:", error);
+    throw error;
+  }
+};
+export const getIVRFunnelReportOld = async (payload) => {
+  try {
+    const response = await api.post("/report/ivr_funnel_report_old", payload);
     return response.data;
   } catch (error) {
     console.error("Error fetching IVR Funnel Report:", error);
