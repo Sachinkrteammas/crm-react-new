@@ -6,6 +6,7 @@ load_dotenv()
 
 SQL_DB_URL = os.getenv("SQL_DB_URL")
 SQL_DB_URL2 = os.getenv("SQL_DB_URL2")
+SQL_DB_URL3 = os.getenv("SQL_DB_URL3")
 
 engine2 = create_engine(SQL_DB_URL2)
 SessionLocal2 = sessionmaker(bind=engine2)
@@ -28,6 +29,16 @@ def get_db4():
     finally:
         db.close()
 
+engine3 = create_engine(SQL_DB_URL3)
+SessionLocal3 = sessionmaker(bind=engine3)
+
+def get_db3():
+    db = SessionLocal3()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 # ---------- Raw Access (Better than yield-based) ----------
 def get_engine2():
@@ -35,3 +46,6 @@ def get_engine2():
 
 def get_engine4():
     return engine4
+
+def get_engine3():
+    return engine3

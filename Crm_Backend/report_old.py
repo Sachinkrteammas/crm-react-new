@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from sqlalchemy import bindparam
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from database import get_db2, get_db4
+from database import get_db3, get_db4
 from schemas import *
 from passlib.context import CryptContext
 from jose import jwt
@@ -25,7 +25,7 @@ router = APIRouter()
 
 
 @router.post("/cdr_report_old", response_model=List[CDRReportResponse])
-def get_cdr_report_old(request: CDRReportRequest, db: Session = Depends(get_db4), db2: Session = Depends(get_db2)):
+def get_cdr_report_old(request: CDRReportRequest, db: Session = Depends(get_db4), db2: Session = Depends(get_db3)):
 
     # -----------------------------------------------------------------
     # 1. Campaign ID resolution (matches PHP logic with All + category)
@@ -217,7 +217,7 @@ def get_cdr_report_old(request: CDRReportRequest, db: Session = Depends(get_db4)
 def get_ob_cdr_report_old(
     request: OBCDRReportRequest,
     db: Session = Depends(get_db4),   # main DB
-    db2: Session = Depends(get_db2)  # vicidial
+    db2: Session = Depends(get_db3)  # vicidial
 ):
     # Step 1: Get campaign IDs
     campaign_query = text("SELECT campaignid FROM registration_master WHERE company_id = :company_id")
@@ -323,7 +323,7 @@ def get_ob_cdr_report_old(
 def get_ob_shared_cdr_report_old(
     request: OBCDRReportRequest,
     db: Session = Depends(get_db4),   # main DB
-    db2: Session = Depends(get_db2)   # vicidial DB
+    db2: Session = Depends(get_db3)   # vicidial DB
 ):
     from_dt = request.from_date
     to_dt = request.to_date
@@ -537,7 +537,7 @@ def get_ivr_report_old(
 def get_ivr_funnel_report_old(
     request: IVRFunnelReportRequest,
     db2: Session = Depends(get_db4),
-    db: Session = Depends(get_db2)
+    db: Session = Depends(get_db3)
 ):
     try:
         # Step 1 – fetch closer log
@@ -671,7 +671,7 @@ def get_ivr_funnel_report_old(
 def get_after_hours_calls_old(
     client_id: int = Query(..., description="Client ID"),
     start_date: str = Query(..., description="YYYY-MM-DD"),
-    db: Session = Depends(get_db2),     # call_log DB
+    db: Session = Depends(get_db3),     # call_log DB
     db4: Session = Depends(get_db4)     # did_master DB
 ):
 
@@ -762,7 +762,7 @@ def rl_internal_report_old(
     report_type: str = "company",
     company_id: Optional[int] = None,
     db: Session = Depends(get_db4),
-    db2: Session = Depends(get_db2)
+    db2: Session = Depends(get_db3)
 ):
 
     if report_type not in ["company", "entry"]:
@@ -1077,7 +1077,7 @@ def outbound_Report_old(
     start_date: date,
     end_date: date,
     db=Depends(get_db4),     # call_master_out DB
-    db2=Depends(get_db2)     # vicidial DB
+    db2=Depends(get_db3)     # vicidial DB
 ):
     campaign_in = get_campaign_in_clause(db, company_id)
 
@@ -1556,7 +1556,7 @@ def closer_log_report_old(
     start_date: date = Query(...),
     end_date: date = Query(...),
     is_shared: str = Query("all"),   # default = all
-    db: Session = Depends(get_db2),
+    db: Session = Depends(get_db3),
     db4: Session = Depends(get_db4),
 ) -> Dict:
 
@@ -1728,7 +1728,7 @@ def closer_log_report_by_campaign_old(
     start_date: date = Query(...),
     end_date: date = Query(...),
     is_shared: str = Query("all"),
-    db: Session = Depends(get_db2),
+    db: Session = Depends(get_db3),
     db4: Session = Depends(get_db4)
 ) -> Dict:
     
@@ -1894,7 +1894,7 @@ def closer_log_report_excel_old(
     start_date: date = Query(...),
     end_date: date = Query(...),
     is_shared: str = Query("all"),
-    db: Session = Depends(get_db2),
+    db: Session = Depends(get_db3),
     db4: Session = Depends(get_db4),
 ):
 
@@ -2164,7 +2164,7 @@ def closer_log_report_excel_old(
 def abandon_callback_report_old(
     client_id: str,
     report_date: date,
-    db=Depends(get_db2),
+    db=Depends(get_db3),
     db4=Depends(get_db4)
 ):
     # 🔹 Step 1: Fetch abandon data
@@ -2355,7 +2355,7 @@ def abandon_callback_report_old(
 def abandon_callback_report_excel_old(
     client_id: str,
     report_date: date,
-    db=Depends(get_db2),
+    db=Depends(get_db3),
     db4=Depends(get_db4)
 ):
     # 🔹 Get data from your existing API function

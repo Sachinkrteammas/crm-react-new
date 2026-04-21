@@ -11,7 +11,7 @@ from schemas import *
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from database import get_engine4, get_engine2, get_db2, get_db4
+from database import get_engine4, get_engine3, get_db3, get_db4
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from io import BytesIO
@@ -51,7 +51,7 @@ def get_csat_report_old(
     """)
 
     try:
-        engine = get_engine2()
+        engine = get_engine3()
         with engine.connect() as conn:
             result = conn.execute(query, {
                 "client_id": client_id,
@@ -80,7 +80,7 @@ def slot_wise_utilization_old(
     clientID: str = Query(...),
     sd_type: str = Query("All"),
     db1: Session = Depends(get_db4),   # registration_master
-    db2: Session = Depends(get_db2),   # vicidial
+    db2: Session = Depends(get_db3),   # vicidial
 ):
     data = {}
     datetimeArray = {}
@@ -441,7 +441,7 @@ def export_sla_day_wise_old(
     clientID: str = Query(...),
     sd_type: Optional[str] = Query("All"),
     db1: Session = Depends(get_db4),
-    db2: Session = Depends(get_db2),
+    db2: Session = Depends(get_db3),
 ):
 
     data = {}
@@ -703,7 +703,7 @@ def abandon_trend_old(
     category: str = Query("All"),
     no_of_count: int = Query(100),
     db: Session = Depends(get_db4),   # registration_master
-    db2: Session = Depends(get_db2)   # vicidial
+    db2: Session = Depends(get_db3)   # vicidial
 ) -> Dict[str, Any]:
 
     # ---------------- 🔹 STEP 1: GET CAMPAIGN IDs ----------------
@@ -835,7 +835,7 @@ def abandon_call_old(
     end_date: date,
     client_id: str = Query("All"),
     db: Session = Depends(get_db4),   # registration_master
-    db2: Session = Depends(get_db2)   # vicidial DB
+    db2: Session = Depends(get_db3)   # vicidial DB
 ) -> Dict[str, Any]:
 
     # ---------------- 🔹 STEP 1: GET CAMPAIGNS ----------------
@@ -1083,7 +1083,7 @@ def get_tag_counts(from_date: str, to_date: str, ag_list2: dict):
 
 def get_agent_log_data(from_dt: str, to_dt: str, unit_users: list, vicidial_db_config: dict):
 
-    engine2 = get_engine2()
+    engine2 = get_engine3()
 
     sql = """
         SELECT `user`, DATE(event_time) AS dater,
@@ -1183,7 +1183,7 @@ def get_park_data(from_dt: str, to_dt: str, vicidial_db_config: dict):
     park_date: dict = {}
     park_user: dict = {}
 
-    engine2 = get_engine2()
+    engine2 = get_engine3()
 
     with engine2.connect() as conn:
         result = conn.execute(
@@ -1210,7 +1210,7 @@ def get_park_data(from_dt: str, to_dt: str, vicidial_db_config: dict):
 
 def get_login_logout(user: str, from_dt: str, to_dt: str, vicidial_db_config: dict, date_filter: Optional[str] = None):
 
-    engine2 = get_engine2()
+    engine2 = get_engine3()
 
     with engine2.connect() as conn:
 
@@ -1802,7 +1802,7 @@ def sec_to_time(seconds):
 
 
 @router.post("/sla_clientwise_report_excel_old")
-def sla_clientwise_report_excel_old(req: SLAClientwiseReq, db2: Session = Depends(get_db2), db: Session = Depends(get_db4)):
+def sla_clientwise_report_excel_old(req: SLAClientwiseReq, db2: Session = Depends(get_db3), db: Session = Depends(get_db4)):
 
     params_shared = {}
     shared_clause = ""
@@ -2307,7 +2307,7 @@ class HourlyCampaignResp(BaseModel):
 @router.post("/hourly_campaign_report_old", response_model=HourlyCampaignResp)
 def get_hourly_campaign_report_old(
     req: DashboardReq,
-    db: Session = Depends(get_db2),
+    db: Session = Depends(get_db3),
     db_main: Session = Depends(get_db4),
 ) -> Any:
 
@@ -2466,7 +2466,7 @@ def get_hourly_campaign_report_old(
 @router.post("/hourly_date_wise_report_old", response_model=HourlyCampaignResp)
 def get_hourly_date_wise_report_old(
     req: DashboardReq,
-    db: Session = Depends(get_db2),
+    db: Session = Depends(get_db3),
     db_main: Session = Depends(get_db4),
 ) -> Any:
 
@@ -2720,7 +2720,7 @@ def auto_fit_columns(ws):
 
 # ---------------- LIST API ----------------
 @router.get("/channel-utilizations/list_old")
-def get_channel_list_old(fromDate: str, toDate: str, db: Session = Depends(get_db2)):
+def get_channel_list_old(fromDate: str, toDate: str, db: Session = Depends(get_db3)):
     query = text("""
         SELECT id, update_date, channel_count, vendor
         FROM channel_info
@@ -2737,7 +2737,7 @@ def get_channel_list_old(fromDate: str, toDate: str, db: Session = Depends(get_d
 
 # ---------------- MAX COUNT API ----------------
 @router.get("/channel-utilizations/max-count_old")
-def get_max_count_old(fromDate: str, toDate: str, db: Session = Depends(get_db2)):
+def get_max_count_old(fromDate: str, toDate: str, db: Session = Depends(get_db3)):
     query = text("""
         SELECT ci.vendor, ci.channel_count AS max_count, ci.update_date
         FROM channel_info ci
@@ -2766,7 +2766,7 @@ def get_max_count_old(fromDate: str, toDate: str, db: Session = Depends(get_db2)
 
 # ---------------- EXCEL DOWNLOAD ----------------
 @router.get("/channel-utilizations/download_old")
-def download_excel_old(fromDate: str, toDate: str, db: Session = Depends(get_db2)):
+def download_excel_old(fromDate: str, toDate: str, db: Session = Depends(get_db3)):
 
     # Sheet 1: All data
     sheet1_query = text("""
