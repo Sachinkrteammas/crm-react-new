@@ -18,8 +18,7 @@ def month_wise_statement_summary(
         from_date: date = Query(...),
         to_date: date = Query(...),
         db=Depends(get_db4),
-        db2=Depends(get_db2),
-        db3=Depends(get_db4),
+        db2=Depends(get_db2)
 ):
     # Step 1: Client Info
 
@@ -243,7 +242,7 @@ def month_wise_statement_summary(
           AND DATE(call_time) BETWEEN :from_date AND :to_date
     """)
 
-    rx_data = db3.execute(rx_query, {
+    rx_data = db.execute(rx_query, {
         "client_id": client_id,
         "from_date": from_date,
         "to_date": to_date
@@ -440,7 +439,8 @@ def month_wise_statement_summary(
 
 
     # build summary month that to be saved in db
-    summary_month = from_date.strftime("%b-%Y")  # Apr-2023
+    # summary_month = from_date.strftime("%b-%Y")  # Apr-2023
+    summary_month = from_date.strftime("%Y-%m-%d")  # Apr-2023
 
 
     summary_rows = [
@@ -454,11 +454,17 @@ def month_wise_statement_summary(
     ]
 
     insert_sql = text("""
-        INSERT INTO statement_summary
+        INSERT INTO billing_statement_data
         (client_id, description, pulse_unit, rate, amount, summary_month)
         VALUES
         (:client_id, :description, :pulse_unit, :rate, :amount, :summary_month)
     """)
+    # insert_sql = text("""
+    #     INSERT INTO statement_summary
+    #     (client_id, description, pulse_unit, rate, amount, summary_month)
+    #     VALUES
+    #     (:client_id, :description, :pulse_unit, :rate, :amount, :summary_month)
+    # """)
 
     for desc, pulse, rate, amt in summary_rows:
         db.execute(insert_sql, {

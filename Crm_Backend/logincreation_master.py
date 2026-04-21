@@ -304,3 +304,167 @@ def get_dynamic_menu(db: Session = Depends(get_db4)):
 
     return build_menu_tree(rows)
 
+
+
+
+
+
+@router.get("/login_users_username/basic")
+def get_login_users_basic(
+    create_id: str,
+    db: Session = Depends(get_db4)
+):
+    
+    if create_id:
+        query = text("""
+            SELECT id, create_id, username 
+            FROM logincreation_master
+            WHERE create_id = :create_id
+        """)
+        result = db.execute(query, {"create_id": create_id}).fetchall()
+    else:
+        query = text("""
+            SELECT id, create_id, username 
+            FROM logincreation_master
+        """)
+        result = db.execute(query).fetchall()
+
+    data = [
+        {
+            "id": row.id,
+            "create_id": row.create_id,
+            "username": row.username
+        }
+        for row in result
+    ]
+
+    return {
+        "status": "success",
+        "count": len(data),
+        "data": data
+    }
+
+
+
+
+@router.get("/campaigns_name")
+def get_campaigns_name(
+    client_id: int = Query(...),
+    db: Session = Depends(get_db4)
+):
+    query = text("""
+        SELECT id, ClientId, CampaignName 
+        FROM ob_campaign 
+        WHERE ClientId = :client_id
+    """)
+
+    result = db.execute(query, {"client_id": client_id}).fetchall()
+
+    data = [
+        {
+            "id": row.id,
+            "ClientId": row.ClientId,
+            "CampaignName": row.CampaignName
+        }
+        for row in result
+    ]
+
+    return {
+        "status": "success",
+        "count": len(data),
+        "data": data
+    }
+
+
+
+
+
+
+
+@router.put("/login_users_access/{user_id}/outbound_access")
+def update_outbound_access(
+    user_id: int,
+    outbound_access: str,   # 👈 comma-separated string (same as user_right_new)
+    db: Session = Depends(get_db4)
+):
+    # 1. Check if user exists
+    user_check = text("""
+        SELECT id FROM logincreation_master WHERE id = :id
+    """)
+    user = db.execute(user_check, {"id": user_id}).fetchone()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # 2. Validate format (same as user_right_new)
+    if not all(x.strip().isdigit() for x in outbound_access.split(",")):
+        raise HTTPException(status_code=400, detail="Invalid campaign IDs format")
+
+    # 3. Validate campaign IDs exist
+    campaign_ids = [int(x.strip()) for x in outbound_access.split(",")]
+
+    placeholders = ", ".join([f":id{i}" for i in range(len(campaign_ids))])
+    params = {f"id{i}": cid for i, cid in enumerate(campaign_ids)}
+
+    campaign_check = text(f"""
+        SELECT id FROM ob_campaign 
+        WHERE id IN ({placeholders})
+    """)
+
+    valid_campaigns = db.execute(campaign_check, params).fetchall()
+
+    if len(valid_campaigns) != len(set(campaign_ids)):
+        raise HTTPException(status_code=400, detail="One or more campaign IDs are invalid")
+
+    # 4. Normalize (optional but recommended)
+    outbound_access_clean = ",".join(map(str, sorted(set(campaign_ids))))
+
+    # 5. Update
+    update_query = text("""
+        UPDATE logincreation_master
+        SET outbound_access = :outbound_access
+        WHERE id = :id
+    """)
+
+    db.execute(update_query, {
+        "outbound_access": outbound_access_clean,
+        "id": user_id
+    })
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Outbound access updated successfully",
+        "data": {
+            "user_id": user_id,
+            "outbound_access": outbound_access_clean
+        }
+    }
+
+
+
+
+@router.get("/login_users/{user_id}/outbound_access")
+def get_outbound_access(
+    user_id: int,
+    db: Session = Depends(get_db4)
+):
+    # 1. Check user & get outbound_access
+    query = text("""
+        SELECT outbound_access 
+        FROM logincreation_master
+        WHERE id = :id
+    """)
+
+    result = db.execute(query, {"id": user_id}).fetchone()
+
+    if not result:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    outbound_access = result.outbound_access
+
+    return {
+        "status": "success",
+        "user_id": user_id,
+        "outbound_access": outbound_access
+    }
