@@ -318,10 +318,19 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
         leadid = enriched_row.get("leadid")
         agent = enriched_row.get("agent")
 
+        # if leadid and agent:
+        #     recording_link = (
+        #         f"https://dialdesk.co.in/download-recording/download.php"
+        #         f"?mode=DD&filename={leadid}&agent={agent}"
+        #     )
+        #     enriched_row["Recording"] = recording_link
+        # else:
+        #     enriched_row["Recording"] = None
+
         if leadid and agent:
             recording_link = (
-                f"https://dialdesk.co.in/download-recording/download.php"
-                f"?mode=DD&filename={leadid}&agent={agent}"
+                f"https://crm.dialdesk.in/auth/recordings/dd-html"
+                f"?filename={leadid}&agent={agent}&dater={enriched_row.get('call_date')}"
             )
             enriched_row["Recording"] = recording_link
         else:
@@ -493,8 +502,12 @@ def get_ob_cdr_report(
 
         # Recording URL
         row_dict["Recording"] = (
-            f"https://dialdesk.co.in/download-recording/download.php"
-            f"?mode=DD&filename={row['LeadId']}&agent={row['Agent']}"
+            # f"https://dialdesk.co.in/download-recording/download.php"
+            # f"?mode=DD&filename={row['LeadId']}&agent={row['Agent']}"
+            f"https://crm.dialdesk.in/auth/recordings/dd-html"
+            f"?filename={row_dict['LeadId']}"
+            f"&agent={row_dict['Agent']}"
+            f"&dater={row_dict['CallDate']}"
         )
 
         # Attach Sub Scenarios (if exists)
@@ -713,8 +726,10 @@ def get_ob_shared_cdr_report(
             "SubScenario3": cm["Category4"] if cm else None,
             "SubScenario4": cm["Category5"] if cm else None,
             "Recording": (
-                "https://dialdesk.co.in/download-recording/download.php"
-                f"?mode=DD&filename={lead_id}&agent={row['agent_id']}"
+                # "https://dialdesk.co.in/download-recording/download.php"
+                # f"?mode=DD&filename={lead_id}&agent={row['agent_id']}"
+                f"https://crm.dialdesk.in/auth/recordings/dd-html"
+                f"?filename={lead_id}&agent={row['agent_id']}&dater={row['call_date']}"
             )
         })
 

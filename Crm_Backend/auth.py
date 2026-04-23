@@ -133,9 +133,14 @@ def get_profile(current_user: str = Depends(get_current_user)):
 
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/call/oauth2/token")
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/call/oauth2/token")
 
-def verify_token(token: str = Depends(oauth2_scheme)):
+# def verify_token(token: str = Depends(oauth2_scheme)):
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+security = HTTPBearer()
+
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         client_id: str = payload.get("sub")
@@ -152,9 +157,6 @@ def verify_token(token: str = Depends(oauth2_scheme)):
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-
-
 
 
 
@@ -350,3 +352,434 @@ async def upload_raw_excel(file: UploadFile = File(...), db: Session = Depends(g
         "message": "Raw upload successful",
         "rows_inserted": inserted
     }
+
+
+
+
+
+from fastapi import APIRouter, Depends, Query
+from fastapi.responses import HTMLResponse
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+import requests
+import os
+
+from database import get_db2, get_db3
+
+
+LOCAL_SAVE_PATH = "/var/www/html/download-recording/mp3_play"
+PUBLIC_PATH = "/download-recording/mp3_play"
+
+
+def download_file(file_url, filename):
+    local_path = os.path.join(LOCAL_SAVE_PATH, filename)
+
+    try:
+        res = requests.get(file_url)
+        res.raise_for_status()
+
+        if os.path.exists(local_path):
+            os.remove(local_path)
+
+        with open(local_path, "wb") as f:
+            f.write(res.content)
+
+        return f"{PUBLIC_PATH}/{filename}"
+    except Exception:
+        return None
+
+
+@router.get("/recordings/dd-html", response_class=HTMLResponse)
+def dd_html(
+    filename: str = Query(...),
+    agent: str = Query(...),
+    dater: str = Query(...),
+    phno: str = Query(""),
+    db: Session = Depends(get_db2)
+):
+
+    sr = 1
+    table_rows = ""
+
+    # 🔹 STEP 1: initial query (NO DATE FILTER)
+    query1 = text("""
+        SELECT start_time, length_in_min, location, filename
+        FROM recording_log
+        WHERE lead_id = :filename
+        AND lead_id != '0'
+        AND SUBSTRING_INDEX(filename,'_',-1) = :agent
+        ORDER BY start_time DESC
+    """)
+
+    rsc = db.execute(query1, {
+        "filename": filename,
+        "agent": agent
+    }).fetchall()
+
+    
+
+    dt = rsc[0] if rsc else None
+
+    # 🔴 STEP 2: fallback if empty
+    # if not dt:
+    #     query_fallback = text("""
+    #         SELECT start_time, location, filename
+    #         FROM recording_log_26jan23
+    #         WHERE lead_id = :filename
+    #         AND lead_id != '0'
+    #         AND SUBSTRING_INDEX(filename,'_',-1) = :agent
+    #         ORDER BY start_time DESC
+    #     """)
+
+    #     rsc_fb = db.execute(query_fallback, {
+    #         "filename": filename,
+    #         "agent": agent
+    #     }).fetchall()
+
+    #     dt = rsc_fb[0] if rsc_fb else None
+
+    # else:
+    # 🔹 STEP 3: date-based filtering
+    query2 = text("""
+        SELECT start_time, length_in_min, location, filename
+        FROM recording_log
+        WHERE lead_id = :filename
+        AND DATE(start_time) = :dater
+        AND lead_id != '0'
+        AND SUBSTRING_INDEX(filename,'_',-1) = :agent
+        ORDER BY start_time DESC
+    """)
+
+    rsc2 = db.execute(query2, {
+        "filename": filename,
+        "dater": dater,
+        "agent": agent
+    }).fetchall()
+    print(rsc2,"#######")
+
+    # 🔴 If multiple recordings → loop
+    if len(rsc2) > 1:
+        for row in rsc2:
+            tmp_filename = row.location.split("/")[-1]
+            dir = str(row.start_time)[:10].replace("-", "")
+            tmp_filename = row.location.split("/")[-1]
+            file_url = f"http://192.168.10.3/192_168_10_5/{dir}/{tmp_filename}"
+
+            # public_file = download_file(file_url, tmp_filename)
+            public_file = file_url
+
+            if public_file:
+                table_rows += f"""
+                <tr>
+                    <td>{sr}</td>
+                    <td>{row.start_time}</td>
+                    <td>{row.length_in_min}</td>
+                    <td><a href="#" onclick="play_audio('{public_file}')">Play</a></td>
+                    <td><a href="{public_file}">Download {sr}</a></td>
+                </tr>
+                """
+                sr += 1
+
+    # 🔹 STEP 4: Always print last record (PHP behavior)
+    if dt:
+        tmp_filename = dt.location.split("/")[-1]
+        dir = str(dt.start_time)[:10].replace("-", "")
+
+        file_url = f"http://192.168.10.3/192_168_10_5/{dir}/{tmp_filename}"
+        public_file = file_url
+
+
+        if public_file:
+            table_rows += f"""
+            <tr>
+                <td>{sr}</td>
+                <td>{dt.start_time}</td>
+                <td>{getattr(dt, 'length_in_min', '')}</td>
+                <td><a href="#" onclick="play_audio('{public_file}')">Play</a></td>
+                <td><a href="{public_file}">Download {sr}</a></td>
+            </tr>
+            """
+
+    # 🔹 FINAL HTML RESPONSE
+    html_content = f"""
+    <html>
+    <head>
+        <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+
+        <style>
+        .styled-table {{
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 0.9em;
+            min-width: 400px;
+        }}
+        .styled-table th, .styled-table td {{
+            padding: 10px;
+        }}
+        .styled-table thead {{
+            background: #009879;
+            color: white;
+        }}
+        </style>
+
+        <script>
+        function play_audio(file_name){{
+            var snd = new Audio(file_name);
+            snd.play();
+        }}
+        function close_this(){{
+            window.close();
+        }}
+        $(document).ready(function(){{
+            $("#exampleModal").modal("show");
+        }});
+        </script>
+    </head>
+
+    <body>
+    <div class="modal fade show" id="exampleModal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <h5>Recordings</h5>
+            <button onclick="close_this()">&times;</button>
+          </div>
+
+          <div class="modal-body">
+            <table border="1" class="styled-table">
+              <tr>
+                <td colspan="5" style="color:red">
+                Multiple Recordings are Available. Please choose appropriate one
+                </td>
+              </tr>
+              <tr><td colspan="5">Contact No: {phno}</td></tr>
+              <tr>
+                <td>Sr No</td>
+                <td>Call Date</td>
+                <td>Duration</td>
+                <td>Play</td>
+                <td>Recordings</td>
+              </tr>
+
+              {table_rows if table_rows else "<tr><td colspan='5'>No recordings found</td></tr>"}
+
+            </table>
+          </div>
+
+          <div class="modal-footer">
+            <button onclick="close_this()">Close</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    </body>
+    </html>
+    """
+
+    return html_content
+
+
+
+
+
+
+@router.get("/recordings/dd-html_old", response_class=HTMLResponse)
+def dd_html_old(
+    filename: str = Query(...),
+    agent: str = Query(...),
+    dater: str = Query(...),
+    phno: str = Query(""),
+    db: Session = Depends(get_db3)
+):
+
+    sr = 1
+    table_rows = ""
+
+    # 🔹 STEP 1: initial query (NO DATE FILTER)
+    query1 = text("""
+        SELECT start_time, length_in_min, location, filename
+        FROM recording_log
+        WHERE lead_id = :filename
+        AND lead_id != '0'
+        AND SUBSTRING_INDEX(filename,'_',-1) = :agent
+        ORDER BY start_time DESC
+    """)
+
+    rsc = db.execute(query1, {
+        "filename": filename,
+        "agent": agent
+    }).fetchall()
+
+    
+
+    dt = rsc[0] if rsc else None
+
+    # 🔴 STEP 2: fallback if empty
+    # if not dt:
+    #     query_fallback = text("""
+    #         SELECT start_time, location, filename
+    #         FROM recording_log_26jan23
+    #         WHERE lead_id = :filename
+    #         AND lead_id != '0'
+    #         AND SUBSTRING_INDEX(filename,'_',-1) = :agent
+    #         ORDER BY start_time DESC
+    #     """)
+
+    #     rsc_fb = db.execute(query_fallback, {
+    #         "filename": filename,
+    #         "agent": agent
+    #     }).fetchall()
+
+    #     dt = rsc_fb[0] if rsc_fb else None
+
+    # else:
+    # 🔹 STEP 3: date-based filtering
+    query2 = text("""
+        SELECT start_time, length_in_min, location, filename
+        FROM recording_log
+        WHERE lead_id = :filename
+        AND DATE(start_time) = :dater
+        AND lead_id != '0'
+        AND SUBSTRING_INDEX(filename,'_',-1) = :agent
+        ORDER BY start_time DESC
+    """)
+
+    rsc2 = db.execute(query2, {
+        "filename": filename,
+        "dater": dater,
+        "agent": agent
+    }).fetchall()
+    print(rsc2,"#######")
+
+    # 🔴 If multiple recordings → loop
+    if len(rsc2) > 1:
+        for row in rsc2:
+            tmp_filename = row.location.split("/")[-1]
+            dir = str(row.start_time)[:10].replace("-", "")
+            tmp_filename = row.location.split("/")[-1]
+            file_url = f"http://192.168.10.3/192_168_10_5/{dir}/{tmp_filename}"
+
+            # public_file = download_file(file_url, tmp_filename)
+            public_file = file_url
+
+            if public_file:
+                table_rows += f"""
+                <tr>
+                    <td>{sr}</td>
+                    <td>{row.start_time}</td>
+                    <td>{row.length_in_min}</td>
+                    <td><a href="#" onclick="play_audio('{public_file}')">Play</a></td>
+                    <td><a href="{public_file}">Download {sr}</a></td>
+                </tr>
+                """
+                sr += 1
+
+    # 🔹 STEP 4: Always print last record (PHP behavior)
+    if dt:
+        tmp_filename = dt.location.split("/")[-1]
+        dir = str(dt.start_time)[:10].replace("-", "")
+
+        file_url = f"http://192.168.10.3/192_168_10_5/{dir}/{tmp_filename}"
+        public_file = file_url
+
+
+        if public_file:
+            table_rows += f"""
+            <tr>
+                <td>{sr}</td>
+                <td>{dt.start_time}</td>
+                <td>{getattr(dt, 'length_in_min', '')}</td>
+                <td><a href="#" onclick="play_audio('{public_file}')">Play</a></td>
+                <td><a href="{public_file}">Download {sr}</a></td>
+            </tr>
+            """
+
+    # 🔹 FINAL HTML RESPONSE
+    html_content = f"""
+    <html>
+    <head>
+        <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/css/bootstrap.min.css">
+
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.1/js/bootstrap.min.js"></script>
+
+        <style>
+        .styled-table {{
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 0.9em;
+            min-width: 400px;
+        }}
+        .styled-table th, .styled-table td {{
+            padding: 10px;
+        }}
+        .styled-table thead {{
+            background: #009879;
+            color: white;
+        }}
+        </style>
+
+        <script>
+        function play_audio(file_name){{
+            var snd = new Audio(file_name);
+            snd.play();
+        }}
+        function close_this(){{
+            window.close();
+        }}
+        $(document).ready(function(){{
+            $("#exampleModal").modal("show");
+        }});
+        </script>
+    </head>
+
+    <body>
+    <div class="modal fade show" id="exampleModal">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <h5>Recordings</h5>
+            <button onclick="close_this()">&times;</button>
+          </div>
+
+          <div class="modal-body">
+            <table border="1" class="styled-table">
+              <tr>
+                <td colspan="5" style="color:red">
+                Multiple Recordings are Available. Please choose appropriate one
+                </td>
+              </tr>
+              <tr><td colspan="5">Contact No: {phno}</td></tr>
+              <tr>
+                <td>Sr No</td>
+                <td>Call Date</td>
+                <td>Duration</td>
+                <td>Play</td>
+                <td>Recordings</td>
+              </tr>
+
+              {table_rows if table_rows else "<tr><td colspan='5'>No recordings found</td></tr>"}
+
+            </table>
+          </div>
+
+          <div class="modal-footer">
+            <button onclick="close_this()">Close</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    </body>
+    </html>
+    """
+
+    return html_content

@@ -99,6 +99,7 @@ function sumDurations(...durations) {
                 startTime: row.start_time,
                 endTime: row.end_time,
                 endTimeWrap: row.wrap_end_time,
+                leadid: row.leadid,
 
                 queueTime: queueDuration,
                 callDurationSec: row.call_duration1,
@@ -408,7 +409,7 @@ const handleExport = async () => {
                   <td>{row.Category3}</td>
                   <td>{row.Category4}</td>
                   <td>{row.Category5}</td>
-                  <td>
+                  {/* <td>
                     <a 
                       href={row.Recording} 
                       target="_blank" 
@@ -424,6 +425,28 @@ const handleExport = async () => {
                     >
                       📥
                     </a>
+                  </td> */}
+                  <td>
+                    <button
+                      onClick={() => {
+                        const url = `https://crm.dialdesk.in/auth/recordings/dd-html?filename=${row.leadid}&agent=${row.agent}&dater=${row.callDate}`;
+
+                        window.open(
+                          url,
+                          "_blank",
+                          "width=800,height=600,scrollbars=yes,resizable=yes"
+                        );
+                      }}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        cursor: "pointer",
+                        fontSize: "16px"
+                      }}
+                      title="View Recording"
+                    >
+                      📥
+                    </button>
                   </td>
                 </tr>
                 ))

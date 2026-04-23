@@ -293,7 +293,7 @@ const OBCDRReportOld = () => {
                   <td>{row.Endtime ? row.Endtime.slice(0, 19).replace("T", " ") : "-"}</td>
                   <td>{row.CallDuration || "-"}</td>
                   <td>{row.WrapTime || "-"}</td>
-                  <td>
+                  {/* <td>
                     <a 
                       href={row.Recording} 
                       target="_blank" 
@@ -309,6 +309,28 @@ const OBCDRReportOld = () => {
                     >
                       📥
                     </a>
+                  </td> */}
+                  <td>
+                    <button
+                      onClick={() => {
+                        const url = `https://crm.dialdesk.in/auth/recordings/dd-html_old?filename=${row.LeadId}&agent=${row.Agent}&dater=${row.CallDate}`;
+
+                        window.open(
+                          url,
+                          "_blank",
+                          "width=800,height=600,scrollbars=yes,resizable=yes"
+                        );
+                      }}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        cursor: "pointer",
+                        fontSize: "16px"
+                      }}
+                      title="View Recording"
+                    >
+                      📥
+                    </button>
                   </td>
                   <td>{row.SubScenario1 || "-"}</td>
                   <td>{row.SubScenario2 || "-"}</td>

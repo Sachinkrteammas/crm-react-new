@@ -300,7 +300,7 @@ const OBSharedCDRReport = () => {
                   <td>{row.SubScenario2 || "-"}</td>
                   <td>{row.SubScenario3 || "-"}</td>
                   <td>{row.SubScenario4 || "-"}</td>
-                  <td>
+                  {/* <td>
                     <a 
                       href={row.Recording} 
                       target="_blank" 
@@ -316,6 +316,28 @@ const OBSharedCDRReport = () => {
                     >
                       📥
                     </a>
+                  </td> */}
+                  <td>
+                    <button
+                      onClick={() => {
+                        const url = `https://crm.dialdesk.in/auth/recordings/dd-html?filename=${row.LeadID}&agent=${row.AgentID}&dater=${row.CallDate}`;
+
+                        window.open(
+                          url,
+                          "_blank",
+                          "width=800,height=600,scrollbars=yes,resizable=yes"
+                        );
+                      }}
+                      style={{
+                        border: "none",
+                        background: "none",
+                        cursor: "pointer",
+                        fontSize: "16px"
+                      }}
+                      title="View Recording"
+                    >
+                      📥
+                    </button>
                   </td>
                 </tr>
               ))
