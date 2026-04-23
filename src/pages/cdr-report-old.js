@@ -429,7 +429,7 @@ const handleExport = async () => {
                   <td>
                     <button
                       onClick={() => {
-                        const url = `https://crm.dialdesk.in/auth/recordings/dd-html_old?filename=${row.leadid}&agent=${row.agent}&dater=${row.callDate}`;
+                        const url = `https://crmapi.dialdesk.in/auth/recordings/dd-html_old?filename=${row.leadid}&agent=${row.agent}&dater=${row.callDate}`;
 
                         window.open(
                           url,

@@ -313,7 +313,7 @@ const OBCDRReportOld = () => {
                   <td>
                     <button
                       onClick={() => {
-                        const url = `https://crm.dialdesk.in/auth/recordings/dd-html_old?filename=${row.LeadId}&agent=${row.Agent}&dater=${row.CallDate}`;
+                        const url = `https://crmapi.dialdesk.in/auth/recordings/dd-html_old?filename=${row.LeadId}&agent=${row.Agent}&dater=${row.CallDate}`;
 
                         window.open(
                           url,

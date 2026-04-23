@@ -320,7 +320,7 @@ const OBSharedCDRReport = () => {
                   <td>
                     <button
                       onClick={() => {
-                        const url = `https://crm.dialdesk.in/auth/recordings/dd-html?filename=${row.LeadID}&agent=${row.AgentID}&dater=${row.CallDate}`;
+                        const url = `https://crmapi.dialdesk.in/auth/recordings/dd-html?filename=${row.LeadID}&agent=${row.AgentID}&dater=${row.CallDate}`;
 
                         window.open(
                           url,
