@@ -403,7 +403,7 @@ def dd_html(
 
     # 🔹 STEP 1: initial query (NO DATE FILTER)
     query1 = text("""
-        SELECT start_time, length_in_min, location, filename
+        SELECT start_time, length_in_sec, location, filename
         FROM recording_log
         WHERE lead_id = :filename
         AND lead_id != '0'
@@ -441,7 +441,7 @@ def dd_html(
     # else:
     # 🔹 STEP 3: date-based filtering
     query2 = text("""
-        SELECT start_time, length_in_min, location, filename
+        SELECT start_time, length_in_sec, location, filename
         FROM recording_log
         WHERE lead_id = :filename
         AND DATE(start_time) = :dater
@@ -473,7 +473,7 @@ def dd_html(
                 <tr>
                     <td>{sr}</td>
                     <td>{row.start_time}</td>
-                    <td>{row.length_in_min}</td>
+                    <td>{row.length_in_sec}</td>
                     <td><a href="#" onclick="play_audio('{public_file}')">Play</a></td>
                     <td><a href="{public_file}">Download {sr}</a></td>
                 </tr>
@@ -494,7 +494,7 @@ def dd_html(
             <tr>
                 <td>{sr}</td>
                 <td>{dt.start_time}</td>
-                <td>{getattr(dt, 'length_in_min', '')}</td>
+                <td>{getattr(dt, 'length_in_sec', '')}</td>
                 <td><a href="#" onclick="play_audio('{public_file}')">Play</a></td>
                 <td><a href="{public_file}">Download {sr}</a></td>
             </tr>
@@ -603,7 +603,7 @@ def dd_html_old(
 
     # 🔹 STEP 1: initial query (NO DATE FILTER)
     query1 = text("""
-        SELECT start_time, length_in_min, location, filename
+        SELECT start_time, length_in_sec, location, filename
         FROM recording_log
         WHERE lead_id = :filename
         AND lead_id != '0'
@@ -641,7 +641,7 @@ def dd_html_old(
     # else:
     # 🔹 STEP 3: date-based filtering
     query2 = text("""
-        SELECT start_time, length_in_min, location, filename
+        SELECT start_time, length_in_sec, location, filename
         FROM recording_log
         WHERE lead_id = :filename
         AND DATE(start_time) = :dater
@@ -673,7 +673,7 @@ def dd_html_old(
                 <tr>
                     <td>{sr}</td>
                     <td>{row.start_time}</td>
-                    <td>{row.length_in_min}</td>
+                    <td>{row.length_in_sec}</td>
                     <td><a href="#" onclick="play_audio('{public_file}')">Play</a></td>
                     <td><a href="{public_file}">Download {sr}</a></td>
                 </tr>
@@ -694,7 +694,7 @@ def dd_html_old(
             <tr>
                 <td>{sr}</td>
                 <td>{dt.start_time}</td>
-                <td>{getattr(dt, 'length_in_min', '')}</td>
+                <td>{getattr(dt, 'length_in_sec', '')}</td>
                 <td><a href="#" onclick="play_audio('{public_file}')">Play</a></td>
                 <td><a href="{public_file}">Download {sr}</a></td>
             </tr>
