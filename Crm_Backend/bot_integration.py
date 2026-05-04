@@ -93,19 +93,26 @@ def save_mapping(payload: dict, db: Session = Depends(get_db4)):
             "created_at": datetime.now()
         })
 
-    # 🔐 TOKEN GENERATION
-    secret_key = "dialdesk"
+    # ✅ 🔐 PHP SAME TOKEN GENERATION
     token_data = str(client_id)
-    token = hashlib.sha256((token_data + secret_key).encode()).hexdigest()
-    auth_token = base64.b64encode(f"{token_data}|{token}".encode()).decode()
 
-    # 🔍 CHECK TOKEN
-    token_row = db.execute(text("""
+    token = hmac.new(
+        SECRET_KEY.encode(),        # key
+        token_data.encode(),        # message
+        hashlib.sha256
+    ).hexdigest()
+
+    auth_token = base64.b64encode(
+        f"{token_data}|{token}".encode()
+    ).decode()
+
+    # 🔍 UPSERT TOKEN
+    exists = db.execute(text("""
         SELECT id FROM bot_integration_token
         WHERE client_id = :client_id
     """), {"client_id": client_id}).fetchone()
 
-    if not token_row:
+    if not exists:
         db.execute(text("""
             INSERT INTO bot_integration_token
             (client_id, token, created_at, created_by)
@@ -132,7 +139,10 @@ def save_mapping(payload: dict, db: Session = Depends(get_db4)):
 
     db.commit()
 
-    return {"message": "Saved successfully"}
+    return {
+        "message": "Saved successfully",
+        "auth_token": auth_token   # ✅ RETURN TOKEN LIKE PHP EXPECTATION
+    }
 
 
 # ✅ WEBHOOK

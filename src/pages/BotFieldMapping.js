@@ -11,17 +11,25 @@ const BotFieldMapping = () => {
 
   const [webhook, setWebhook] = useState(null);
 
+  // ✅ FETCH CLIENTS (SORTED)
   useEffect(() => {
     api.get("/agents/clients-rights").then((res) => {
-      setClients(res.data);
+      const sorted = res.data.sort((a, b) =>
+        a.company_name.localeCompare(b.company_name)
+      );
+      setClients(sorted);
     });
   }, []);
 
+  // ✅ FETCH FIELDS
   const fetchFields = async (clientId) => {
     const res = await api.get(`/bot/fields?client_id=${clientId}`);
     setFields(res.data.fields);
-    setSelectedFields(Object.keys(res.data.mapped));
-    setMapped(res.data.mapped);
+
+    // mapped keys → Field1, Field2...
+    const mappedKeys = Object.keys(res.data.mapped || {});
+    setSelectedFields(mappedKeys);
+    setMapped(res.data.mapped || {});
   };
 
   const handleClientChange = (e) => {
@@ -31,6 +39,7 @@ const BotFieldMapping = () => {
     fetchFields(id);
   };
 
+  // ✅ TOGGLE
   const toggleField = (key) => {
     if (selectedFields.includes(key)) {
       setSelectedFields(selectedFields.filter((f) => f !== key));
@@ -39,6 +48,15 @@ const BotFieldMapping = () => {
     }
   };
 
+  // ✅ GET FIELD NAME FROM KEY
+  const getFieldName = (fieldKey) => {
+    const found = fields.find(
+      (f) => `Field${f.field_number}` === fieldKey
+    );
+    return found ? found.field_name : fieldKey;
+  };
+
+  // ✅ SAVE
   const handleSubmit = async () => {
     await api.post("/bot/save", {
       client_id: selectedClient,
@@ -48,6 +66,7 @@ const BotFieldMapping = () => {
     alert("Saved Successfully");
   };
 
+  // ✅ SHOW WEBHOOK
   const showWebhook = async () => {
     const res = await api.get(`/bot/webhook?client_id=${selectedClient}`);
     setWebhook(res.data);
@@ -60,20 +79,13 @@ const BotFieldMapping = () => {
 
   return (
     <div style={{ padding: "20px", fontFamily: "Arial" }}>
-
       <h2 style={{ marginBottom: "20px" }}>
         Bot Integration Field Mapping
       </h2>
 
       {/* CLIENT */}
       <select
-        style={{
-          padding: "10px",
-          width: "260px",
-          marginBottom: "20px",
-          borderRadius: "6px",
-          border: "1px solid #ccc"
-        }}
+        style={selectStyle}
         value={selectedClient}
         onChange={handleClientChange}
       >
@@ -117,7 +129,7 @@ const BotFieldMapping = () => {
 
           {selectedFields.map((f) => (
             <div key={f} style={selectedItem}>
-              {mapped[f] || f}
+              {getFieldName(f)}
             </div>
           ))}
         </div>
@@ -134,110 +146,93 @@ const BotFieldMapping = () => {
         </button>
       </div>
 
-      {/* 🔥 WEBHOOK MODAL */}
+      {/* WEBHOOK MODAL */}
       {webhook && (
-  <div style={modalOverlay}>
-    <div style={modalBox}>
+        <div style={modalOverlay}>
+          <div style={modalBox}>
+            <h3>Webhook Details</h3>
 
-      <h3>Webhook Details</h3>
+            {/* TOKEN */}
+            <div style={sectionBox}>
+              <strong>Auth Token:</strong>
 
-      {/* ❌ ERROR STATE */}
-      {webhook.error && (
-        <div style={errorBox}>
-          {webhook.error}
-        </div>
-      )}
+              {!webhook.token ? (
+                <div style={warningBox}>
+                  ⚠ Token not generated yet
+                </div>
+              ) : (
+                <>
+                  <p style={{ wordBreak: "break-all" }}>
+                    {webhook.token}
+                  </p>
+                  <button style={copyBtn} onClick={copyToken}>
+                    Copy Token
+                  </button>
+                </>
+              )}
+            </div>
 
-      {/* 🔐 TOKEN */}
-      <div style={sectionBox}>
-        <strong>Auth Token:</strong>
+            {/* ENDPOINT */}
+            <div style={sectionBox}>
+              <strong>Endpoint URL:</strong>
+              <p style={urlBox}>
+                https://crmapi.dialdesk.in/bot/webhook-api
+              </p>
+            </div>
 
-        {!webhook.token ? (
-          <div style={warningBox}>
-            ⚠ Token not generated yet. Please save mapping first.
-          </div>
-        ) : (
-          <>
-            <p style={{ wordBreak: "break-all" }}>
-              {webhook.token}
-            </p>
-            <button style={copyBtn} onClick={copyToken}>
-              Copy Token
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* 🌐 ENDPOINT */}
-      <div style={sectionBox}>
-        <strong>Endpoint URL:</strong>
-        <p style={urlBox}>
-          https://crmapi.dialdesk.in/bot/webhook-api
-        </p>
-      </div>
-
-      {/* 📩 HEADERS */}
-      <div style={sectionBox}>
-        <strong>Request Headers:</strong>
-
-        <pre style={jsonBox}>
+            {/* HEADERS */}
+            <div style={sectionBox}>
+              <strong>Request Headers:</strong>
+              <pre style={jsonBox}>
 {JSON.stringify({
   "Content-Type": "application/json",
   "Auth-Token": webhook.token || "N/A"
 }, null, 2)}
-        </pre>
-      </div>
+              </pre>
+            </div>
 
-      {/* 📤 REQUEST */}
-      <div style={sectionBox}>
-        <strong>Request Data:</strong>
+            {/* REQUEST */}
+            <div style={sectionBox}>
+              <strong>Request Data:</strong>
+              <pre style={jsonBox}>
+                {JSON.stringify(webhook.request_sample || {}, null, 2)}
+              </pre>
+            </div>
 
-        {Object.keys(webhook.request_sample || {}).length === 0 ? (
-          <div style={warningBox}>
-            ⚠ No fields mapped for this client
+            {/* RESPONSE */}
+            <div style={sectionBox}>
+              <strong>Response:</strong>
+
+              {!webhook.token ? (
+                <pre style={jsonBoxError}>
+            {JSON.stringify({
+              status: "error",
+              message: "Auth token missing"
+            }, null, 2)}
+                </pre>
+              ) : Object.keys(webhook.request_sample || {}).length === 0 ? (
+                <pre style={jsonBoxError}>
+            {JSON.stringify({
+              status: "error",
+              message: "No mapped fields found"
+            }, null, 2)}
+                </pre>
+              ) : (
+                <pre style={jsonBoxSuccess}>
+            {JSON.stringify({
+              status: "success",
+              message: "Data inserted successfully"
+            }, null, 2)}
+                </pre>
+              )}
+            </div>
+
+            <button style={closeBtn} onClick={() => setWebhook(null)}>
+              Close
+            </button>
           </div>
-        ) : (
-          <pre style={jsonBox}>
-            {JSON.stringify(webhook.request_sample, null, 2)}
-          </pre>
-        )}
-      </div>
-
-      {/* 📥 RESPONSE */}
-      <div style={sectionBox}>
-        <strong>Response Data:</strong>
-
-        {!webhook.token ? (
-          <pre style={jsonBoxError}>
-{JSON.stringify({
-  status: "error",
-  message: "Auth token missing. Cannot process request."
-}, null, 2)}
-          </pre>
-        ) : Object.keys(webhook.request_sample || {}).length === 0 ? (
-          <pre style={jsonBoxError}>
-{JSON.stringify({
-  status: "error",
-  message: "Request data is missing or empty."
-}, null, 2)}
-          </pre>
-        ) : (
-          <pre style={jsonBoxGreen}>
-{JSON.stringify({
-  status: "success",
-  message: "Data processed successfully."
-}, null, 2)}
-          </pre>
-        )}
-      </div>
-
-      <button style={closeBtn} onClick={() => setWebhook(null)}>
-        Close
-      </button>
-
-    </div>
-  </div>
-)}
+        </div>
+      )}
     </div>
   );
 };
@@ -248,7 +243,15 @@ export default BotFieldMapping;
 
 
 
-/* 🔥 STYLES (INLINE OBJECTS) */
+/* STYLES */
+
+const selectStyle = {
+  padding: "10px",
+  width: "260px",
+  marginBottom: "20px",
+  borderRadius: "6px",
+  border: "1px solid #ccc"
+};
 
 const cardStyle = {
   flex: 1,
@@ -305,24 +308,19 @@ const modalOverlay = {
 
 const modalBox = {
   background: "#fff",
-  padding: "25px",
-  width: "600px",
+  padding: "20px",
+  width: "90%",
+  maxWidth: "600px",
+  maxHeight: "90vh",
+  overflowY: "auto",
   borderRadius: "10px"
-};
-
-const tokenBox = {
-  background: "#f4f4f4",
-  padding: "10px",
-  marginTop: "10px"
 };
 
 const jsonBox = {
   background: "#111",
   color: "#0f0",
   padding: "10px",
-  borderRadius: "6px",
-  maxHeight: "200px",
-  overflow: "auto"
+  borderRadius: "6px"
 };
 
 const copyBtn = {
@@ -353,29 +351,20 @@ const urlBox = {
   borderRadius: "5px"
 };
 
-const jsonBoxGreen = {
+const warningBox = {
+  background: "#fff3cd",
+  color: "#856404",
+  padding: "10px",
+  borderRadius: "6px"
+};
+
+const jsonBoxSuccess = {
   background: "#0f172a",
   color: "#22c55e",
   padding: "10px",
   borderRadius: "6px",
   maxHeight: "200px",
   overflow: "auto"
-};
-
-const warningBox = {
-  background: "#fff3cd",
-  color: "#856404",
-  padding: "10px",
-  borderRadius: "6px",
-  marginTop: "5px"
-};
-
-const errorBox = {
-  background: "#f8d7da",
-  color: "#721c24",
-  padding: "10px",
-  borderRadius: "6px",
-  marginBottom: "10px"
 };
 
 const jsonBoxError = {
