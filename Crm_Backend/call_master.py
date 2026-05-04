@@ -180,7 +180,7 @@ def get_csat_report(
         FROM csat_data vl
         LEFT JOIN vicidial_closer_log vcl ON vl.uniqueid = vcl.uniqueid
         LEFT JOIN vicidial_users vu ON vcl.user = vu.user
-        WHERE vl.dtmf < 4
+        WHERE vl.dtmf < 6
           AND vl.client_id = :client_id
           AND DATE(vl.call_date) BETWEEN :from_date AND :to_date
     """)
