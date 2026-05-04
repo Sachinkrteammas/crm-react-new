@@ -178,8 +178,8 @@ def get_csat_report(
     query = text("""
         SELECT vl.*, vcl.user, vu.full_name
         FROM csat_data vl
-        INNER JOIN vicidial_closer_log vcl ON vl.uniqueid = vcl.uniqueid
-        INNER JOIN vicidial_users vu ON vcl.user = vu.user
+        LEFT JOIN vicidial_closer_log vcl ON vl.uniqueid = vcl.uniqueid
+        LEFT JOIN vicidial_users vu ON vcl.user = vu.user
         WHERE vl.dtmf < 4
           AND vl.client_id = :client_id
           AND DATE(vl.call_date) BETWEEN :from_date AND :to_date
