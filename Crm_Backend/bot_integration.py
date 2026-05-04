@@ -1,0 +1,667 @@
+import json
+import os
+from http.client import HTTPException
+import hmac
+import requests
+from fastapi import APIRouter, Depends,Request, Header
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from datetime import datetime, date
+import hashlib
+import base64
+
+from database import get_db4,get_db2
+SECRET_KEY = "dialdesk"
+
+router = APIRouter(prefix="/bot", tags=["Bot Integration"])
+
+
+# ✅ GET FIELDS + EXISTING MAPPING
+@router.get("/fields")
+def get_fields(client_id: int, db: Session = Depends(get_db4)):
+
+    # 🔹 Field master
+    fields = db.execute(text("""
+        SELECT fieldNumber, FieldName
+        FROM field_master
+        WHERE ClientId = :client_id
+        AND FieldStatus IS NULL
+        ORDER BY Priority
+    """), {"client_id": client_id}).mappings().all()
+
+    # 🔹 Mapping
+    mapping = db.execute(text("""
+        SELECT field
+        FROM bot_integration_fields
+        WHERE client_id = :client_id
+        ORDER BY priority
+    """), {"client_id": client_id}).mappings().all()
+
+    exist_field = {}
+
+    for m in mapping:
+        field_key = m["field"]
+        field_num = int(field_key.replace("Field", ""))
+
+        row = db.execute(text("""
+            SELECT FieldName
+            FROM field_master
+            WHERE ClientId = :client_id
+            AND fieldNumber = :field_num
+            LIMIT 1
+        """), {"client_id": client_id, "field_num": field_num}).mappings().first()
+
+        if row:
+            exist_field[field_key] = row["FieldName"]
+
+    return {
+        "fields": [
+            {
+                "field_number": f["fieldNumber"],
+                "field_name": f["FieldName"]
+            } for f in fields
+        ],
+        "mapped": exist_field
+    }
+
+
+# ✅ SAVE MAPPING
+@router.post("/save")
+def save_mapping(payload: dict, db: Session = Depends(get_db4)):
+
+    client_id = payload["client_id"]
+    selected_fields = payload["selected_fields"]
+    user_id = payload.get("user_id", 1)
+
+    # 🔴 DELETE OLD
+    db.execute(text("""
+        DELETE FROM bot_integration_fields
+        WHERE client_id = :client_id
+    """), {"client_id": client_id})
+
+    # 🟢 INSERT NEW
+    for i, field in enumerate(selected_fields, start=1):
+        db.execute(text("""
+            INSERT INTO bot_integration_fields
+            (client_id, field, priority, created_by, created_at)
+            VALUES (:client_id, :field, :priority, :created_by, :created_at)
+        """), {
+            "client_id": client_id,
+            "field": field,
+            "priority": i,
+            "created_by": user_id,
+            "created_at": datetime.now()
+        })
+
+    # 🔐 TOKEN GENERATION
+    secret_key = "dialdesk"
+    token_data = str(client_id)
+    token = hashlib.sha256((token_data + secret_key).encode()).hexdigest()
+    auth_token = base64.b64encode(f"{token_data}|{token}".encode()).decode()
+
+    # 🔍 CHECK TOKEN
+    token_row = db.execute(text("""
+        SELECT id FROM bot_integration_token
+        WHERE client_id = :client_id
+    """), {"client_id": client_id}).fetchone()
+
+    if not token_row:
+        db.execute(text("""
+            INSERT INTO bot_integration_token
+            (client_id, token, created_at, created_by)
+            VALUES (:client_id, :token, :created_at, :created_by)
+        """), {
+            "client_id": client_id,
+            "token": auth_token,
+            "created_at": datetime.now(),
+            "created_by": user_id
+        })
+    else:
+        db.execute(text("""
+            UPDATE bot_integration_token
+            SET token = :token,
+                updated_at = :updated_at,
+                updated_by = :updated_by
+            WHERE client_id = :client_id
+        """), {
+            "token": auth_token,
+            "updated_at": datetime.now(),
+            "updated_by": user_id,
+            "client_id": client_id
+        })
+
+    db.commit()
+
+    return {"message": "Saved successfully"}
+
+
+# ✅ WEBHOOK
+@router.get("/webhook")
+def webhook(client_id: int, db: Session = Depends(get_db4)):
+
+    mapping = db.execute(text("""
+        SELECT field
+        FROM bot_integration_fields
+        WHERE client_id = :client_id
+        ORDER BY priority
+    """), {"client_id": client_id}).mappings().all()
+
+    token_row = db.execute(text("""
+        SELECT token
+        FROM bot_integration_token
+        WHERE client_id = :client_id
+    """), {"client_id": client_id}).mappings().first()
+
+    request_data = {}
+
+    for m in mapping:
+        field_num = int(m["field"].replace("Field", ""))
+
+        row = db.execute(text("""
+            SELECT FieldName
+            FROM field_master
+            WHERE ClientId = :client_id
+            AND fieldNumber = :field_num
+            LIMIT 1
+        """), {"client_id": client_id, "field_num": field_num}).mappings().first()
+
+        if row:
+            request_data[row["FieldName"]] = ""
+
+    return {
+        "token": token_row["token"] if token_row else "",
+        "request_sample": request_data
+    }
+
+
+def secure_compare(a, b):
+    if len(a) != len(b):
+        return False
+    result = 0
+    for x, y in zip(a, b):
+        result |= ord(x) ^ ord(y)
+    return result == 0
+
+
+# ✅ SUPPORT BOTH TOKENS (PHP + OLD PYTHON)
+def verify_auth_token(token):
+    try:
+        decoded = base64.b64decode(token).decode()
+        parts = decoded.split("|")
+
+        if len(parts) != 2:
+            return None
+
+        client_id, received_hmac = parts
+
+        # PHP correct
+        hmac_hash = hmac.new(
+            SECRET_KEY.encode(),
+            client_id.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+        # Old python
+        sha_hash = hashlib.sha256(
+            (client_id + SECRET_KEY).encode()
+        ).hexdigest()
+
+        if secure_compare(hmac_hash, received_hmac) or secure_compare(sha_hash, received_hmac):
+            return client_id
+
+    except Exception:
+        return None
+
+    return None
+
+
+# ✅ ARRAY FLATTEN (same as PHP array_walk_recursive)
+def flatten_dict(data):
+    result = ""
+
+    def recurse(d):
+        nonlocal result
+        if isinstance(d, dict):
+            for k, v in d.items():
+                result += f"{k} "
+                recurse(v)
+        elif isinstance(d, list):
+            for v in d:
+                recurse(v)
+        else:
+            result += f"{d} "
+
+    recurse(data)
+    return result.strip()
+
+
+@router.post("/webhook-api")
+async def bot_webhook(
+    request: Request,
+    auth_token: str = Header(None, alias="Auth-Token"),
+    db: Session = Depends(get_db4)
+):
+    # 🔐 AUTH
+    if not auth_token:
+        raise HTTPException(403, "Missing Auth-Token")
+
+    client_id = verify_auth_token(auth_token)
+
+    if not client_id:
+        raise HTTPException(403, "Invalid Auth-Token")
+
+    data = await request.json()
+
+    # 🔥 FETCH MAPPING
+    mappings = db.execute(text("""
+        SELECT field
+        FROM bot_integration_fields
+        WHERE client_id = :cid
+    """), {"cid": client_id}).mappings().all()
+
+    field_numbers = {}
+
+    for m in mappings:
+        field_id = m["field"]
+        field_number = field_id.replace("Field", "")
+
+        row = db.execute(text("""
+            SELECT FieldName
+            FROM field_master
+            WHERE ClientId = :cid AND fieldNumber = :fnum
+            LIMIT 1
+        """), {"cid": client_id, "fnum": field_number}).mappings().first()
+
+        if row:
+            field_numbers[row["FieldName"].strip()] = field_id
+
+    # 🔥 ALIAS (same as PHP)
+    alias = {
+        'distributor_code': 'Distributor ID/Name',
+        'delivery_issue': 'Delivery Issue Details',
+        'quality_issue': 'Quality Issue Details',
+        'sales_response_issue': 'Sales Team Response',
+        'backend_support_issue': 'Backend Support',
+        'material_availability_issue': 'Material Availability',
+        'claim_payout_issue': 'Claim Payout',
+        'partnership_issue': 'Overall Satisfaction'
+    }
+
+    mapped_data = {}
+
+    for field_name, value in data.items():
+
+        key = field_name.lower().strip()
+
+        # alias
+        if key in alias:
+            field_name = alias[key]
+
+        if field_name in field_numbers:
+            field_number = field_numbers[field_name]
+
+            if isinstance(value, (dict, list)):
+                value = flatten_dict(value)
+
+            mapped_data[field_number] = str(value).replace("'", "\\'")
+
+        # categories
+        if field_name.lower().startswith("category"):
+            mapped_data[field_name] = str(value).replace("'", "\\'")
+
+    # 🔥 GET SRNO
+    last = db.execute(text("""
+        SELECT MAX(SrNo) as srno
+        FROM call_master
+        WHERE ClientId = :cid
+    """), {"cid": client_id}).mappings().first()
+
+    srno = (last["srno"] or 0) + 1
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # 🔥 STATIC
+    static_columns = [
+        "clientid", "TagType", "SrNo", "SrNo2",
+        "LeadId", "CallDate", "AgentId",
+        "CallType", "escalation_no", "bot_tagging"
+    ]
+
+    static_values = [
+        client_id, "Bot Integration", srno, srno,
+        "0", now, "0", "WhatsApp", "0", "1"
+    ]
+
+    columns = static_columns + list(mapped_data.keys())
+    values = static_values + list(mapped_data.values())
+
+    # 🔥 RAW INSERT (same style as PHP)
+    column_str = ",".join(columns)
+    value_str = "'" + "','".join(map(str, values)) + "'"
+
+    insert_sql = f"INSERT INTO call_master ({column_str}) VALUES ({value_str})"
+
+    try:
+        db.execute(text(insert_sql))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+        # 🔁 RETRY SAME AS PHP
+        last = db.execute(text("""
+            SELECT MAX(SrNo) as srno
+            FROM call_master
+            WHERE ClientId = :cid
+        """), {"cid": client_id}).mappings().first()
+
+        srno = (last["srno"] or 0) + 1
+
+        static_values[2] = srno
+        static_values[3] = srno
+
+        values = static_values + list(mapped_data.values())
+        value_str = "'" + "','".join(map(str, values)) + "'"
+
+        insert_sql = f"INSERT INTO call_master ({column_str}) VALUES ({value_str})"
+
+        db.execute(text(insert_sql))
+        db.commit()
+
+    # 🔥 SMS + CRON (same as PHP)
+    sms = db.execute(text("""
+        SELECT smsText FROM tbl_sms
+        WHERE clientId = :cid
+        AND sendType='0' AND alertType='Alert'
+        AND (category='Whatsapp' OR category='All')
+        LIMIT 1
+    """), {"cid": client_id}).mappings().first()
+
+    sms_text = sms["smsText"] if sms else ""
+
+    matrix = db.execute(text("""
+        SELECT alertType, alertOn, personName, email, mobileno, tat
+        FROM tbl_matrix
+        WHERE clientId = :cid
+        AND (categoryName='Whatsapp' OR categoryName='All')
+    """), {"cid": client_id}).mappings().all()
+
+    for m in matrix:
+        db.execute(text("""
+            INSERT INTO crone_job
+            (clientId, bpo, data_id, alertType, alertOn, personName,
+             email, mobileNo, tat, msg, createdate)
+            VALUES (:cid, '0', :id, :alertType, :alertOn, :personName,
+                    :email, :mobileNo, :tat, :msg, NOW())
+        """), {
+            "cid": client_id,
+            "id": srno,
+            "alertType": m["alertType"],
+            "alertOn": m["alertOn"],
+            "personName": m["personName"],
+            "email": m["email"],
+            "mobileNo": m["mobileno"],
+            "tat": m["tat"],
+            "msg": sms_text
+        })
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Data inserted successfully",
+        "In Call Id": srno
+    }
+
+############################################################   Google Sheet ############################################
+
+GOOGLE_SCRIPT_URL = os.getenv("GOOGLE_SCRIPT_URL")
+GOOGLE_SCRIPT_URL1 = os.getenv("GOOGLE_SCRIPT_URL1")
+
+LAST_HASH = None
+
+
+def serialize_row(row):
+    new_row = {}
+    for k, v in row.items():
+        if v is None:
+            new_row[k] = ""
+        elif hasattr(v, "isoformat"):
+            new_row[k] = v.isoformat()
+        else:
+            new_row[k] = str(v)
+    return new_row
+
+
+def generate_hash(data):
+    """Create hash of data to detect changes"""
+    data_str = json.dumps(data, sort_keys=True)
+    return hashlib.md5(data_str.encode()).hexdigest()
+
+def run_push_to_sheet(from_date=None, to_date=None):
+    global LAST_HASH
+
+    db_gen = get_db2()
+    db: Session = next(db_gen)
+
+    try:
+        # ✅ Default = today
+        if not from_date or not to_date:
+            from_date = to_date = date.today().strftime("%Y-%m-%d")
+
+        query = """
+        SELECT 
+            DATE(event_time) AS CallDate,
+            u.full_name AS UserName,
+            vc.user AS ID,
+            SUM(IF(lead_id>0 AND status IS NOT NULL AND LENGTH(status)>0,1,0)) AS Calls,
+            SEC_TO_TIME(SUM(IF(wait_sec>5000,0,wait_sec)+talk_sec+dispo_sec+IF(pause_sec>5000,0,pause_sec))) AS LoginTime,
+            SEC_TO_TIME(SUM(IF(wait_sec>5000,0,wait_sec))) AS wait_sec,
+            SEC_TO_TIME(SUM(talk_sec)) AS talk_sec,
+            SEC_TO_TIME(SUM(dispo_sec)) AS dispo_sec,
+            SEC_TO_TIME(SUM(IF(pause_sec>5000,0,pause_sec))) AS pause_sec,
+            SEC_TO_TIME(SUM(dead_sec)) AS dead_sec,
+            vc.campaign_id
+        FROM vicidial_agent_log vc
+        JOIN vicidial_users u ON vc.user = u.user
+        WHERE DATE(event_time) BETWEEN :from_date AND :to_date
+        GROUP BY DATE(event_time), vc.campaign_id, vc.user;
+        """
+
+        result = db.execute(
+            text(query),
+            {"from_date": from_date, "to_date": to_date}
+        ).mappings().all()
+
+        data = [serialize_row(dict(row)) for row in result]
+
+        # 🔥 STEP 1: Hash check (prevents duplicate push)
+        current_hash = generate_hash(data)
+
+        if LAST_HASH == current_hash:
+            print("⏭️ No data change, skipping push")
+            return {"status": "skipped"}
+
+        LAST_HASH = current_hash
+
+        # 🔥 STEP 2: Send
+        response = requests.post(
+            GOOGLE_SCRIPT_URL,
+            json={"data": data},
+            timeout=10
+        )
+
+        print(f"✅ Sheet updated | rows={len(data)}")
+
+        return {"rows": len(data), "status": response.text}
+
+    finally:
+        db_gen.close()
+
+
+@router.get("/push-to-sheet")
+def push_to_google_sheet(from_date: str = None, to_date: str = None):
+    print(f"Manual trigger | from={from_date} to={to_date}")
+
+    result = run_push_to_sheet(from_date, to_date)
+
+    return {
+        "message": "Push triggered",
+        "result": result
+    }
+
+############################################################ SLA Code ##################################################
+
+def get_sla_clientwise_data(req, db2: Session, db: Session):
+
+    # ---------------- Fetch campaigns ----------------
+    rows = db.execute(text("""
+        SELECT campaignid, company_id, company_name
+        FROM registration_master
+        WHERE status='A' AND is_dd_client='1'
+    """)).fetchall()
+
+    client_campaigns = {}
+    for r in rows:
+        campaigns = []
+        if r.campaignid:
+            campaigns = [c.strip().strip("'") for c in r.campaignid.split(",") if c.strip()]
+
+        client_campaigns[r.company_id] = {
+            "company_name": r.company_name,
+            "campaigns": campaigns
+        }
+
+    # ---------------- DATA PREP ----------------
+    all_data = {}
+
+    for company_id, info in client_campaigns.items():
+        company_name = info["company_name"]
+        campaigns = info["campaigns"]
+
+        if company_name not in all_data:
+            all_data[company_name] = {
+                "Client Name": company_name,
+                "Offered": 0,
+                "Handled": 0,
+                "Calls Ans (20 Sec)": 0,
+                "Total Calls Abandoned": 0,
+                "Abnd Within (20)": 0,
+                "Total Talk Time_sec": 0,
+                "AHT_total": 0,
+                "RL": 0
+            }
+
+        for campaign in campaigns:
+            sql = """
+                SELECT 
+                    t2.campaign_id,
+                    t2.user,
+                    t2.queue_seconds,
+                    dispo_sec,
+                    talk_sec,
+                    pause_sec,
+                    wait_sec,
+                    t1.length_in_sec
+                FROM asterisk.vicidial_closer_log t2
+                LEFT JOIN asterisk.vicidial_users vu ON t2.user = vu.user
+                LEFT JOIN asterisk.call_log t1 ON t1.uniqueid = t2.uniqueid
+                LEFT JOIN asterisk.vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+                WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
+                  AND t2.term_reason <> 'AFTERHOURS'
+                  AND t2.lead_id IS NOT NULL
+                  AND t2.campaign_id = :campaign
+            """
+
+            rows = db2.execute(text(sql), {
+                "from_date": req.from_date,
+                "to_date": req.to_date,
+                "campaign": campaign
+            }).mappings().all()
+
+            for r in rows:
+                data = all_data[company_name]
+
+                data["Offered"] += 1
+
+                if r["user"] != "VDCL":
+                    data["Handled"] += 1
+                    data["AHT_total"] += (r["length_in_sec"] or 0)
+
+                    if (r["queue_seconds"] or 0) <= 20:
+                        data["Calls Ans (20 Sec)"] += 1
+                else:
+                    data["Total Calls Abandoned"] += 1
+
+                    if (r["queue_seconds"] or 0) <= 20:
+                        data["Abnd Within (20)"] += 1
+
+                data["Total Talk Time_sec"] += (
+                    (r["talk_sec"] or 0) +
+                    (r["pause_sec"] or 0) +
+                    (r["wait_sec"] or 0) +
+                    (r["dispo_sec"] or 0)
+                )
+
+    # ---------------- FINAL CALC ----------------
+    result = []
+
+    for _, d in all_data.items():
+        handled = d["Handled"]
+        offered = d["Offered"]
+
+        d["Total Talk Time"] = d["Total Talk Time_sec"]
+
+        d["SL% (20 Sec)"] = round((d["Calls Ans (20 Sec)"] * 100 / handled), 2) if handled else 0
+        d["AL"] = round((handled * 100 / offered), 2) if offered else 0
+        d["AHT (In Sec)"] = round(d["AHT_total"] / handled) if handled else 0
+
+        result.append(d)
+
+    return result
+
+
+def run_sla_push_to_sheet():
+    global LAST_HASH
+
+    db_gen = get_db4()
+    db = next(db_gen)
+
+    db2_gen = get_db2()
+    db2 = next(db2_gen)
+
+    try:
+        class Req:
+            company_id = "ALL"
+            from_date = date.today().strftime("%Y-%m-%d")
+            to_date = date.today().strftime("%Y-%m-%d")
+            sd_type = "0"
+            filter_type = "with_0"
+
+        req = Req()
+
+        # 🔥 Get data
+        data = get_sla_clientwise_data(req, db2, db)
+
+        # 🔥 HASH CHECK (NO DUPLICATE PUSH)
+        current_hash = generate_hash(data)
+
+        if LAST_HASH == current_hash:
+            print("⏭️ No change, skipping")
+            return
+
+        LAST_HASH = current_hash
+
+        # 🔥 PUSH TO GOOGLE SHEET
+        response = requests.post(
+            GOOGLE_SCRIPT_URL1,
+            json={"data": data},
+            timeout=10
+        )
+
+        print(f"✅ SLA Sheet updated | rows={len(data)} | status={response.status_code}")
+
+    except Exception as e:
+        print("❌ Error:", e)
+
+    finally:
+        db_gen.close()
+        db2_gen.close()

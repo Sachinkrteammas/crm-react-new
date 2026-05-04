@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker,declarative_base
 load_dotenv()
 
 SQL_DB_URL = os.getenv("SQL_DB_URL")
@@ -10,7 +10,7 @@ SQL_DB_URL3 = os.getenv("SQL_DB_URL3")
 
 engine2 = create_engine(SQL_DB_URL2)
 SessionLocal2 = sessionmaker(bind=engine2)
-
+Base = declarative_base()
 def get_db2():
     db = SessionLocal2()
     try:

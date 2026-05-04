@@ -178,6 +178,7 @@ import BackUpCdr from "./pages/backup_cdr_report";
 import BackUpAgentApr from "./pages/backup_agent_apr";
 import BackupStatement from "./pages/backup_statement_summary";
 import CheckOutReport from "./pages/Checkout_report";
+import BotFieldMapping from "./pages/BotFieldMapping";
 
 
 
@@ -468,6 +469,7 @@ function App() {
               <Route path="/Backup-Cdr" element={<BackUpCdr />} />
               <Route path="/Backup-AgentApr" element={<BackUpAgentApr />} />
               <Route path="/Backup-Statement" element={<BackupStatement />} />
+              <Route path="/BotIntegrationField" element={<BotFieldMapping />} />
               <></>
           </Route>
       </Route>

@@ -81,7 +81,8 @@ from manage_admin_login import router as manage_admin_login_router
 from Old_reports import router as Old_reports_router
 from configure_report import router as configure_report_router
 from backup_reports import router as backup_reports_router
-
+from bot_integration import router as bot_integration
+from bot_integration import run_push_to_sheet,run_sla_push_to_sheet
 
 app = FastAPI(title="CRM Backend")
 
@@ -158,6 +159,7 @@ app.include_router(manage_admin_login_router, tags=["Admin Creation Master"], de
 app.include_router(Old_reports_router, tags=["Old Reports"], dependencies=[Depends(verify_token)])
 app.include_router(configure_report_router, tags=["Configure Reports"], dependencies=[Depends(verify_token)])
 app.include_router(backup_reports_router, tags=["Backup Reports"], dependencies=[Depends(verify_token)])
+app.include_router(bot_integration, tags=["Bot Integration"])
 
 app.include_router(dialer_router, prefix="/api")
 
@@ -270,6 +272,9 @@ scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every d
 scheduler.add_job(run_report_scheduler, "interval", minutes=1)
 # scheduler.add_job(run_cdr_scheduler, 'cron', hour=13, minute=15)
 # scheduler.add_job(run_agent_apr_scheduler, 'cron', hour=15, minute=52)
+
+# scheduler.add_job(run_push_to_sheet, "interval", minutes=1, max_instances=1)
+#scheduler.add_job(run_sla_push_to_sheet, "interval", minutes=1, max_instances=1)
 
 
 @app.on_event("startup")
