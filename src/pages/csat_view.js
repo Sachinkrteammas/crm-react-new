@@ -31,10 +31,11 @@ function CsatView() {
   // 🔍 Search filter
   const filteredData = data.filter((row) => {
     const search = searchTerm.toLowerCase();
-    return (
-      row.user?.toLowerCase().includes(search) ||
-      row.full_name?.toLowerCase().includes(search)     
-    );
+
+    const user = row.user?.toLowerCase() || "";
+    const name = row.full_name?.toLowerCase() || "";
+
+    return user.includes(search) || name.includes(search);
   });
 
   // 📄 Pagination
