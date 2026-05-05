@@ -777,14 +777,14 @@ async def save_vicidial_lead(
     try:
         db2.execute(text("""
             INSERT INTO vicidial_list (
-                phone_number, title, first_name, middle_initial, last_name,
-                address1, address2, address3, city, state, province,
-                postal_code, country_code, gender, date_of_birth,
+                phone_number, title, first_name, middle_initial, last_name, status,
+                address1, address2, address3, city, state, province, phone_code, called_since_last_reset, gmt_offset_now,
+                postal_code, country_code, gender, date_of_birth, entry_date, modify_date,
                 alt_phone, email, comments
             ) VALUES (
-                :phone_number, :title, :first_name, :middle_initial, :last_name,
-                :address1, :address2, :address3, :city, :state, :province,
-                :postal_code, :country_code, :gender, :date_of_birth,
+                :phone_number, :title, :first_name, :middle_initial, :last_name, :status,
+                :address1, :address2, :address3, :city, :state, :province, :phone_code, :called_since_last_reset, :gmt_offset_now,
+                :postal_code, :country_code, :gender, :date_of_birth,  NOW(), NOW(),
                 :alt_phone, :email, :comments
             )
         """), {
@@ -794,6 +794,7 @@ async def save_vicidial_lead(
             "first_name": data.get("first_name") or "",
             "middle_initial": data.get("middle_initial") or "",
             "last_name": data.get("last_name") or "",
+            "status": "NEW",
 
             "address1": data.get("address1") or "",
             "address2": data.get("address2") or "",
@@ -802,6 +803,9 @@ async def save_vicidial_lead(
             "city": data.get("city") or "",
             "state": data.get("state") or "",
             "province": data.get("province") or "",
+            "phone_code": '1',
+            "called_since_last_reset": "N",
+            "gmt_offset_now": "5.50",
 
             "postal_code": data.get("postal_code") or "",
             "country_code": data.get("country_code") or "",
