@@ -179,6 +179,7 @@ import BackUpAgentApr from "./pages/backup_agent_apr";
 import BackupStatement from "./pages/backup_statement_summary";
 import CheckOutReport from "./pages/Checkout_report";
 import BotFieldMapping from "./pages/BotFieldMapping";
+import ShopifyIntegration from "./pages/Shopify_integration";
 
 
 
@@ -470,6 +471,7 @@ function App() {
               <Route path="/Backup-AgentApr" element={<BackUpAgentApr />} />
               <Route path="/Backup-Statement" element={<BackupStatement />} />
               <Route path="/BotIntegrationField" element={<BotFieldMapping />} />
+              <Route path="/ShopifyIntegrationField" element={<ShopifyIntegration />} />
               <></>
           </Route>
       </Route>

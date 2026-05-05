@@ -3,7 +3,7 @@ import os
 from http.client import HTTPException
 import hmac
 import requests
-from fastapi import APIRouter, Depends,Request, Header
+from fastapi import APIRouter, Depends,Request, Header, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime, date
@@ -675,3 +675,219 @@ def run_sla_push_to_sheet():
     finally:
         db_gen.close()
         db2_gen.close()
+
+
+from pydantic import BaseModel
+from typing import List
+
+class FieldConfig(BaseModel):
+    fields: List[str]
+
+
+def generate_token(client_id: int):
+    token_data = str(client_id)
+
+    token = hmac.new(
+        SECRET_KEY.encode(),
+        token_data.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    auth_token = base64.b64encode(
+        f"{token_data}|{token}".encode()
+    ).decode()
+
+    return auth_token
+
+
+
+@router.post("/save-client-fields")
+async def save_client_fields(
+    payload: FieldConfig,
+    client_id: int = Query(...),
+    db: Session = Depends(get_db4)
+):
+    fields = payload.fields
+
+    if not client_id:
+        raise HTTPException(400, "client_id is required")
+
+    # 🔥 Generate token
+    new_token = generate_token(client_id)
+
+    try:
+        # 🔁 Clear old fields
+        db.execute(text("""
+            DELETE FROM shopify_leads
+            WHERE client_id = :cid
+        """), {"cid": client_id})
+
+        # 🔥 Insert fields
+        for field in fields:
+            if field:
+                db.execute(text("""
+                    INSERT INTO shopify_leads (client_id, field_name)
+                    VALUES (:cid, :field)
+                """), {
+                    "cid": client_id,
+                    "field": field.strip()
+                })
+
+        # 🔥 Save token
+        db.execute(text("""
+            INSERT INTO shopify_tokens_new (client_id, token)
+            VALUES (:cid, :token)
+        """), {
+            "cid": client_id,
+            "token": new_token
+        })
+
+        db.commit()
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(500, str(e))
+
+    return {
+        "status": "success",
+        "message": "Field names saved successfully",
+        "token": new_token
+    }
+
+
+
+
+@router.post("/shopify/webhook-api")
+async def save_vicidial_lead(
+    request: Request,
+    auth_token: str = Header(None, alias="Auth-Token"),
+    db2: Session = Depends(get_db2),
+):
+    # 🔐 AUTH
+    if not auth_token:
+        raise HTTPException(403, "Missing Auth-Token")
+
+    client_id = verify_auth_token(auth_token)
+
+    if not client_id:
+        raise HTTPException(403, "Invalid Auth-Token")
+
+    data = await request.json()
+
+    try:
+        db2.execute(text("""
+            INSERT INTO vicidial_list (
+                phone_number, title, first_name, middle_initial, last_name,
+                address1, address2, address3, city, state, province,
+                postal_code, country_code, gender, date_of_birth,
+                alt_phone, email, comments
+            ) VALUES (
+                :phone_number, :title, :first_name, :middle_initial, :last_name,
+                :address1, :address2, :address3, :city, :state, :province,
+                :postal_code, :country_code, :gender, :date_of_birth,
+                :alt_phone, :email, :comments
+            )
+        """), {
+            "phone_number": data.get("phone_number") or "",
+
+            "title": data.get("title") or "",
+            "first_name": data.get("first_name") or "",
+            "middle_initial": data.get("middle_initial") or "",
+            "last_name": data.get("last_name") or "",
+
+            "address1": data.get("address1") or "",
+            "address2": data.get("address2") or "",
+            "address3": data.get("address3") or "",
+
+            "city": data.get("city") or "",
+            "state": data.get("state") or "",
+            "province": data.get("province") or "",
+
+            "postal_code": data.get("postal_code") or "",
+            "country_code": data.get("country_code") or "",
+
+            "gender": data.get("gender") or "",
+            "date_of_birth": data.get("date_of_birth") or "",
+
+            "alt_phone": data.get("alt_phone") or "",
+            "email": data.get("email") or "",
+
+            "comments": data.get("comments") or ""
+        })
+
+        db2.commit()
+
+    except Exception as e:
+        db2.rollback()
+        raise HTTPException(500, str(e))
+
+    return {
+        "status": "success",
+        "message": "Webhook triggered successfully"
+    }
+
+
+
+
+@router.get("/get-client-fields")
+def get_client_fields(
+    client_id: int = Query(...),
+    db: Session = Depends(get_db4)
+):
+    if not client_id:
+        raise HTTPException(400, "client_id is required")
+
+    try:
+        rows = db.execute(text("""
+            SELECT field_name
+            FROM shopify_leads
+            WHERE client_id = :cid
+        """), {"cid": client_id}).fetchall()
+
+        fields = [row[0] for row in rows]
+
+        return {
+            "status": "success",
+            "client_id": client_id,
+            "fields": fields
+        }
+
+    except Exception as e:
+        raise HTTPException(500, str(e))
+    
+
+
+
+
+@router.get("/get-shopify-token")
+def get_shopify_token(
+    client_id: int = Query(...),
+    db: Session = Depends(get_db4)
+):
+    if not client_id:
+        raise HTTPException(400, "client_id is required")
+
+    try:
+        row = db.execute(text("""
+            SELECT token
+            FROM shopify_tokens_new
+            WHERE client_id = :cid
+            LIMIT 1
+        """), {"cid": client_id}).mappings().first()
+
+        if not row:
+            return {
+                "status": "success",
+                "client_id": client_id,
+                "token": None,
+                "message": "No token found"
+            }
+
+        return {
+            "status": "success",
+            "client_id": client_id,
+            "token": row["token"]
+        }
+
+    except Exception as e:
+        raise HTTPException(500, str(e))
