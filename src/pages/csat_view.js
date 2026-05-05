@@ -34,8 +34,9 @@ function CsatView() {
 
     const user = row.user?.toLowerCase() || "";
     const name = row.full_name?.toLowerCase() || "";
+    const phone = row.phone_number?.toLowerCase()|| "";
 
-    return user.includes(search) || name.includes(search);
+    return user.includes(search) || name.includes(search) || phone.includes(search);
   });
 
   // 📄 Pagination
