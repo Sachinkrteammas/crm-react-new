@@ -11,7 +11,7 @@ from schemas import *
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from database import get_engine4, get_engine3, get_db3, get_db4
+from database import get_engine4, get_engine3, get_db3, get_db4, get_db2
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from io import BytesIO
@@ -2882,8 +2882,9 @@ def download_excel_raw_old(
         from_date: date = Query(...),
         to_date: date = Query(...),
         db=Depends(get_db4),
-        db2=Depends(get_db3),
+        db2=Depends(get_db2),
         db3=Depends(get_db4),
+        db_old=Depends(get_db3),
 ):
     # Step 1: Client Info
     client_result = db.execute(text("""
@@ -2970,18 +2971,70 @@ def download_excel_raw_old(
     
 
     # Step 2: Call log data from vicidial DB
-    call_data = db2.execute(text(f"""
-        SELECT
-            IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
-            t2.phone_number,
-            t2.call_date,
-            t2.user
-        FROM vicidial_closer_log t2
-        LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
-        WHERE t2.user != 'VDCL'
-          AND t2.campaign_id IN :campaigns
-          AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
-    """), {"campaigns": tuple(campaign_list),"from_date": from_date, "to_date": to_date}).mappings().fetchall()
+    # call_data = db2.execute(text(f"""
+    #     SELECT
+    #         IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
+    #         t2.phone_number,
+    #         t2.call_date,
+    #         t2.user
+    #     FROM vicidial_closer_log t2
+    #     LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+    #     WHERE t2.user != 'VDCL'
+    #       AND t2.campaign_id IN :campaigns
+    #       AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
+    # """), {"campaigns": tuple(campaign_list),"from_date": from_date, "to_date": to_date}).mappings().fetchall()
+    cutoff_date = date(2026, 4, 21)
+
+    call_data = []
+
+    # -------- OLD DIALER (till 21 April) --------
+    if from_date <= cutoff_date:
+        old_to = min(to_date, cutoff_date)
+
+        old_data = db_old.execute(text(f"""
+            SELECT
+                IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
+                t2.phone_number,
+                t2.call_date,
+                t2.user
+            FROM vicidial_closer_log t2
+            LEFT JOIN vicidial_agent_log t3 
+                ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+            WHERE t2.user != 'VDCL'
+            AND t2.campaign_id IN :campaigns
+            AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
+        """), {
+            "campaigns": tuple(campaign_list),
+            "from_date": from_date,
+            "to_date": old_to
+        }).mappings().fetchall()
+
+        call_data.extend(old_data)
+
+
+    # -------- NEW DIALER (22 April onwards) --------
+    if to_date > cutoff_date:
+        new_from = max(from_date, cutoff_date + timedelta(days=1))
+
+        new_data = db2.execute(text(f"""
+            SELECT
+                IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
+                t2.phone_number,
+                t2.call_date,
+                t2.user
+            FROM vicidial_closer_log t2
+            LEFT JOIN vicidial_agent_log t3 
+                ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+            WHERE t2.user != 'VDCL'
+            AND t2.campaign_id IN :campaigns
+            AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
+        """), {
+            "campaigns": tuple(campaign_list),
+            "from_date": new_from,
+            "to_date": to_date
+        }).mappings().fetchall()
+
+        call_data.extend(new_data)
 
     html_day_rows = ""
     html_night_rows = ""
@@ -3018,7 +3071,28 @@ def download_excel_raw_old(
     # """), {"from_date": from_date, "to_date": to_date}).fetchall()
 
     # --- OUTBOUND (Vicidial Log) Section ---
-    aband_data = db2.execute(text("""
+    # aband_data = db2.execute(text("""
+    #         SELECT
+    #             (va.talk_sec-va.dead_sec) length_in_sec,
+    #             LEFT(v.phone_number, 10) AS phone_number,
+    #             v.call_date,
+    #             v.user
+    #         FROM vicidial_log v
+    #         JOIN vicidial_agent_log va ON v.uniqueid = va.uniqueid
+    #         WHERE length_in_sec != 0
+    #             AND v.user != 'VDAD'
+    #             AND v.campaign_id IN :campaigns
+    #           AND DATE(v.call_date) BETWEEN :from_date AND :to_date
+    #     """), {"campaigns": tuple(campaign_list),"client_id": client_id, "from_date": from_date, "to_date": to_date}).mappings().fetchall()
+    cutoff_date = date(2026, 4, 21)
+
+    aband_data = []
+
+    # -------- OLD DIALER (till 21 April) --------
+    if from_date <= cutoff_date:
+        old_to = min(to_date, cutoff_date)
+
+        old_aband = db_old.execute(text("""
             SELECT
                 (va.talk_sec-va.dead_sec) length_in_sec,
                 LEFT(v.phone_number, 10) AS phone_number,
@@ -3029,8 +3103,39 @@ def download_excel_raw_old(
             WHERE length_in_sec != 0
                 AND v.user != 'VDAD'
                 AND v.campaign_id IN :campaigns
-              AND DATE(v.call_date) BETWEEN :from_date AND :to_date
-        """), {"campaigns": tuple(campaign_list),"client_id": client_id, "from_date": from_date, "to_date": to_date}).mappings().fetchall()
+            AND DATE(v.call_date) BETWEEN :from_date AND :to_date
+        """), {
+            "campaigns": tuple(campaign_list),
+            "from_date": from_date,
+            "to_date": old_to
+        }).mappings().fetchall()
+
+        aband_data.extend(old_aband)
+
+
+    # -------- NEW DIALER (22 April onwards) --------
+    if to_date > cutoff_date:
+        new_from = max(from_date, cutoff_date + timedelta(days=1))
+
+        new_aband = db2.execute(text("""
+            SELECT
+                (va.talk_sec-va.dead_sec) length_in_sec,
+                LEFT(v.phone_number, 10) AS phone_number,
+                v.call_date,
+                v.user
+            FROM vicidial_log v
+            JOIN vicidial_agent_log va ON v.uniqueid = va.uniqueid
+            WHERE length_in_sec != 0
+                AND v.user != 'VDAD'
+                AND v.campaign_id IN :campaigns
+            AND DATE(v.call_date) BETWEEN :from_date AND :to_date
+        """), {
+            "campaigns": tuple(campaign_list),
+            "from_date": new_from,
+            "to_date": to_date
+        }).mappings().fetchall()
+
+        aband_data.extend(new_aband)
 
     sql_get_ob = text("""
         SELECT LEFT(PhoneNo,10) AS PhoneNumber, DATE(Callbackdate) AS CallbackDate
@@ -3048,22 +3153,78 @@ def download_excel_raw_old(
     else:
         in_values = "('','0000-00-00')"  # guaranteed no match
     
-    query = text(f"""
-                SELECT t2.list_id,
-                t2.call_date AS CallDate,
-                TIME(FROM_UNIXTIME(t2.start_epoch)) AS StartTime,
-                LEFT(t2.phone_number,10) AS PhoneNumber,
-                t2.`user` AS Agent,
-                t3.talk_sec AS TalkSec
+    # query = text(f"""
+    #             SELECT t2.list_id,
+    #             t2.call_date AS CallDate,
+    #             TIME(FROM_UNIXTIME(t2.start_epoch)) AS StartTime,
+    #             LEFT(t2.phone_number,10) AS PhoneNumber,
+    #             t2.`user` AS Agent,
+    #             t3.talk_sec AS TalkSec
+    #         FROM asterisk.vicidial_log t2
+    #         LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
+    #         WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
+    #         AND t2.campaign_id = 'dialdesk'
+    #         AND t2.lead_id IS NOT NULL
+    #         AND (LEFT(t2.phone_number,10), DATE(t2.call_date)) IN ({in_values})
+    #         """)
+
+    # ab_data = db2.execute(query, {"from_date": from_date, "to_date": to_date}).mappings().fetchall()
+    cutoff_date = date(2026, 4, 21)
+
+    ab_data = []
+
+    # -------- OLD DIALER (till 21 April) --------
+    if from_date <= cutoff_date:
+        old_to = min(to_date, cutoff_date)
+
+        old_query = text(f"""
+            SELECT t2.list_id,
+            t2.call_date AS CallDate,
+            TIME(FROM_UNIXTIME(t2.start_epoch)) AS StartTime,
+            LEFT(t2.phone_number,10) AS PhoneNumber,
+            t2.`user` AS Agent,
+            t3.talk_sec AS TalkSec
             FROM asterisk.vicidial_log t2
             LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
             WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
             AND t2.campaign_id = 'dialdesk'
             AND t2.lead_id IS NOT NULL
             AND (LEFT(t2.phone_number,10), DATE(t2.call_date)) IN ({in_values})
-            """)
+        """)
 
-    ab_data = db2.execute(query, {"from_date": from_date, "to_date": to_date}).mappings().fetchall()
+        old_data = db_old.execute(old_query, {
+            "from_date": from_date,
+            "to_date": old_to
+        }).mappings().fetchall()
+
+        ab_data.extend(old_data)
+
+
+    # -------- NEW DIALER (22 April onwards) --------
+    if to_date > cutoff_date:
+        new_from = max(from_date, cutoff_date + timedelta(days=1))
+
+        new_query = text(f"""
+            SELECT t2.list_id,
+            t2.call_date AS CallDate,
+            TIME(FROM_UNIXTIME(t2.start_epoch)) AS StartTime,
+            LEFT(t2.phone_number,10) AS PhoneNumber,
+            t2.`user` AS Agent,
+            t3.talk_sec AS TalkSec
+            FROM asterisk.vicidial_log t2
+            LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
+            WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
+            AND t2.campaign_id = 'dialdesk'
+            AND t2.lead_id IS NOT NULL
+            AND (LEFT(t2.phone_number,10), DATE(t2.call_date)) IN ({in_values})
+        """)
+
+        new_data = db2.execute(new_query, {
+            "from_date": new_from,
+            "to_date": to_date
+        }).mappings().fetchall()
+
+        ab_data.extend(new_data)
 
     # --- Initialize SMS variables
     sms_pulse = 0
