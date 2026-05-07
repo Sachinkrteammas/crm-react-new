@@ -463,7 +463,7 @@ def dd_html(
             tmp_filename = row.location.split("/")[-1]
             dir = str(row.start_time)[:10].replace("-", "")
             tmp_filename = row.location.split("/")[-1]
-            file_url = f"http://192.168.10.3/192_168_10_5/{dir}/{tmp_filename}"
+            file_url = f"http://14.97.30.238/192_168_10_5/{dir}/{tmp_filename}"
 
             # public_file = download_file(file_url, tmp_filename)
             public_file = file_url
@@ -485,7 +485,7 @@ def dd_html(
         tmp_filename = dt.location.split("/")[-1]
         dir = str(dt.start_time)[:10].replace("-", "")
 
-        file_url = f"http://192.168.10.3/192_168_10_5/{dir}/{tmp_filename}"
+        file_url = f"http://14.97.30.238/192_168_10_5/{dir}/{tmp_filename}"
         public_file = file_url
 
 
