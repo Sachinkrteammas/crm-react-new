@@ -2698,7 +2698,7 @@ def abandon_callback_report(
         LEFT JOIN asterisk.manual_call_log mcl 
             ON RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10) 
             AND mcl.uniqueid = t2.uniqueid
-        WHERE t2.campaign_id IN ('dialdesk','Cryst002','Ajmal000','Superher')
+        WHERE t2.campaign_id IN ('dialdesk','Cryst002','Ajmal000','Superher','DLFDE000')
         AND DATE(t2.call_date) = :report_date
         AND t2.list_id IN ('998','2001')
         AND t2.lead_id IS NOT NULL
