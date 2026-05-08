@@ -74,7 +74,7 @@ def get_call_master_data(
         # Build column list
         field_map = {f["fieldNumber"]: f["FieldName"] for f in field_meta}
         columns = [f"field{fnum}" for fnum in field_map]
-        columns += ["SrNo","CallDate","MSISDN","tat","duedate","callcreated","CloseLoopingDate","CloseLoopCate1","CloseLoopCate2", "Category1", "Category2", "Category3", "Category4", "Category5","closelooping_remarks","FollowupDate","CaseCloseBy","LeadId"]
+        columns += ["SrNo","CallDate","MSISDN","tat","duedate","callcreated","CloseLoopingDate","CloseLoopCate1","CloseLoopCate2", "Category1", "Category2", "Category3", "Category4", "Category5","closelooping_remarks","FollowupDate","CaseCloseBy","LeadId","Field49"]
 
         # Step 2: WHERE clause setup
         where_clauses = ["ClientId = :client_id"]
@@ -133,6 +133,8 @@ def get_call_master_data(
             # -----------------------------
             # 3️⃣ Third: Remaining fields
             # -----------------------------
+            if client_id == 663:
+                record["API Response"] = row.get("Field49")
             record["CallDate"] = str(row.get("CallDate")).replace("T", " ")
             record["Call Action"] = row.get("CloseLoopCate1")
             record["Call Sub Action"] = row.get("CloseLoopCate2")
