@@ -97,15 +97,15 @@ useEffect(() => {
         await new Promise(res => setTimeout(res, 200)); // wait 200ms
       }
 
-      console.log("🟡 Loaded userData:", userData);
+      // console.log("🟡 Loaded userData:", userData);
 
       if (!userData) {
-        console.warn("⚠️ No user data found, skipping menu fetch.");
+        // console.warn("⚠️ No user data found, skipping menu fetch.");
         return;
       }
 
       const { auth_person, user_type, company_id: companyId } = userData;
-      console.log("🔹 user_type:", user_type, "companyId:", companyId, "auth_person:", auth_person);
+      // console.log("🔹 user_type:", user_type, "companyId:", companyId, "auth_person:", auth_person);
 
       let url = "";
       if (user_type === "Super-Admin" || user_type === "Admin") {
@@ -113,16 +113,16 @@ useEffect(() => {
       } else if (user_type === "Client" && companyId && auth_person) {
         url = `/dynamic_menu/pages/dynamic-menu/${companyId}?name=${encodeURIComponent(auth_person)}`;
       } else {
-        console.warn("⚠️ Skipping menu fetch - insufficient data");
+        // console.warn("⚠️ Skipping menu fetch - insufficient data");
         return;
       }
 
-      console.log("📡 Fetching URL:", url);
+      // console.log("📡 Fetching URL:", url);
       const res = await api.get(url);
-      console.log("✅ Menu response:", res.data);
+      // console.log("✅ Menu response:", res.data);
       setMenuData(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error("❌ Failed to fetch menu:", err);
+      // console.error("❌ Failed to fetch menu:", err);
     }
   };
 
@@ -176,9 +176,9 @@ useEffect(() => {
 
         await api.post("/track-activity", payload);
 
-        console.log("📊 Activity Logged:", payload);
+        // console.log("📊 Activity Logged:", payload);
       } catch (err) {
-        console.error("❌ Tracking failed:", err);
+        // console.error("❌ Tracking failed:", err);
       }
     };
 
