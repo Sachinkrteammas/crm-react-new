@@ -22,7 +22,7 @@ const AuthLoginCover = () => {
 
     try {
       const response = await login(email, password);
-      console.log("Login response:", response);
+      // console.log("Login response:", response);
 
  
   // ✅ Show dynamic success message based on user_type
@@ -52,13 +52,13 @@ const AuthLoginCover = () => {
 
       setTimeout(() => {
         const saved = localStorage.getItem("userData");
-        console.log("✅ Confirmed saved userData:", saved);
+        // console.log("✅ Confirmed saved userData:", saved);
         setSuccessMessage("");
         navigate("/dashboard");
       }, 1000); // wait 1 second instead of 500ms
       
     } catch (err) {
-      console.error("Login error:", err);
+      // console.error("Login error:", err);
       setFormError(err || "Invalid email or password");
     }
   };
