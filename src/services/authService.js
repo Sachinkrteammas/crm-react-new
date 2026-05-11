@@ -21,7 +21,7 @@ export const login = async (email, password) => {
       password: password
     });
 
-    console.log(response, "response==");
+    // console.log(response, "response==");
 
     // Save values returned from FastAPI
     localStorage.setItem("token", response.data.access_token);
