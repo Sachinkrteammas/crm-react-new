@@ -7,8 +7,9 @@ from corrective_report import generate_corrective_excel
 from logger import logger
 from call_scenario import send_call_summary
 from datetime import date
-from reports import generate_outbound_excel
+from reports import generate_outbound_excel, get_zero_call_clients
 from sla_reports import generate_rl_sl_excel
+from datetime import timedelta
 
 def run_report_scheduler():
 
@@ -146,7 +147,44 @@ def run_report_scheduler():
                 )
 
                 print(f"RL_SL_Report sent to {to_email}")
-            
+                                                         
+
+            elif report_name == "Zero Call Report":
+                print("starts")
+
+                now = datetime.now()
+
+                if current_time == "09:00":
+                    # Yesterday 5:01 PM → Today 9:00 AM
+                    start_time = (now - timedelta(days=1)).replace(hour=17, minute=1, second=0)
+                    end_time = now.replace(hour=9, minute=0, second=0)
+
+                elif current_time == "17:00":
+                    # Today 9:00 AM → Today 5:00 PM
+                    start_time = now.replace(hour=9, minute=0, second=0)
+                    end_time = now.replace(hour=17, minute=0, second=0)
+
+                else:
+                    continue
+
+                logger.info(f"Zero Call report window: {start_time} → {end_time}")
+
+                excel_stream = get_zero_call_clients(db, db2, start_time, end_time)
+
+                send_email_with_excel(
+                    to_email=to_email,
+                    cc_emails=cc,
+                    subject=f"Zero Call Report ({start_time.strftime('%d-%m-%Y %H:%M')} - {end_time.strftime('%d-%m-%Y %H:%M')})",
+                    body="""
+                    <p>Please find attached Zero Call Clients report.</p>
+                    <br>
+                    <p>Best Regards,<br>Team Ispark Data Connect</p>
+                    """,
+                    excel_stream=excel_stream,
+                    filename="Zero_Call_Clients_Report.xlsx"
+                )
+
+                print(f"Zero Call report sent to {to_email}")
 
     except Exception as e:
         print(f"Scheduler error: {str(e)}")

@@ -3057,3 +3057,197 @@ def abandon_callback_report_excel(
             "Content-Disposition": f"attachment; filename={safe_company_name}_RL_Report_{report_date}.xlsx"
         }
     )
+
+
+
+
+
+
+
+
+def get_zero_call_clients(db: Session, db2: Session, start_time, end_time):
+    
+    # ------------------------------------------------------------
+    # 1. Get Clients
+    # ------------------------------------------------------------
+    campaign_sql = """
+        SELECT campaignid, company_name
+        FROM registration_master
+        WHERE status = 'A'
+        AND is_dd_client = '1'
+    """
+
+    campaign_data = db.execute(text(campaign_sql)).mappings().fetchall()
+
+    # ------------------------------------------------------------
+    # 2. Split Campaigns
+    # ------------------------------------------------------------
+    campaign_to_client = {}
+    all_campaigns = []
+
+    for row in campaign_data:
+        raw = row["campaignid"]
+        if not raw:
+            continue
+
+        campaigns = [c.strip().strip("'").lower() for c in raw.split(",")]
+
+        for camp in campaigns:
+            campaign_to_client[camp] = row["company_name"]
+            all_campaigns.append(camp)
+
+    # ------------------------------------------------------------
+    # 3A. Last Call per Campaign (FAST)
+    # ------------------------------------------------------------
+    last_call_query = text("""
+        SELECT LOWER(TRIM(campaign_id)) AS campaign_id, MAX(call_date) AS last_call
+        FROM asterisk.vicidial_closer_log
+        WHERE LOWER(TRIM(campaign_id)) IN :campaign_ids
+        GROUP BY LOWER(TRIM(campaign_id))
+    """)
+
+    last_call_rows = db2.execute(
+        last_call_query,
+        {"campaign_ids": tuple(all_campaigns)}
+    ).mappings().fetchall()
+
+
+    # ------------------------------------------------------------
+    # 3B. Calls in Window (FAST)
+    # ------------------------------------------------------------
+    window_query = text("""
+        SELECT DISTINCT LOWER(TRIM(campaign_id)) AS campaign_id
+        FROM asterisk.vicidial_closer_log
+        WHERE LOWER(TRIM(campaign_id)) IN :campaign_ids
+        AND call_date BETWEEN :start_time AND :end_time
+    """)
+
+    window_rows = db2.execute(
+        window_query,
+        {
+            "campaign_ids": tuple(all_campaigns),
+            "start_time": start_time,
+            "end_time": end_time
+        }
+    ).mappings().fetchall()
+
+    # ------------------------------------------------------------
+    # 4. Process
+    # ------------------------------------------------------------
+    client_last_call = {}
+    client_in_window = set()
+
+    # Last call mapping
+    for row in last_call_rows:
+        campaign = row["campaign_id"].strip().lower()
+        last_call = row["last_call"]
+
+        client = campaign_to_client.get(campaign)
+        if not client:
+            continue
+
+        if client not in client_last_call or last_call > client_last_call[client]:
+            client_last_call[client] = last_call
+
+
+    # Window mapping
+    for row in window_rows:
+        campaign = row["campaign_id"].strip().lower()
+        client = campaign_to_client.get(campaign)
+
+        if client:
+            client_in_window.add(client)
+
+    # ------------------------------------------------------------
+    # 5. Prepare Workbook
+    # ------------------------------------------------------------
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Zero Call Clients"
+
+    # Styles
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    border = Border(
+        left=Side(style="thin"),
+        right=Side(style="thin"),
+        top=Side(style="thin"),
+        bottom=Side(style="thin"),
+    )
+
+    # Header
+    # headers = ["Client Name", "Last Call Offered Date", "Days Since Last Call"]
+    headers = ["Client Name", "Last Call Offered Date"]
+    ws.append(headers)
+
+    for col in ws[1]:
+        col.font = header_font
+        col.fill = header_fill
+        col.border = border
+
+    # ------------------------------------------------------------
+    # 6. Fill Data
+    # ------------------------------------------------------------
+    row_num = 2
+
+    for client in sorted(set(campaign_to_client.values())):
+        if client not in client_in_window:
+
+            last_call = client_last_call.get(client)
+
+            if last_call:
+                days_diff = (datetime.now() - last_call).days
+            else:
+                days_diff = "No Call Ever"
+
+            ws.append([
+                client,
+                str(last_call) if last_call else "",
+                # days_diff
+            ])
+
+            # Apply border
+            for col in ws[row_num]:
+                col.border = border
+
+            row_num += 1
+
+    # Auto width
+    for col in ws.columns:
+        max_length = 0
+        col_letter = col[0].column_letter
+
+        for cell in col:
+            if cell.value:
+                max_length = max(max_length, len(str(cell.value)))
+
+        ws.column_dimensions[col_letter].width = max_length + 2
+
+    # ------------------------------------------------------------
+    # 7. Save to Bytes
+    # ------------------------------------------------------------
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return output
+
+
+
+@router.get("/zero-clients")
+def zero_call_clients_api(
+    db: Session = Depends(get_db4),
+    db2: Session = Depends(get_db2)
+):
+    now = datetime.now()
+    start_time = now - timedelta(hours=24)
+
+    excel_stream = get_zero_call_clients(db, db2, start_time, now)
+
+    return StreamingResponse(
+        excel_stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": "attachment; filename=Zero_Call_Clients.xlsx"
+        }
+    )

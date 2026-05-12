@@ -90,10 +90,10 @@ app.mount("/training_file", StaticFiles(directory="uploads/training_file"), name
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://crm.dialdesk.in"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["Authorization", "Content-Type"],
     expose_headers=["Content-Disposition"],
 )
 
