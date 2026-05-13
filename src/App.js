@@ -180,6 +180,7 @@ import BackupStatement from "./pages/backup_statement_summary";
 import CheckOutReport from "./pages/Checkout_report";
 import BotFieldMapping from "./pages/BotFieldMapping";
 import ShopifyIntegration from "./pages/Shopify_integration";
+import HVClient from "./pages/HV_Client_report";
 
 
 
@@ -472,6 +473,7 @@ function App() {
               <Route path="/Backup-Statement" element={<BackupStatement />} />
               <Route path="/BotIntegrationField" element={<BotFieldMapping />} />
               <Route path="/ShopifyIntegrationField" element={<ShopifyIntegration />} />
+              <Route path="/HV-Clients" element={<HVClient />} />
               <></>
           </Route>
       </Route>

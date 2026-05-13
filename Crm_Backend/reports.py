@@ -14,11 +14,16 @@ from urllib.parse import quote_plus
 from new_outbound_dashboard import get_campaign_in_clause
 from fastapi.responses import StreamingResponse
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Border, Side
+from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from io import BytesIO
 from collections import defaultdict
 import calendar
 from datetime import time
+from fastapi.responses import FileResponse
+from openpyxl.utils import get_column_letter
+import os
+
+
 
 router = APIRouter()
 
@@ -3250,4 +3255,308 @@ def zero_call_clients_api(
         headers={
             "Content-Disposition": "attachment; filename=Zero_Call_Clients.xlsx"
         }
+    )
+
+
+
+
+
+
+
+# Request Schema
+class HVClientReq(BaseModel):
+    report_date: date
+
+
+
+
+
+
+
+
+
+
+@router.post("/hv-client")
+def get_hv_client_report(
+    req: HVClientReq,
+    db2: Session = Depends(get_db2),
+    db: Session = Depends(get_db4),
+):
+
+    # ---------------- EXCEL WORKBOOK ----------------
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "HV Client Summary"
+
+    # ---------------- HEADERS ----------------
+    headers = [
+        "Company Name",
+
+        "Total Calls",
+        "Answered Level (AL %)",
+        "Service Level (SL %)",
+        "Resolution Level (RL %)",
+
+        "Total Calls Answered",
+        "Total Tagged Calls",
+        "Missing Tagging Count",
+        "Tagging %",
+
+        "RL Count",
+        "Status"
+    ]
+
+    # Header Styling
+    header_fill = PatternFill(
+        start_color="1F4E78",
+        end_color="1F4E78",
+        fill_type="solid"
+    )
+
+    header_font = Font(
+        bold=True,
+        color="FFFFFF"
+    )
+
+    # Write Headers
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+
+    # ---------------- GET ALL CLIENTS ----------------
+    clients = db.execute(
+        text("""
+            SELECT
+                company_id,
+                company_name,
+                campaignid
+            FROM registration_master
+            WHERE client_category = 'HV'
+              AND `status` = 'A'
+        """)
+    ).mappings().all()
+
+    if not clients:
+        raise HTTPException(
+            status_code=404,
+            detail="No HV clients found"
+        )
+
+    row_no = 2
+
+    # ---------------- LOOP CLIENT WISE ----------------
+    for client in clients:
+
+        client_id = client["company_id"]
+        company_name = client["company_name"]
+        camp = client["campaignid"]
+
+        if not camp:
+            continue
+
+        campaign_list = [
+            c.strip().strip("'")
+            for c in camp.split(",")
+            if c.strip()
+        ]
+
+        # ---------------- CALL DATA ----------------
+        call_sql = text("""
+            SELECT
+                t2.queue_seconds,
+                t2.user
+
+            FROM asterisk.vicidial_closer_log t2
+
+            WHERE DATE(t2.call_date) = :report_date
+                AND t2.campaign_id IN :cids
+                AND t2.term_reason <> 'AFTERHOURS'
+                AND t2.lead_id IS NOT NULL
+        """)
+
+        call_data = db2.execute(
+            call_sql,
+            {
+                "cids": tuple(campaign_list),
+                "report_date": req.report_date
+            }
+        ).mappings().all()
+
+        total_calls = 0
+        total_answered = 0
+        WithinSLA = 0
+
+        for r in call_data:
+
+            total_calls += 1
+
+            user = r["user"]
+            queue = r["queue_seconds"] or 0
+
+            if user != "VDCL":
+
+                total_answered += 1
+
+                if queue <= 20:
+                    WithinSLA += 1
+
+        # ---------------- RL ----------------
+        RL = db.execute(
+            text("""
+                SELECT COUNT(1) cnt
+                FROM aband_call_master
+                WHERE ClientId = :cid
+                  AND call_status='answer'
+                  AND calldate >= :start_date
+                  AND calldate < :end_date
+            """),
+            {
+                "cid": client_id,
+                "start_date": f"{req.report_date} 00:00:00",
+                "end_date": f"{req.report_date} 23:59:59",
+            }
+        ).scalar() or 0
+
+        # ---------------- TAGGED ----------------
+        total_tagged = db.execute(
+            text("""
+                SELECT COUNT(Id) AS total_tagged
+                FROM call_master
+                WHERE ClientId = :cid
+                  AND DATE(calldate) = :report_date
+                  AND CallType <> 'Upload'
+            """),
+            {
+                "cid": client_id,
+                "report_date": req.report_date
+            }
+        ).scalar() or 0
+
+        # ---------------- CALCULATIONS ----------------
+        missing_tagging_count = total_answered - total_tagged
+
+        if missing_tagging_count < 0:
+            missing_tagging_count = 0
+
+        answered_level = round(
+            (total_answered / total_calls) * 100,
+            2
+        ) if total_calls else 0
+
+        tagging_percentage = round(
+            (total_tagged / total_answered) * 100,
+            2
+        ) if total_answered else 0
+
+        sl_percentage = round(
+            (WithinSLA / total_answered) * 100,
+            2
+        ) if total_answered else 0
+
+        rl_percentage = round(
+            ((RL + total_answered) / total_calls) * 100,
+            2
+        ) if total_calls else 0
+
+        # ---------------- STATUS ----------------
+        status = "Good"
+
+        if (
+            answered_level < 70
+            or sl_percentage < 60
+            or tagging_percentage < 85
+            or missing_tagging_count > 50
+        ):
+            status = "Critical"
+
+        elif (
+            answered_level < 80
+            or tagging_percentage < 95
+        ):
+            status = "Warning"
+
+        # ---------------- WRITE DATA ----------------
+        row_data = [
+            company_name,
+
+            total_calls,
+            answered_level,
+            sl_percentage,
+            rl_percentage,
+
+            total_answered,
+            total_tagged,
+            missing_tagging_count,
+            tagging_percentage,
+
+            RL,
+            status
+        ]
+
+        for col_num, value in enumerate(row_data, 1):
+
+            cell = ws.cell(
+                row=row_no,
+                column=col_num,
+                value=value
+            )
+
+            # Center align
+            cell.alignment = Alignment(horizontal="center")
+
+            # # Highlight Exceptions
+            # if status == "Critical":
+            #     cell.fill = PatternFill(
+            #         start_color="FFC7CE",
+            #         end_color="FFC7CE",
+            #         fill_type="solid"
+            #     )
+
+            # elif status == "Warning":
+            #     cell.fill = PatternFill(
+            #         start_color="FFEB9C",
+            #         end_color="FFEB9C",
+            #         fill_type="solid"
+            #     )
+
+        row_no += 1
+
+    # ---------------- AUTO WIDTH ----------------
+    for col in ws.columns:
+
+        max_length = 0
+        column = col[0].column
+
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+
+        adjusted_width = max_length + 4
+
+        ws.column_dimensions[
+            get_column_letter(column)
+        ].width = adjusted_width
+
+    # ---------------- FREEZE HEADER ----------------
+    ws.freeze_panes = "A2"
+
+    # ---------------- SAVE FILE ----------------
+    file_name = f"HV_Client_Report_{req.report_date}.xlsx"
+
+    file_path = os.path.join(
+        os.getcwd(),
+        file_name
+    )
+
+    wb.save(file_path)
+
+    return FileResponse(
+        path=file_path,
+        filename=file_name,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
