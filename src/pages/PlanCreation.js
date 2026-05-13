@@ -40,12 +40,20 @@ const initialFormState = {
   whatsappSmsCharge: "",
   CreditPointPercent: "",
   TalktimePercent: "",
+  totalSeat: "0",
+  seatRate: "0",
+  remoteUser: 0,
+  remoteUserRate: "",
 };
 
 
 const VIEW_FIELD_LABELS = {
   CreditPointPercent: "Credit Point %",
   TalktimePercent: "Talktime %",
+  TotalSeat: "Total Seat",
+  SeatRate: "Seat Rate",
+  RemoteUser: "Remote User",
+  RemoteUserRate: "Remote User Rate",
 };
 
 
@@ -188,13 +196,23 @@ export default function PlanManagement() {
       "ratePerPulseMultiOutbound",
       "multiLiveChat",
       "whatsappSmsCharge",
+      "totalSeat",
+      "seatRate",
     ];
+
+    // ✅ Validate remoteUserRate only when Remote User is enabled
+    if (form.remoteUser === 1) {
+      numericFields.push("remoteUserRate");
+    }
+
     numericFields.forEach((f) => {
       if (form[f] === "" || isNaN(form[f])) newErrors[f] = true;
     });
     if (!form.pulseDay) newErrors.pulseDay = true;
     if (!form.pulseNight) newErrors.pulseNight = true;
     if (!form.balanceCarry) newErrors.balanceCarry = true;
+    if (!form.pulseMultiOutbound) newErrors.pulseMultiOutbound = true;
+    if (!form.pulseMultiLang) newErrors.pulseMultiLang = true;
     return newErrors;
   };
 
@@ -246,6 +264,13 @@ export default function PlanManagement() {
     whatsappMessageCharge: form.whatsappSmsCharge,
     CreditPointPercent: form.CreditPointPercent,
     TalktimePercent: form.TalktimePercent,
+    totalSeat: form.totalSeat,
+    seatRate: form.seatRate,
+    remoteUser: form.remoteUser,
+    remoteUserRate:
+    form.remoteUser === 0
+      ? 0
+      : form.remoteUserRate,
   };
 
     if (editingPlanId) {
@@ -310,6 +335,12 @@ export default function PlanManagement() {
       whatsappSmsCharge: plan.whatsapp_message_charge,
       CreditPointPercent: plan.CreditPointPercent,
       TalktimePercent: plan.TalktimePercent,
+      totalSeat: plan.TotalSeat,
+      seatRate: plan.SeatRate,
+      remoteUser: plan.RemoteUser === 1 ||  plan.RemoteUser === "1" || plan.RemoteUser === true || plan.RemoteUser === "Enable"
+        ? 1
+        : 0,
+      remoteUserRate: plan.RemoteUserRate,
     });
 
     setEditingPlanId(plan.Id); // ✅ Use the correct backend primary key
@@ -811,6 +842,78 @@ export default function PlanManagement() {
                       "Talktime %",
                       "TalktimePercent",
                       "Talktime %",
+                      "number"
+                    )}
+                    {renderInput(
+                      "Total Seat",
+                      "totalSeat",
+                      "Total Seat",
+                      "number"
+                    )}
+
+                    {renderInput(
+                      "Seat Rate - Rs.",
+                      "seatRate",
+                      "Seat Rate",
+                      "number"
+                    )}
+
+                    <div className="col-md-4 mb-2">
+                      <label className="form-label">Remote User</label>
+                      <br />
+
+                      <div className="form-check form-check-inline">
+                        <input
+                          type="radio"
+                          id="remoteUserEnable"
+                          name="remoteUser"
+                          value={1}
+                          className="form-check-input"
+                          checked={form.remoteUser === 1}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              remoteUser: parseInt(e.target.value),
+                            })
+                          }
+                        />
+                        <label
+                          htmlFor="remoteUserEnable"
+                          className="form-check-label"
+                        >
+                          Enable
+                        </label>
+                      </div>
+
+                      <div className="form-check form-check-inline">
+                        <input
+                          type="radio"
+                          id="remoteUserDisable"
+                          name="remoteUser"
+                          value={0}
+                          className="form-check-input"
+                          checked={form.remoteUser === 0}
+                          onChange={(e) =>
+                            setForm({
+                              ...form,
+                              remoteUser: parseInt(e.target.value),
+                              remoteUserRate: parseInt(e.target.value) === 0 ? 0 : form.remoteUserRate,
+                            })
+                          }
+                        />
+                        <label
+                          htmlFor="remoteUserDisable"
+                          className="form-check-label"
+                        >
+                          Disable
+                        </label>
+                      </div>
+                    </div>
+
+                    {form.remoteUser === 1 && renderInput(
+                      "Remote User Rate - Rs.",
+                      "remoteUserRate",
+                      "Remote User Rate",
                       "number"
                     )}
 
