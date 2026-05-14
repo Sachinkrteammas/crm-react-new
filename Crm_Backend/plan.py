@@ -49,6 +49,7 @@ class PlanCreateRequest(BaseModel):
     seatRate: Optional[float] = 0.0
     remoteUser: Optional[bool] = False
     remoteUserRate: Optional[float] = 0.0
+    totalRemoteUser: Optional[int] = 0
 
 
 # ✅ CREATE PLAN
@@ -72,7 +73,7 @@ def create_plan(plan: PlanCreateRequest):
             pulse_ib_multi, rate_per_pulse_ib_multi,
             pulse_ob_multi, rate_per_pulse_ob_multi,
             first_minute, IB_Call_Charge, OB_Call_Charge, createdate, CreditPointPercent, TalktimePercent,
-            TotalSeat, SeatRate, RemoteUser, RemoteUserRate
+            TotalSeat, SeatRate, RemoteUser, RemoteUserRate, TotalRemoteUser
         ) VALUES (
             %s,%s,%s,%s,%s,%s,%s,%s,
             %s,%s,%s,
@@ -84,7 +85,7 @@ def create_plan(plan: PlanCreateRequest):
             %s,%s,
             %s,%s,
             %s,%s,%s, NOW(), %s, %s,
-            %s,%s,%s,%s
+            %s,%s,%s,%s,%s
         )
         """
         values = (
@@ -99,7 +100,7 @@ def create_plan(plan: PlanCreateRequest):
             plan.pulseIBMulti, plan.ratePerPulseIBMulti,
             plan.pulseOBMulti, plan.ratePerPulseOBMulti,
             plan.firstMinute, plan.ibCallCharge, plan.obCallCharge, plan.CreditPointPercent, plan.TalktimePercent,
-            plan.totalSeat, plan.seatRate, plan.remoteUser, plan.remoteUserRate,
+            plan.totalSeat, plan.seatRate, plan.remoteUser, plan.remoteUserRate, plan.totalRemoteUser,
         )
         cursor.execute(sql, values)
         conn.commit()
@@ -177,7 +178,7 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
             pulse_ib_multi=%s, rate_per_pulse_ib_multi=%s,
             pulse_ob_multi=%s, rate_per_pulse_ob_multi=%s,
             first_minute=%s, IB_Call_Charge=%s, OB_Call_Charge=%s, CreditPointPercent=%s, TalktimePercent=%s,
-            TotalSeat=%s, SeatRate=%s, RemoteUser=%s, RemoteUserRate=%s
+            TotalSeat=%s, SeatRate=%s, RemoteUser=%s, RemoteUserRate=%s, TotalRemoteUser=%s
 
         WHERE id=%s
         """
@@ -194,7 +195,7 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
             plan.pulseOBMulti, plan.ratePerPulseOBMulti,
             plan.firstMinute, plan.ibCallCharge, plan.obCallCharge,
             plan.CreditPointPercent, plan.TalktimePercent,
-            plan.totalSeat, plan.seatRate, plan.remoteUser, plan.remoteUserRate,
+            plan.totalSeat, plan.seatRate, plan.remoteUser, plan.remoteUserRate, plan.totalRemoteUser,
             plan_id
         )
         cursor.execute(sql, values)

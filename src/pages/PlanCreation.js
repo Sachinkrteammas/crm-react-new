@@ -44,16 +44,18 @@ const initialFormState = {
   seatRate: "0",
   remoteUser: 0,
   remoteUserRate: "",
+  totalRemoteUser: "0",
 };
 
 
 const VIEW_FIELD_LABELS = {
-  CreditPointPercent: "Credit Point %",
-  TalktimePercent: "Talktime %",
+  CreditPointPercent: "Subscription Credit %",
+  TalktimePercent: "Topup Talktime %",
   TotalSeat: "Total Seat",
   SeatRate: "Seat Rate",
   RemoteUser: "Remote User",
   RemoteUserRate: "Remote User Rate",
+  TotalRemoteUser: "Total Remote User",
 };
 
 
@@ -203,6 +205,7 @@ export default function PlanManagement() {
     // ✅ Validate remoteUserRate only when Remote User is enabled
     if (form.remoteUser === 1) {
       numericFields.push("remoteUserRate");
+      numericFields.push("totalRemoteUser");
     }
 
     numericFields.forEach((f) => {
@@ -267,10 +270,8 @@ export default function PlanManagement() {
     totalSeat: form.totalSeat,
     seatRate: form.seatRate,
     remoteUser: form.remoteUser,
-    remoteUserRate:
-    form.remoteUser === 0
-      ? 0
-      : form.remoteUserRate,
+    remoteUserRate: form.remoteUser === 0 ? 0 : form.remoteUserRate,
+    totalRemoteUser: form.remoteUser === 0 ? 0 : form.totalRemoteUser,
   };
 
     if (editingPlanId) {
@@ -341,6 +342,7 @@ export default function PlanManagement() {
         ? 1
         : 0,
       remoteUserRate: plan.RemoteUserRate,
+      totalRemoteUser: plan.TotalRemoteUser,
     });
 
     setEditingPlanId(plan.Id); // ✅ Use the correct backend primary key
@@ -827,21 +829,21 @@ export default function PlanManagement() {
                       "number"
                     )}
                     {renderInput(
-                      "Whatsapp SMS Charge - Rs.",
+                      "Whatsapp Charge - Rs.",
                       "whatsappSmsCharge",
-                      "Whatsapp SMS Charge",
+                      "Whatsapp Charge",
                       "number"
                     )}
                     {renderInput(
-                      "CreditPoint %",
+                      "Subscription Credit %",
                       "CreditPointPercent",
-                      "CreditPoint %",
+                      "Subscription Credit %",
                       "number"
                     )}
                     {renderInput(
-                      "Talktime %",
+                      "Topup Talktime %",
                       "TalktimePercent",
-                      "Talktime %",
+                      "Topup Talktime %",
                       "number"
                     )}
                     {renderInput(
@@ -898,6 +900,7 @@ export default function PlanManagement() {
                               ...form,
                               remoteUser: parseInt(e.target.value),
                               remoteUserRate: parseInt(e.target.value) === 0 ? 0 : form.remoteUserRate,
+                              totalRemoteUser: parseInt(e.target.value) === 0 ? 0 : form.totalRemoteUser,
                             })
                           }
                         />
@@ -914,6 +917,13 @@ export default function PlanManagement() {
                       "Remote User Rate - Rs.",
                       "remoteUserRate",
                       "Remote User Rate",
+                      "number"
+                    )}
+
+                    {form.remoteUser === 1 && renderInput(
+                      "Total Remote User",
+                      "totalRemoteUser",
+                      "Total Remote User",
                       "number"
                     )}
 
