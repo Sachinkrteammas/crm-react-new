@@ -9,7 +9,7 @@ router = APIRouter()
 # ✅ Request Body for create/edit
 class PlanCreateRequest(BaseModel):
     planName: str
-    PlanType: Optional[str] = None
+    # PlanType: Optional[str] = None
     setupCost: Optional[float] = 0.0
     rentalAmount: Optional[float] = 0.0
     balance: Optional[float] = 0.0
@@ -25,6 +25,7 @@ class PlanCreateRequest(BaseModel):
     emailCharge: Optional[float] = 0.0
     noOfUsers: Optional[int] = 0
     chargePerExtraUser: Optional[float] = 0.0
+    transferafterrental: Optional[str] = None
     ivrCharge: Optional[float] = 0.0
     ibPulse: Optional[int] = 0
     pulseDay: Optional[str] = None
@@ -66,7 +67,7 @@ def create_plan(plan: PlanCreateRequest):
             PlanName, PlanType, SetupCost, RentalAmount, Balance, PeriodType, CreditValue, CreditValuePerMode,
             InboundCallCharge, InboundCallChargeNight, OutboundCallCharge,
             MissCallCharge, VFOCallCharge, SMSCharge, EmailCharge,
-            NoOfFreeUser, ChargePerExtraUser, IVR_Charge,
+            NoOfFreeUser, ChargePerExtraUser, TransferAfterRental, IVR_Charge,
             ib_pulse_sec, pulse_day_shift, rate_per_pulse_day_shift,
             pulse_night_shift, rate_per_pulse_night_shift,
             MultiIBCharges, MultiOBCharges, MultiLiveChat, whatsapp_message_charge,
@@ -78,7 +79,7 @@ def create_plan(plan: PlanCreateRequest):
             %s,%s,%s,%s,%s,%s,%s,%s,
             %s,%s,%s,
             %s,%s,%s,%s,
-            %s,%s,%s,
+            %s,%s,%s,%s,
             %s,%s,%s,
             %s,%s,
             %s,%s,%s,%s,
@@ -89,11 +90,11 @@ def create_plan(plan: PlanCreateRequest):
         )
         """
         values = (
-            plan.planName, plan.PlanType, plan.setupCost, plan.rentalAmount, plan.balance,
+            plan.planName, "Prepaid", plan.setupCost, plan.rentalAmount, plan.balance,
             plan.periodType, plan.creditValue, plan.creditValuePerMode,
             plan.inboundChargeDay, plan.inboundChargeNight, plan.outboundCallCharge,
             plan.missCallCharge, plan.vfoCharge, plan.smsCharge, plan.emailCharge,
-            plan.noOfUsers, plan.chargePerExtraUser, plan.ivrCharge,
+            plan.noOfUsers, plan.chargePerExtraUser, plan.transferafterrental, plan.ivrCharge,
             plan.ibPulse, plan.pulseDay, plan.ratePerPulseDay,
             plan.pulseNight, plan.ratePerPulseNight,
             plan.multiIBCharges, plan.multiOBCharges, plan.multiLiveChat, plan.whatsappMessageCharge,
@@ -171,7 +172,7 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
             PeriodType=%s, CreditValue=%s, CreditValuePerMode=%s,
             InboundCallCharge=%s, InboundCallChargeNight=%s, OutboundCallCharge=%s,
             MissCallCharge=%s, VFOCallCharge=%s, SMSCharge=%s, EmailCharge=%s,
-            NoOfFreeUser=%s, ChargePerExtraUser=%s, IVR_Charge=%s,
+            NoOfFreeUser=%s, ChargePerExtraUser=%s, TransferAfterRental=%s, IVR_Charge=%s,
             ib_pulse_sec=%s, pulse_day_shift=%s, rate_per_pulse_day_shift=%s,
             pulse_night_shift=%s, rate_per_pulse_night_shift=%s,
             MultiIBCharges=%s, MultiOBCharges=%s, MultiLiveChat=%s, whatsapp_message_charge=%s,
@@ -183,11 +184,11 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
         WHERE id=%s
         """
         values = (
-            plan.planName, plan.PlanType, plan.setupCost, plan.rentalAmount, plan.balance,
+            plan.planName, "Prepaid", plan.setupCost, plan.rentalAmount, plan.balance,
             plan.periodType, plan.creditValue, plan.creditValuePerMode,
             plan.inboundChargeDay, plan.inboundChargeNight, plan.outboundCallCharge,
             plan.missCallCharge, plan.vfoCharge, plan.smsCharge, plan.emailCharge,
-            plan.noOfUsers, plan.chargePerExtraUser, plan.ivrCharge,
+            plan.noOfUsers, plan.chargePerExtraUser, plan.transferafterrental, plan.ivrCharge,
             plan.ibPulse, plan.pulseDay, plan.ratePerPulseDay,
             plan.pulseNight, plan.ratePerPulseNight,
             plan.multiIBCharges, plan.multiOBCharges, plan.multiLiveChat, plan.whatsappMessageCharge,

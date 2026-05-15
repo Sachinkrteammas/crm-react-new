@@ -166,14 +166,61 @@ export default function PlanManagement() {
     return;
   }
 
-    setForm({ ...form, [name]: value });
-    setErrors({ ...errors, [name]: "" });
+    // ✅ Create updated form object first
+    let updatedForm = {
+      ...form,
+      [name]: value,
+    };
+
+    // ✅ Auto calculate Credit Value as per Plan Mode
+    const creditValue = parseFloat(updatedForm.creditValue || 0);
+
+    const periodType = updatedForm.periodType
+      ?.toString()
+      .trim()
+      .toLowerCase();
+
+    let calculatedValue = creditValue;
+
+    if (!isNaN(creditValue)) {
+      switch (periodType) {
+        case "quater":
+          calculatedValue = creditValue / 4;
+          break;
+
+        case "half":
+          calculatedValue = creditValue / 2;
+          break;
+
+        case "month":
+          calculatedValue = creditValue / 12;
+          break;
+
+        case "year":
+        default:
+          calculatedValue = creditValue;
+          break;
+      }
+
+      updatedForm.creditValuePerMode =
+        calculatedValue % 1 === 0
+          ? calculatedValue.toString()
+          : calculatedValue.toFixed(2);
+    }
+
+    // ✅ IMPORTANT
+    setForm(updatedForm);
+
+    setErrors({
+      ...errors,
+      [name]: "",
+    });
   };
 
   const validate = () => {
     const newErrors = {};
     if (!form.planName) newErrors.planName = true;
-    if (!form.PlanType) newErrors.PlanType = true;
+    if (!form.periodType) newErrors.periodType = true;
     const numericFields = [
       "setupFee",
       "subscriptionAmount",
@@ -235,12 +282,11 @@ export default function PlanManagement() {
     // const payload = { ...form };
     const payload = {
     planName: form.planName,
-    PlanType: form.PlanType,
     setupCost: form.setupFee,  // ✅ FIXED key name
     rentalAmount: form.subscriptionAmount,
     periodType: form.periodType,
-    creditValuePerMode: form.creditValuePerMode,
-    creditValue: form.creditValue,
+    // creditValuePerMode: form.creditValuePerMode,
+    creditValue: form.creditValuePerMode,
     ratePerPulseDay: form.ratePerPulseDay,
     inboundChargeDay: form.inboundChargeDay,
     pulseDay: form.pulseDay,
@@ -255,7 +301,8 @@ export default function PlanManagement() {
     vfoCharge: form.vfoCharge,
     chargePerExtraUser: form.chargePerExtraUser,
     noOfUsers: form.noOfUsers,
-    balance: form.balanceCarry === "yes" ? 1 : 0,
+    balance: form.creditValue,
+    transferafterrental: form.balanceCarry,
     firstMinute: form.firstMinute,
     multiIBCharges: form.multiInboundCharge,
     pulseIBMulti: form.pulseMultiLang,
@@ -303,9 +350,11 @@ export default function PlanManagement() {
       setupFee: plan.SetupCost,
       subscriptionAmount: plan.RentalAmount,
       PlanType: plan.PlanType, // Correct PlanType
-      periodType: plan.PeriodType,
-      creditValuePerMode: plan.CreditValuePerMode,
-      creditValue: plan.CreditValue,
+      periodType: plan.PeriodType
+        ? plan.PeriodType.toString().trim().toLowerCase()
+        : "",
+      creditValuePerMode: plan.CreditValue,
+      creditValue: plan.Balance,
       ratePerPulseDay: plan.rate_per_pulse_day_shift,
       inboundChargeDay: plan.InboundCallCharge,
       pulseDay: plan.pulse_day_shift,
@@ -322,7 +371,7 @@ export default function PlanManagement() {
       vfoCharge: plan.VFOCallCharge,
       chargePerExtraUser: plan.ChargePerExtraUser,
       noOfUsers: plan.NoOfFreeUser,
-      balanceCarry: plan.balanceCarry || "yes",
+      balanceCarry: plan.TransferAfterRental || "No",
       firstMinute: plan.first_minute === 1 || plan.first_minute === "1" || plan.first_minute === "Enable"
             ? 1
             : 0,
@@ -477,7 +526,7 @@ export default function PlanManagement() {
                 <tr key={plan.Id}>
                   <td className="text-center">{indexOfFirstRow + index + 1}</td>
                   <td className="text-start">{plan.PlanName}</td>
-                  <td className="text-center">{plan.PlanType}</td>
+                  <td className="text-center">{plan.PeriodType?.toString().trim().toUpperCase()}</td>
                   <td className="text-center">{plan.SetupCost}</td>
                   <td className="text-center">{plan.RentalAmount}</td>
                   <td className="text-center">
@@ -620,19 +669,37 @@ export default function PlanManagement() {
                       "Subscription Amount",
                       "number"
                     )}
-                    {renderInput("Plan Mode", "PlanType", "Period Type")}
-                    {renderInput(
-                      "Credit Value as per Plan Mode - Rs.",
-                      "creditValuePerMode",
-                      "Credit Value per Plan Mode",
-                      "number"
-                    )}
                     {renderInput(
                       "Credit Value - Rs.",
                       "creditValue",
                       "Credit Value",
                       "number"
                     )}
+                    {renderSelect("Plan Mode", "periodType", [
+                      { value: "year", label: "Year" },
+                      { value: "month", label: "Month" },
+                      { value: "half", label: "Half" },
+                      { value: "quater", label: "Quater" },
+                    ])}
+                    {/* {renderInput(
+                      "Credit Value as per Plan Mode - Rs.",
+                      "creditValuePerMode",
+                      "Credit Value per Plan Mode",
+                      "number"
+                    )}                     */}
+                    <div className="col-md-4 mb-2">
+                      <label className="form-label">
+                        Credit Value as per Plan Mode - Rs.
+                      </label>
+
+                      <input
+                        type="number"
+                        name="creditValuePerMode"
+                        className="form-control"
+                        value={form.creditValuePerMode}
+                        readOnly
+                      />
+                    </div>
                     {renderInput(
                       "Rate Per Pulse (Day Shift) - Rs.",
                       "ratePerPulseDay",
@@ -733,8 +800,8 @@ export default function PlanManagement() {
                       "number"
                     )}
                     {renderSelect("Balance Carry Forward", "balanceCarry", [
-                      { value: "yes", label: "Yes" },
-                      { value: "no", label: "No" },
+                      { value: "Yes", label: "Yes" },
+                      { value: "No", label: "No" },
                     ])}
 
                     <div className="col-md-4 mb-2">
