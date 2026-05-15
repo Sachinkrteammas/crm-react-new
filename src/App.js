@@ -182,6 +182,7 @@ import BotFieldMapping from "./pages/BotFieldMapping";
 import ShopifyIntegration from "./pages/Shopify_integration";
 import HVClient from "./pages/HV_Client_report";
 import AdvisorDisconnect from "./pages/advisor_disconnect_report";
+import PlanSettings from "./pages/Plan_settings";
 
 
 
@@ -476,6 +477,7 @@ function App() {
               <Route path="/ShopifyIntegrationField" element={<ShopifyIntegration />} />
               <Route path="/HV-Clients" element={<HVClient />} />
               <Route path="/advisor-disconnect" element={<AdvisorDisconnect />} />
+              <Route path="/PlanSettings" element={<PlanSettings />} />
               <></>
           </Route>
       </Route>

@@ -83,6 +83,7 @@ from configure_report import router as configure_report_router
 from backup_reports import router as backup_reports_router
 from bot_integration import router as bot_integration
 from bot_integration import run_push_to_sheet,run_sla_push_to_sheet
+from plan_settings import router as plan_settings_router
 
 app = FastAPI(title="CRM Backend")
 
@@ -160,6 +161,7 @@ app.include_router(Old_reports_router, tags=["Old Reports"], dependencies=[Depen
 app.include_router(configure_report_router, tags=["Configure Reports"], dependencies=[Depends(verify_token)])
 app.include_router(backup_reports_router, tags=["Backup Reports"], dependencies=[Depends(verify_token)])
 app.include_router(bot_integration, tags=["Bot Integration"])
+app.include_router(plan_settings_router, tags=["Bot Integration"])
 
 app.include_router(dialer_router, prefix="/api")
 
