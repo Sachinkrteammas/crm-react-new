@@ -72,6 +72,42 @@ function PlanSetting() {
   }, [selectedClient]);
 
   /* ---------------------------
+   FETCH SAVED PLAN
+--------------------------- */
+useEffect(() => {
+  if (!selectedClient || agentOptions.length === 0) return;
+
+  api
+    .get(`/get-plan-setting?client_id=${selectedClient.value}`)
+    .then((res) => {
+
+      if (res.data.status !== "success") return;
+
+      const remoteUsernames = res.data.remote_agents || [];
+
+      const dedicatedUsernames =
+        res.data.dedicated_agents || [];
+
+      // Match usernames with react-select options
+      const selectedRemote = agentOptions.filter((agent) =>
+        remoteUsernames.includes(agent.value)
+      );
+
+      const selectedDedicated = agentOptions.filter((agent) =>
+        dedicatedUsernames.includes(agent.value)
+      );
+
+      setRemoteAgents(selectedRemote);
+
+      setDedicatedAgents(selectedDedicated);
+    })
+    .catch((err) => {
+      console.error("Error fetching saved plan:", err);
+    });
+
+}, [selectedClient, agentOptions]);
+
+  /* ---------------------------
      SUBMIT
   --------------------------- */
   const handleSubmit = async () => {
@@ -99,8 +135,7 @@ function PlanSetting() {
       if (response.data.status === "success") {
         alert("Plan Setting Saved Successfully");
 
-        setRemoteAgents([]);
-        setDedicatedAgents([]);
+
       } else {
         alert(response.data.message);
       }
