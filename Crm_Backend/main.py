@@ -161,7 +161,7 @@ app.include_router(Old_reports_router, tags=["Old Reports"], dependencies=[Depen
 app.include_router(configure_report_router, tags=["Configure Reports"], dependencies=[Depends(verify_token)])
 app.include_router(backup_reports_router, tags=["Backup Reports"], dependencies=[Depends(verify_token)])
 app.include_router(bot_integration, tags=["Bot Integration"])
-app.include_router(plan_settings_router, tags=["Bot Integration"])
+app.include_router(plan_settings_router, tags=["Plan Settings"], dependencies=[Depends(verify_token)])
 
 app.include_router(dialer_router, prefix="/api")
 
