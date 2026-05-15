@@ -3545,18 +3545,332 @@ def get_hv_client_report(
     # ---------------- FREEZE HEADER ----------------
     ws.freeze_panes = "A2"
 
-    # ---------------- SAVE FILE ----------------
+    # ---------------- CREATE FILE IN MEMORY ----------------
     file_name = f"HV_Client_Report_{req.report_date}.xlsx"
 
-    file_path = os.path.join(
-        os.getcwd(),
-        file_name
+    output = BytesIO()
+
+    wb.save(output)
+
+    output.seek(0)
+
+    # ---------------- RETURN FILE DIRECTLY ----------------
+    return StreamingResponse(
+        output,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": f"attachment; filename={file_name}"
+        }
     )
 
-    wb.save(file_path)
 
-    return FileResponse(
-        path=file_path,
-        filename=file_name,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+
+
+@router.get("/advisor-disconnect-report")
+def advisor_disconnect_report(
+    report_date: date = Query(..., description="Report Date in YYYY-MM-DD"),
+    db: Session = Depends(get_db4),      # registration DB
+    db2: Session = Depends(get_db2),    # vicidial DB
+):
+
+    # ------------------------------------------------------------
+    # 1. Get Active Clients + Campaigns
+    # ------------------------------------------------------------
+    campaign_sql = """
+        SELECT
+            campaignid,
+            company_name
+        FROM registration_master
+        WHERE status = 'A'
+    """
+
+    campaign_data = db.execute(
+        text(campaign_sql)
+    ).mappings().fetchall()
+
+    # ------------------------------------------------------------
+    # 2. Split Campaigns
+    # ------------------------------------------------------------
+    campaign_to_client = {}
+    all_campaigns = []
+
+    for row in campaign_data:
+
+        raw = row["campaignid"]
+
+        if not raw:
+            continue
+
+        campaigns = [
+            c.strip().strip("'").lower()
+            for c in raw.split(",")
+        ]
+
+        for camp in campaigns:
+            # Keep first company mapping only
+            if camp not in campaign_to_client:
+                campaign_to_client[camp] = row["company_name"]
+
+            all_campaigns.append(camp)
+
+    if not all_campaigns:
+        return {
+            "detail": [],
+            "summary": []
+        }
+    
+
+    # ------------------------------------------------------------
+    # 3. Detailed Report
+    # ------------------------------------------------------------
+    detail_query = text("""
+        SELECT
+            DATE(vcl.call_date) AS report_date,
+
+            vcl.campaign_id,
+
+            vcl.user AS advisor_id,
+
+            vu.full_name AS advisor_name,
+
+            vcl.closecallid AS call_id,
+
+            vcl.length_in_sec AS call_duration_sec,
+
+            vcl.term_reason AS disconnect_by
+
+        FROM asterisk.vicidial_closer_log vcl
+
+        LEFT JOIN asterisk.vicidial_users vu
+            ON vu.user = vcl.user
+
+        WHERE
+            vcl.campaign_id IN :campaign_ids
+
+            AND DATE(vcl.call_date) = :report_date
+
+            AND vcl.length_in_sec < 20
+
+            AND vcl.term_reason = 'AGENT'
+
+        ORDER BY
+            vcl.call_date
+    """)
+
+    detail_rows = db2.execute(
+        detail_query,
+        {
+            "campaign_ids": tuple(all_campaigns),
+            "report_date": report_date
+        }
+    ).mappings().fetchall()
+
+    # ------------------------------------------------------------
+    # 4. Build Detailed + Summary
+    # ------------------------------------------------------------
+    detailed_report = []
+
+    summary_map = defaultdict(int)
+
+    for row in detail_rows:
+
+        campaign_id = row["campaign_id"].strip().lower()
+
+        process_name = campaign_to_client.get(campaign_id, "")
+
+        detailed_report.append({
+            "date": str(row["report_date"]),
+            "process_name": process_name,
+            "campaign_id": campaign_id,
+            "advisor_id": row["advisor_id"],
+            "advisor_name": row["advisor_name"],
+            "call_id": row["call_id"],
+            "call_duration_sec": row["call_duration_sec"],
+            "disconnect_by": row["disconnect_by"]
+        })
+
+        # --------------------------------------------------------
+        # Summary Key
+        # --------------------------------------------------------
+        summary_key = (
+            str(row["report_date"]),
+            process_name,
+            row["advisor_id"],
+            row["advisor_name"]
+        )
+
+        summary_map[summary_key] += 1
+
+    # ------------------------------------------------------------
+    # 5. Build Summary Response
+    # ------------------------------------------------------------
+    summary_report = []
+
+    for key, count in summary_map.items():
+
+        (
+            report_date_value,
+            process_name,
+            advisor_id,
+            advisor_name
+        ) = key
+
+        summary_report.append({
+            "date": report_date_value,
+            "process_name": process_name,
+            "advisor_id": advisor_id,
+            "advisor_name": advisor_name,
+            "total_disconnect_count": count
+        })
+
+    # ------------------------------------------------------------
+    # 6. Create Workbook
+    # ------------------------------------------------------------
+    wb = Workbook()
+
+    # ------------------------------------------------------------
+    # 7. DETAIL SHEET
+    # ------------------------------------------------------------
+    ws = wb.active
+    ws.title = "Detail Report"
+
+    detail_headers = [
+        "Date",
+        "Process Name",
+        "Advisor ID",
+        "Advisor Name",
+        "Call ID",
+        "Call Duration (Sec)",
+        "Disconnect By"
+    ]
+
+    # Header
+    for col_no, header in enumerate(detail_headers, 1):
+
+        cell = ws.cell(row=1, column=col_no, value=header)
+        cell.font = Font(bold=True)
+
+    # Data
+    row_no = 2
+
+    for row in detailed_report:
+
+        ws.cell(row=row_no, column=1, value=row["date"])
+        ws.cell(row=row_no, column=2, value=row["process_name"])
+        ws.cell(row=row_no, column=3, value=row["advisor_id"])
+        ws.cell(row=row_no, column=4, value=row["advisor_name"])
+        ws.cell(row=row_no, column=5, value=row["call_id"])
+        ws.cell(row=row_no, column=6, value=row["call_duration_sec"])
+        ws.cell(row=row_no, column=7, value=row["disconnect_by"])
+
+        row_no += 1
+
+    # ---------------- AUTO WIDTH ----------------
+    for col in ws.columns:
+
+        max_length = 0
+        column = col[0].column
+
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+
+        adjusted_width = max_length + 4
+
+        ws.column_dimensions[
+            get_column_letter(column)
+        ].width = adjusted_width
+
+    # ---------------- FREEZE HEADER ----------------
+    ws.freeze_panes = "A2"
+
+    # ------------------------------------------------------------
+    # 8. SUMMARY SHEET
+    # ------------------------------------------------------------
+    ws2 = wb.create_sheet(title="Summary Report")
+
+    summary_headers = [
+        "Date",
+        "Process Name",
+        "Advisor ID",
+        "Advisor Name",
+        "Total Disconnect Count (<20 sec)"
+    ]
+
+    # Header
+    for col_no, header in enumerate(summary_headers, 1):
+
+        cell = ws2.cell(row=1, column=col_no, value=header)
+        cell.font = Font(bold=True)
+
+    # Data
+    row_no = 2
+
+    for row in summary_report:
+
+        ws2.cell(row=row_no, column=1, value=row["date"])
+        ws2.cell(row=row_no, column=2, value=row["process_name"])
+        ws2.cell(row=row_no, column=3, value=row["advisor_id"])
+        ws2.cell(row=row_no, column=4, value=row["advisor_name"])
+        ws2.cell(
+            row=row_no,
+            column=5,
+            value=row["total_disconnect_count"]
+        )
+
+        row_no += 1
+
+    # ---------------- AUTO WIDTH ----------------
+    for col in ws2.columns:
+
+        max_length = 0
+        column = col[0].column
+
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+
+        adjusted_width = max_length + 4
+
+        ws2.column_dimensions[
+            get_column_letter(column)
+        ].width = adjusted_width
+
+    # ---------------- FREEZE HEADER ----------------
+    ws2.freeze_panes = "A2"
+
+    # ------------------------------------------------------------
+    # 9. CREATE FILE IN MEMORY
+    # ------------------------------------------------------------
+    file_name = f"Advisor_Disconnect_Report_{report_date}.xlsx"
+
+    output = BytesIO()
+
+    wb.save(output)
+
+    output.seek(0)
+
+    # ------------------------------------------------------------
+    # 10. RETURN FILE DIRECTLY
+    # ------------------------------------------------------------
+    return StreamingResponse(
+        output,
+        media_type=(
+            "application/vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition": f"attachment; filename={file_name}"
+        }
     )
