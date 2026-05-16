@@ -477,8 +477,7 @@ def get_outcalls(
         "JOIN ob_allocation_name a ON o.AllocationId = a.id",
         "JOIN ob_campaign c ON a.CampaignId = c.id",
         "LEFT JOIN ob_campaign_data d ON d.AllocationId = o.AllocationId AND d.id = o.DataId",
-        "WHERE o.ClientId = :cid",
-        "AND c.CampaignName = :campaignType"
+        "WHERE o.ClientId = :cid"
     ]
 
     params = {"cid": CLIENT_ID, "campaignType": campaignType}
