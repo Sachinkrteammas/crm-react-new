@@ -243,49 +243,183 @@ async def save_cdr(
             )
         """)
 
+        call_details = data.get("call_details", {})
+        customer_details = data.get("customer_details", {})
+        agent_details = data.get("agent_details", [])
+
+        agent = agent_details[0] if agent_details else {}
+
         values = {
-            "client_id": data.get("client_id"),
-            "date_time": parse_datetime(data.get("date_time")),
-            "call_uuid": data.get("call_uuid"),
-            "customer_name": data.get("customer_name"),
-            "customer_number": data.get("customer_number"),
-            "contact_unique_id": data.get("contact_unique_id"),
-            "did_clid": data.get("did_clid"),
-            "created_on": parse_datetime(data.get("created_on")),
-            "campaign_name": data.get("campaign_name"),
-            "queue_name": data.get("queue_name"),
-            "list_name": data.get("list_name"),
-            "call_direction": data.get("call_direction"),
-            "call_status": data.get("call_status"),
-            "agent_name": data.get("agent_name"),
-            "agent_username": data.get("agent_username"),
-            "agent_number": data.get("agent_number"),
-            "abandoned_on_agents": data.get("abandoned_on_agents"),
-            "customer_call_setup_time": data.get("customer_call_setup_time"),
-            "duration": parse_time(data.get("duration")),
-            "total_call_duration": parse_time(data.get("total_call_duration")),
-            "wrapup_time": parse_time(data.get("wrapup_time")),
-            "total_hold_time": parse_time(data.get("total_hold_time")),
-            "hold_time_detail": parse_time(data.get("hold_time_detail")),
-            "total_mute_time": parse_time(data.get("total_mute_time")),
-            "mute_time_detail": parse_time(data.get("mute_time_detail")),
-            "agent_ringing_time": parse_time(data.get("agent_ringing_time")),
-            "hangup_cause": data.get("hangup_cause"),
-            "hangup_cause_code": data.get("hangup_cause_code"),
-            "call_type": data.get("call_type"),
-            "disposition": data.get("disposition"),
-            "sub_disposition_1": data.get("sub_disposition_1"),
-            "sub_disposition_2": data.get("sub_disposition_2"),
-            "sub_disposition_3": data.get("sub_disposition_3"),
-            "sub_disposition_4": data.get("sub_disposition_4"),
-            "sub_disposition_5": data.get("sub_disposition_5"),
-            "call_back_disposition": data.get("call_back_disposition"),
-            "custom_field_data": json.dumps(data),
-            "remark": data.get("remark"),
-            "recording": data.get("recording"),
-            "disconnected_by": data.get("disconnected_by"),
-            "queue_wait_time": parse_time(data.get("queue_wait_time")),
-            "dtmfs": data.get("dtmfs"),
+
+            "client_id":
+                data.get("client_id")
+                or call_details.get("sme_id"),
+
+            "date_time":
+                parse_datetime(
+                    data.get("date_time")
+                    or call_details.get("start_date_time")
+                ),
+
+            "call_uuid":
+                data.get("call_uuid")
+                or call_details.get("session_id"),
+
+            "customer_name":
+                data.get("customer_name")
+                or customer_details.get("customer_name"),
+
+            "customer_number":
+                data.get("customer_number")
+                or customer_details.get("customer_number"),
+
+            "contact_unique_id":
+                data.get("contact_unique_id")
+                or call_details.get("session_id"),
+
+            "did_clid":
+                data.get("did_clid")
+                or call_details.get("longcode"),
+
+            "created_on":
+                parse_datetime(
+                    data.get("created_on")
+                    or call_details.get("start_date_time")
+                ),
+
+            "campaign_name":
+                data.get("campaign_name")
+                or call_details.get("flow_name"),
+
+            "queue_name":
+                data.get("queue_name")
+                or call_details.get("queue_name"),
+
+            "list_name":
+                data.get("list_name"),
+
+            "call_direction":
+                data.get("call_direction")
+                or call_details.get("call_direction"),
+
+            "call_status":
+                data.get("call_status")
+                or customer_details.get("call_status")
+                or call_details.get("overall_call_status"),
+
+            "agent_name":
+                data.get("agent_name")
+                or agent.get("agent_name"),
+
+            "agent_username":
+                data.get("agent_username")
+                or agent.get("agent_email"),
+
+            "agent_number":
+                data.get("agent_number")
+                or agent.get("agent_mobile"),
+
+            "abandoned_on_agents":
+                data.get("abandoned_on_agents"),
+
+            "customer_call_setup_time":
+                data.get("customer_call_setup_time")
+                or call_details.get("ringing_duration"),
+
+            "duration":
+                parse_time(data.get("duration"))
+                if data.get("duration")
+                else None,
+
+            "total_call_duration":
+                parse_time(data.get("total_call_duration"))
+                if data.get("total_call_duration")
+                else None,
+
+            "wrapup_time":
+                parse_time(data.get("wrapup_time"))
+                if data.get("wrapup_time")
+                else None,
+
+            "total_hold_time":
+                parse_time(data.get("total_hold_time"))
+                if data.get("total_hold_time")
+                else None,
+
+            "hold_time_detail":
+                parse_time(data.get("hold_time_detail"))
+                if data.get("hold_time_detail")
+                else None,
+
+            "total_mute_time":
+                parse_time(data.get("total_mute_time"))
+                if data.get("total_mute_time")
+                else None,
+
+            "mute_time_detail":
+                parse_time(data.get("mute_time_detail"))
+                if data.get("mute_time_detail")
+                else None,
+
+            "agent_ringing_time":
+                parse_time(data.get("agent_ringing_time"))
+                if data.get("agent_ringing_time")
+                else None,
+
+            "hangup_cause":
+                data.get("hangup_cause"),
+
+            "hangup_cause_code":
+                data.get("hangup_cause_code"),
+
+            "call_type":
+                data.get("call_type")
+                or call_details.get("call_direction"),
+
+            "disposition":
+                data.get("disposition")
+                or call_details.get("dispositions"),
+
+            "sub_disposition_1":
+                data.get("sub_disposition_1"),
+
+            "sub_disposition_2":
+                data.get("sub_disposition_2"),
+
+            "sub_disposition_3":
+                data.get("sub_disposition_3"),
+
+            "sub_disposition_4":
+                data.get("sub_disposition_4"),
+
+            "sub_disposition_5":
+                data.get("sub_disposition_5"),
+
+            "call_back_disposition":
+                data.get("call_back_disposition"),
+
+            "custom_field_data":
+                json.dumps(data),
+
+            "remark":
+                data.get("remark")
+                or call_details.get("remarks"),
+
+            "recording":
+                data.get("recording")
+                or call_details.get("recording_path"),
+
+            "disconnected_by":
+                data.get("disconnected_by")
+                or call_details.get("disconnected_by"),
+
+            "queue_wait_time":
+                parse_time(data.get("queue_wait_time"))
+                if data.get("queue_wait_time")
+                else None,
+
+            "dtmfs":
+                data.get("dtmfs"),
         }
 
         db.execute(query, values)
