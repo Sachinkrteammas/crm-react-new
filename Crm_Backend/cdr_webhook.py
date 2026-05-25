@@ -407,7 +407,8 @@ async def save_cdr(
 
             "recording":
                 data.get("recording")
-                or call_details.get("recording_path"),
+                or call_details.get("recording_path")
+                or customer_details.get("recording_path"),
 
             "disconnected_by":
                 data.get("disconnected_by")
