@@ -7,12 +7,43 @@ from database import get_db4
 from datetime import datetime, time
 from pydantic import BaseModel
 from typing import Optional, Any
+import logging
+import os
+import json
 
 
 router = APIRouter(
     prefix="/api/webhook",
     tags=["CDR Webhook"]
 )
+
+
+# =========================
+# LOG FILE SETUP
+# =========================
+
+
+LOG_FOLDER = "logs"
+
+if not os.path.exists(LOG_FOLDER):
+    os.makedirs(LOG_FOLDER)
+
+logger = logging.getLogger("cdr_webhook_logger")
+
+logger.setLevel(logging.INFO)
+
+file_handler = logging.FileHandler(
+    f"{LOG_FOLDER}/cdr_webhook.log"
+)
+
+formatter = logging.Formatter(
+    "%(asctime)s | %(levelname)s | %(message)s"
+)
+
+file_handler.setFormatter(formatter)
+
+if not logger.handlers:
+    logger.addHandler(file_handler)
 
 
 # =========================
@@ -63,6 +94,9 @@ class CDRWebhookRequest(BaseModel):
     queue_wait_time: Optional[str] = None
     dtmfs: Optional[str] = None
 
+    class Config:
+        extra = "allow"
+
 
 # =========================
 # HELPERS
@@ -73,7 +107,7 @@ def parse_datetime(value):
         return None
 
     try:
-        return datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+        return datetime.strptime(str(value), "%Y-%m-%d %H:%M:%S")
     except:
         return None
 
@@ -83,7 +117,7 @@ def parse_time(value):
         return None
 
     try:
-        parts = value.split(":")
+        parts = str(value).split(":")
 
         if len(parts) == 3:
             return time(
@@ -111,6 +145,12 @@ async def save_cdr(
     try:
 
         data = payload.dict()
+
+        # =========================
+        # REQUEST LOG
+        # =========================
+
+        logger.info(f"Webhook Request: {json.dumps(data)}")
 
         query = text("""
             INSERT INTO cdr_webhook_logs (
@@ -240,7 +280,7 @@ async def save_cdr(
             "sub_disposition_4": data.get("sub_disposition_4"),
             "sub_disposition_5": data.get("sub_disposition_5"),
             "call_back_disposition": data.get("call_back_disposition"),
-            "custom_field_data": str(data.get("custom_field_data")),
+            "custom_field_data": json.dumps(data),
             "remark": data.get("remark"),
             "recording": data.get("recording"),
             "disconnected_by": data.get("disconnected_by"),
@@ -251,14 +291,21 @@ async def save_cdr(
         db.execute(query, values)
         db.commit()
 
+        logger.info(
+            f"CDR Saved Successfully | UUID: {data.get('call_uuid')}"
+        )
+
         return {
             "status": True,
-            "message": "CDR saved successfully"
+            "message": "CDR saved successfully",
+            "received_data": data
         }
 
     except Exception as e:
 
         db.rollback()
+
+        logger.error(f"Webhook Error: {str(e)}")
 
         raise HTTPException(
             status_code=500,
