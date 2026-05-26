@@ -225,7 +225,8 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
         "AHT_total_sec": 0,
         "Amount": 0,
         "RL": 0,
-        "Call Rate": 0
+        "Call Rate": 0,
+        "Total Number Of Tagging": 0
     }   
         
 
@@ -251,6 +252,23 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
 
         company_rl = int(rl_row.cnt or 0)
 
+
+        # ---------------- TAGGING ----------------
+        total_tagged = db.execute(
+            text("""
+                SELECT COUNT(Id)
+                FROM call_master
+                WHERE ClientId = :cid
+                AND DATE(calldate) BETWEEN :from_date AND :to_date
+                AND CallType <> 'Upload'
+            """),
+            {
+                "cid": company_id,
+                "from_date": req.from_date,
+                "to_date": req.to_date
+            }
+        ).scalar() or 0
+
         company_name = info["company_name"]
         campaigns = info["campaigns"]
 
@@ -264,7 +282,8 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
                 "Abnd Within (20)": 0,
                 "Total Talk Time_sec": 0,
                 "AHT_total": 0,
-                "RL": company_rl
+                "RL": company_rl,
+                "Total Number Of Tagging": 0
             }
 
         rate_info = company_rates[company_id]
@@ -381,6 +400,7 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
             data["Total Calls Abandoned"] += abandon
             data["Abnd Within (20)"] += abnd_within
             data["Total Talk Time_sec"] += talk_time_sec
+            data["Total Number Of Tagging"] = total_tagged
             # data["RL"] += rl
 
             if handled > 0:
@@ -450,7 +470,7 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
     headers = [
         "Client Name", "Offered", "Handled", "SL% (20 Sec)", "AL", "Calls Ans (20 Sec)",
         "Total Calls Abandoned", "Abnd Within (20)", "Total Talk Time",  
-        "AHT (In Sec)", "RL", "RL%"
+        "AHT (In Sec)", "RL", "RL%", "Total Number Of Tagging"
     ]
     fill = PatternFill(start_color="317EAC", end_color="317EAC", fill_type="solid")
     font = Font(color="FFFFFF", bold=True)
@@ -488,6 +508,7 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
         # grand_totals["Call Rate"] += data["Call Rate"]
         # grand_totals["Amount"] += data["Amount"]
         grand_totals["RL"] += data["RL"]
+        grand_totals["Total Number Of Tagging"] += data["Total Number Of Tagging"]
 
         if handled > 0:
             grand_totals["AHT_total_sec"] += handled * data["AHT (In Sec)"]
@@ -554,6 +575,7 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
     # ws.cell(row=grand_row, column=col_map["Amount"], value=round(grand_totals["Amount"], 2))
     ws.cell(row=grand_row, column=col_map["RL"], value=grand_totals["RL"])
     ws.cell(row=grand_row, column=col_map["RL%"], value=f'{grand_totals["RL%"]}%')
+    ws.cell(row=grand_row,column=col_map["Total Number Of Tagging"],value=grand_totals["Total Number Of Tagging"])
     
     # ws.cell(row=grand_row, column=col_map["SL% (10 Sec)"], value=f'{grand_totals["SL% (10 Sec)"]}%')
    
