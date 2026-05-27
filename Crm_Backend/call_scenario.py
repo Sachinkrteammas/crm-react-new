@@ -96,14 +96,14 @@ def send_call_summary(
                 COUNT(v.user) AS `Total Calls Taken - IB`
             FROM vicidial_agent_log v
             JOIN vicidial_users u ON v.user = u.user
-            WHERE DATE(v.event_time) = CURDATE()
+            WHERE DATE(v.event_time) = :report_date
               AND v.campaign_id IN ('Cryst002')
               AND v.lead_id IS NOT NULL
               AND length(v.status)>0 
             GROUP BY v.user
         """)
 
-        agent_rows = db2.execute(query5).mappings().all()
+        agent_rows = db2.execute(query5,{"report_date": report_date}).mappings().all()
         agent_rows = [dict(r) for r in agent_rows]
 
 
@@ -205,13 +205,13 @@ def send_call_summary(
                     ON mcl.uniqueid = t2.uniqueid
                     AND RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10)
             WHERE
-                DATE(t2.call_date)=CURDATE()
+                DATE(t2.call_date)=:report_date
                 AND t2.campaign_id ='Cryst002'
                 AND t2.list_id IN ('998','2001')
                 AND t2.lead_id IS NOT NULL;
         """)
 
-        callback_rows = db2.execute(callback_query).mappings().all()
+        callback_rows = db2.execute(callback_query,{"report_date": report_date}).mappings().all()
         callback_data = [dict(r) for r in callback_rows]
 
         vicidial_query = text("""
@@ -221,10 +221,10 @@ def send_call_summary(
             FROM vicidial_log t2
             LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid=t3.uniqueid
             WHERE t2.campaign_id='Cryst000'
-            AND DATE(call_date) = CURDATE();
+            AND DATE(call_date) = :report_date;
         """)
 
-        vicidial_row = db2.execute(vicidial_query).mappings().first()
+        vicidial_row = db2.execute(vicidial_query,{"report_date": report_date}).mappings().first()
         vic_connected = vicidial_row.get("Connected", 0) or 0
         vic_notconnected = vicidial_row.get("Notconnected", 0) or 0
 
