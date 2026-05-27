@@ -10,8 +10,16 @@ from datetime import date
 from reports import generate_outbound_excel, get_zero_call_clients
 from sla_reports import generate_rl_sl_excel
 from datetime import timedelta
+import time
+import uuid
+
 
 def run_report_scheduler():
+
+    execution_id = str(uuid.uuid4())[:8]
+    scheduler_start = time.time()
+
+    logger.info(f"[{execution_id}] Scheduler START")
 
     db_gen = get_db4()
     db: Session = next(db_gen)
@@ -23,6 +31,8 @@ def run_report_scheduler():
 
         current_time = datetime.now().strftime("%H:%M")
 
+        logger.info(f"[{execution_id}] Current time: {current_time}")
+
         sql = text("""
             SELECT *
             FROM reportmatrix_master_new
@@ -31,6 +41,10 @@ def run_report_scheduler():
         """)
 
         rows = db.execute(sql, {"time": current_time}).fetchall()
+
+        logger.info(
+            f"[{execution_id}] Total reports found: {len(rows)}"
+        )
 
         for row in rows:
 
@@ -44,6 +58,11 @@ def run_report_scheduler():
             client_id = data["client_id"]
             to_email = data["user_email"]
             cc = data["cc"]
+
+            logger.info(
+                f"[{execution_id}] START REPORT | "
+                f"report={report_name} | client={client_id}"
+            )
 
             # Only corrective report for now
             if report_name == "Corrective Report":
