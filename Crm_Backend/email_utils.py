@@ -4,6 +4,8 @@ from email.mime.text import MIMEText
 import os
 from dotenv import load_dotenv
 from email.message import EmailMessage
+import time
+from logger import logger
 
 load_dotenv()
 
@@ -141,10 +143,16 @@ def send_email_with_excel(
 
         recipients = to_list + cc_list
 
+        smtp_start = time.time()
+
         with smtplib.SMTP(smtp_server, smtp_port) as server:
+            logger.info(f"SMTP CONNECT: {time.time() - smtp_start}")
             server.starttls()
+            logger.info(f"TLS DONE: {time.time() - smtp_start}")
             server.login(sender, password)
+            logger.info(f"LOGIN DONE: {time.time() - smtp_start}")
             server.send_message(msg, from_addr=sender, to_addrs=recipients)
+            logger.info(f"SEND DONE: {time.time() - smtp_start}")
 
         print(f"Email sent successfully to {recipients}")
 
