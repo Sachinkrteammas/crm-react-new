@@ -90,6 +90,9 @@ def run_report_scheduler():
                 )
 
                 print(f"Crystal report sent for client {client_id}")
+                logger.info(
+                    f"Crystal report sent for client {client_id}"
+                )
                 
             # -------------------------------------------------
             # DIGICOFFER Report (reuse existing API logic)
@@ -188,6 +191,9 @@ def run_report_scheduler():
 
     except Exception as e:
         print(f"Scheduler error: {str(e)}")
+        logger.info(
+            f"Scheduler error: {str(e)}"
+        )
 
     finally:
         db.close()

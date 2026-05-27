@@ -7,6 +7,7 @@ from email_utils import send_email
 import os, html
 from datetime import datetime
 from email_utils import send_email_with_excel
+from logger import logger
 
 router = APIRouter()
 
@@ -426,6 +427,7 @@ def send_call_summary(
         email_row = db.execute(email_query, {"client_id": client_id, "time": current_time}).mappings().first()
 
         if not email_row:
+            logger.info(f"Email configuration not found for Crystal report")
             raise HTTPException(status_code=404, detail="Email configuration not found for Crystal report")
 
         # Extract emails
@@ -445,12 +447,14 @@ def send_call_summary(
         #     html_content=html_content
         # )
 
+        logger.info(f"send_email_with_excel function called.")
         send_email_with_excel(
             to_email=recipient_list,
             cc_emails=cc_list,
             subject=f"CL Crystal EOD Report_{formatted_date}",
             body=html_content
         )
+        logger.info(f"Successfully executed send_email_with_excel function.")
 
 
 
@@ -473,6 +477,7 @@ def send_call_summary(
         }
 
     except Exception as e:
+        logger.info(f"Failed : {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
