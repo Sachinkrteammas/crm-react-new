@@ -1,10 +1,10 @@
 # Crm_Backend/cdr_webhook.py
 
-from fastapi import APIRouter, HTTPException, Depends, Body
+from fastapi import APIRouter, HTTPException, Depends, Body, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from database import get_db4
-from datetime import datetime, time
+from datetime import datetime, time, date
 from pydantic import BaseModel
 from typing import Optional, Any
 import logging
@@ -446,3 +446,98 @@ async def save_cdr(
             status_code=500,
             detail=str(e)
         )
+
+
+################################# C2p Report ########################
+@router.get("/c2p_cdr_queues")
+def c2p_cdr_queues(
+    db: Session = Depends(get_db4)
+):
+    try:
+
+        query = text("""
+            SELECT DISTINCT queue_name
+            FROM cdr_webhook_logs
+            WHERE queue_name IS NOT NULL
+              AND queue_name != ''
+            ORDER BY queue_name
+        """)
+
+        result = db.execute(query).fetchall()
+
+        queue_names = [row[0] for row in result]
+
+        return {
+            "status": True,
+            "total": len(queue_names),
+            "queues": queue_names
+        }
+
+    except Exception as e:
+        return {
+            "status": False,
+            "message": str(e)
+        }
+
+
+# =====================================================
+# API 2 : Get Records Using Date Filter + Queue Name
+# =====================================================
+
+@router.get("/c2p_cdr")
+def c2p_cdr(
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    queue_name: str = Query(None),
+    db: Session = Depends(get_db4)
+):
+    try:
+
+        base_query = """
+            SELECT
+                customer_name,
+                customer_number,
+                did_clid,
+                created_on,
+                queue_name,
+                call_direction,
+                call_status,
+                call_type,
+                agent_name,
+                agent_username,
+                agent_number,
+                customer_call_setup_time,
+                recording
+            FROM cdr_webhook_logs
+            WHERE DATE(date_time) BETWEEN :start_date AND :end_date
+        """
+
+        params = {
+            "start_date": start_date,
+            "end_date": end_date
+        }
+
+        if queue_name:
+            base_query += " AND queue_name = :queue_name"
+            params["queue_name"] = queue_name
+
+        base_query += " ORDER BY date_time DESC"
+
+        query = text(base_query)
+
+        records = db.execute(query, params).mappings().all()
+
+        return {
+            "status": True,
+            "start_date": str(start_date),
+            "end_date": str(end_date),
+            "queue_name": queue_name,
+            "total_records": len(records),
+            "data": records
+        }
+
+    except Exception as e:
+        return {
+            "status": False,
+            "message": str(e)
+        }

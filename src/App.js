@@ -183,6 +183,7 @@ import ShopifyIntegration from "./pages/Shopify_integration";
 import HVClient from "./pages/HV_Client_report";
 import AdvisorDisconnect from "./pages/advisor_disconnect_report";
 import PlanSettings from "./pages/Plan_settings";
+import C2PCDRReports from "./pages/C2PCDRReports";
 
 
 
@@ -478,6 +479,7 @@ function App() {
               <Route path="/HV-Clients" element={<HVClient />} />
               <Route path="/advisor-disconnect" element={<AdvisorDisconnect />} />
               <Route path="/PlanSettings" element={<PlanSettings />} />
+              <Route path="/C2PCDRReports" element={<C2PCDRReports />} />
               <></>
           </Route>
       </Route>
