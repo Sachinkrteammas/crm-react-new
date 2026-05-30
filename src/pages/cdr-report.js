@@ -37,12 +37,26 @@ const CDRReport = () => {
     };
 
 const handleStartDateChange = (date) => {
-  setStartDate(formatDate(date));
+  const formattedDate = formatDate(date);
+
+  setStartDate(formattedDate);
+
+  // If All client selected, keep end date same as start date
+  if (selectedClient === "All") {
+    setEndDate(formattedDate);
+  }
 };
 
 const handleEndDateChange = (date) => {
   setEndDate(formatDate(date));
 };
+
+
+    useEffect(() => {
+      if (selectedClient === "All" && startDate) {
+        setEndDate(startDate);
+      }
+    }, [selectedClient, startDate]);
 
 
 
@@ -318,6 +332,7 @@ const handleExport = async () => {
                 onChange={(e) => setSelectedClient(e.target.value)}
               >
                 <option value="">-- Select Client --</option>
+                <option value="All">All</option>
                 {clients.map((client) => (
                   <option
                     key={client.company_id}
@@ -345,6 +360,7 @@ const handleExport = async () => {
           placeholderText="End Date"
           className="form-control"
           dateFormat="dd-MM-yyyy"
+          disabled={selectedClient === "All"}
         />
           <button className="btn btn-primary" onClick={handleExport}>EXPORT</button>
           <button className="btn btn-primary" onClick={handleViewClick}>

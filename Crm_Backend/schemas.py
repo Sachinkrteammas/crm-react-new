@@ -198,7 +198,7 @@ class CallMasterRecord(BaseModel):
 class CDRReportRequest(BaseModel):
     from_date: date
     to_date: date
-    company_id: int
+    company_id: str
     category: Optional[str] = "All"
 
 class CDRReportResponse(BaseModel):
