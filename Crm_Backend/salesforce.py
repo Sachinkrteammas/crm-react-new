@@ -135,7 +135,7 @@ def save_lead_to_vicidial(db2: Session, lead):
 
         # ---------------- PHONE NUMBER ----------------
 
-        phone = lead.get("Phone") or ""
+        phone = lead.get("MobilePhone") or ""
 
         # Keep only digits
         phone = ''.join(filter(str.isdigit, phone))
