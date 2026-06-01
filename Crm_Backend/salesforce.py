@@ -63,7 +63,7 @@ TOKEN_URL = os.getenv("SALESFORCE_TOKEN_URL")
 
 # ---------------- LEADS API ----------------
 
-LEADS_URL = "https://momentum-energy-1063--uat1.sandbox.my.salesforce.com/services/apexrest/PushLeadToCallCenter"
+LEADS_URL = "https://momentum-energy-1063.my.salesforce.com/services/apexrest/PushLeadToCallCenter"
 
 
 def generate_access_token():
