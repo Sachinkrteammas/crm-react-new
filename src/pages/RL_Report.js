@@ -7,7 +7,8 @@ const RLReportClient = () => {
   const userType = localStorage.getItem("user_type");
   const companyId = localStorage.getItem("company_id");
 
-  const [reportDate, setReportDate] = useState(null);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
   const [clientId, setClientId] = useState(companyId);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -61,18 +62,19 @@ const RLReportClient = () => {
         return;
     }
 
-    if (!reportDate) {
-        alert("Please select date");
+    if (!startDate || !endDate) {
+        alert("Please select start date and end date");
         return;
     }
 
-    const formattedDate = formatDate(reportDate);
+    const formattedStartDate = formatDate(startDate);
+    const formattedEndDate = formatDate(endDate);
 
     try {
         setLoading(true);
 
         const response = await api.get(
-        `/report/abandon-callback-report/excel?client_id=${activeClientId}&report_date=${formattedDate}`,
+        `/report/abandon-callback-report/excel?client_id=${activeClientId}&start_date=${formattedStartDate}&end_date=${formattedEndDate}`,
         {
             responseType: "blob",
         }
@@ -156,11 +158,22 @@ const RLReportClient = () => {
 
                 {/* Date Picker */}
                 <div style={{ maxWidth: "220px" }}>
-                  <label className="form-label">Report Date</label>
+                  <label className="form-label">Start Date</label>
                   <DatePicker
-                    selected={reportDate}
-                    onChange={setReportDate}
-                    placeholderText="Select Date"
+                    selected={startDate}
+                    onChange={setStartDate}
+                    placeholderText="Select Start Date"
+                    className="form-control"
+                    dateFormat="yyyy-MM-dd"
+                  />
+                </div>
+
+                <div style={{ maxWidth: "220px" }}>
+                  <label className="form-label">End Date</label>
+                  <DatePicker
+                    selected={endDate}
+                    onChange={setEndDate}
+                    placeholderText="Select End Date"
                     className="form-control"
                     dateFormat="yyyy-MM-dd"
                   />

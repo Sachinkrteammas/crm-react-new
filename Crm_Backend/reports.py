@@ -2644,7 +2644,8 @@ def closer_log_report_excel(
 @router.get("/abandon-callback-report")
 def abandon_callback_report(
     client_id: str,
-    report_date: date,
+    start_date: date,
+    end_date: date,
     db=Depends(get_db2),
     db4=Depends(get_db4)
 ):
@@ -2658,9 +2659,10 @@ def abandon_callback_report(
             call_status,
             call_attempt_time
         FROM aband_call_master
-        WHERE DATE(CallDate) = :report_date
+        WHERE DATE(CallDate) BETWEEN :start_date AND :end_date
         """), {
-            "report_date": report_date
+            "start_date": start_date,
+            "end_date": end_date
         }).mappings().all()
     
     else:
@@ -2673,10 +2675,11 @@ def abandon_callback_report(
                 call_attempt_time
             FROM aband_call_master
             WHERE ClientId = :client_id
-            AND DATE(CallDate) = :report_date
+            AND DATE(CallDate) BETWEEN :start_date AND :end_date
         """), {
             "client_id": client_id,
-            "report_date": report_date
+            "start_date": start_date,
+            "end_date": end_date
         }).mappings().all()
 
     if not aband_data:
@@ -2704,13 +2707,14 @@ def abandon_callback_report(
             ON RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10) 
             AND mcl.uniqueid = t2.uniqueid
         WHERE t2.campaign_id IN ('dialdesk','Cryst002','Ajmal000','Superher','DLFDE000')
-        AND DATE(t2.call_date) = :report_date
+        AND DATE(t2.call_date) BETWEEN :start_date AND :end_date
         AND t2.list_id IN ('998','2001')
         AND t2.lead_id IS NOT NULL
         AND RIGHT(t2.phone_number, 10) IN :phones
         ORDER BY t2.call_date ASC
     """), {
-        "report_date": report_date,
+        "start_date": start_date,
+        "end_date": end_date,
         "phones": tuple(phone_list)
     }).mappings().all()
 
@@ -2721,10 +2725,16 @@ def abandon_callback_report(
         if log["user"] == "VDAD":
             continue
 
-        phone = log["phone"]
+        # phone = log["phone"]
 
-        if len(log_map[phone]) < 3:
-            log_map[phone].append({
+        key = (
+        log["phone"],
+        log["call_date"].date()
+    )
+
+
+        if len(log_map[key]) < 3:
+            log_map[key].append({
                 "time": log["call_date"],
                 "status": "Connected" if log["manual_id"] is not None else "Not connected"
             })
@@ -2744,8 +2754,13 @@ def abandon_callback_report(
 
         is_done = (call_status == "DONE")
 
+        key = (
+            phone,
+            call_time.date()
+        )
 
-        attempts = log_map.get(phone, [])
+
+        attempts = log_map.get(key, [])
         attempt_count = len(attempts)
 
         # Default
@@ -2763,7 +2778,7 @@ def abandon_callback_report(
             second_time, second_status = attempts[1]["time"], attempts[1]["status"]
             third_time, third_status = attempts[2]["time"], attempts[2]["status"]
 
-        elif report_date != today:
+        elif end_date < today:
             final_status = "No callback attempted" if attempt_count == 0 else "Not connected"
 
             while len(attempts) < 3:
@@ -2835,12 +2850,13 @@ def abandon_callback_report(
 @router.get("/abandon-callback-report/excel")
 def abandon_callback_report_excel(
     client_id: str,
-    report_date: date,
+    start_date: date,
+    end_date: date,
     db=Depends(get_db2),
     db4=Depends(get_db4)
 ):
     # 🔹 Get data from your existing API function
-    response = abandon_callback_report(client_id, report_date, db, db4)
+    response = abandon_callback_report(client_id, start_date, end_date, db, db4)
     data = response["data"]
 
     campaigns = []
@@ -2861,22 +2877,23 @@ def abandon_callback_report_excel(
         total_abandoned_calls = db.execute(text("""
             SELECT COUNT(phone_number) AS total
             FROM asterisk.vicidial_closer_log t2
-            WHERE DATE(t2.call_date) = :report_date
+            WHERE DATE(t2.call_date) BETWEEN :start_date AND :end_date
             AND t2.lead_id IS NOT NULL
             AND t2.user = 'VDCL'
-        """), {"report_date": report_date}).scalar()
+        """), {"start_date": start_date, "end_date": end_date}).scalar()
         
 
     else:
         total_abandoned_calls = db.execute(text(f"""
             SELECT COUNT(phone_number) AS total
             FROM asterisk.vicidial_closer_log t2
-            WHERE DATE(t2.call_date) = :report_date
+            WHERE DATE(t2.call_date)  BETWEEN :start_date AND :end_date
             AND t2.lead_id IS NOT NULL
             AND t2.user = 'VDCL'
             AND t2.campaign_id IN :campaigns
         """), {
-            "report_date": report_date,
+            "start_date": start_date,
+            "end_date": end_date,
             "campaigns": tuple(campaigns)
         }).scalar()
 
@@ -3059,7 +3076,7 @@ def abandon_callback_report_excel(
         stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={
-            "Content-Disposition": f"attachment; filename={safe_company_name}_RL_Report_{report_date}.xlsx"
+            "Content-Disposition": f"attachment; filename={safe_company_name}_RL_Report_{start_date}_to_{end_date}.xlsx"
         }
     )
 
