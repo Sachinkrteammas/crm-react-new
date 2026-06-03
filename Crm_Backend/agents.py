@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 # To encrypt password
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__ident="2a", bcrypt__rounds=10)
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
