@@ -27,7 +27,8 @@ import {
   Cell,
 } from "recharts";
 import api from "../api";
-
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 
 /* ---------------- CLIENT COMPARISON ---------------- */
 const clientData = [
@@ -517,6 +518,52 @@ const NewOutboundDashboard = () => {
   }));
 
 
+  const downloadPdExcel = async () => {
+  const response = await api.post(
+    "/outbound/pd-data",
+    null,
+    {
+      params: {
+        company_id: Number(activeCompanyId),
+        start_date: startDate,
+        end_date: endDate,
+      },
+    }
+  );
+
+  const rows = response.data.data || [];
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "PD Calls"
+  );
+
+  const excelBuffer = XLSX.write(
+    workbook,
+    {
+      bookType: "xlsx",
+      type: "array",
+    }
+  );
+
+  const blob = new Blob(
+    [excelBuffer],
+    {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+  );
+
+  saveAs(
+    blob,
+    `PD_Calls_${startDate}_${endDate}.xlsx`
+  );
+};
+
+
   return (
     <div>
       {loading && <PageLoader />}
@@ -617,7 +664,23 @@ const NewOutboundDashboard = () => {
         <Kpi
           label="Total Attempts"
           value={kpi?.totalAttempts?.toLocaleString() || "—"}
-          // trend="+12%"
+          sub={
+          <div className="flex gap-3 text-xs mt-1">
+            <span
+              className="text-blue-600 font-medium cursor-pointer"
+              onClick={downloadPdExcel}
+              title="Download PD Calls Excel"
+            >
+              PD: {kpi?.pdCount?.toLocaleString() || 0} 📥
+            </span>
+
+            <span className="text-gray-500">/</span>
+
+            <span className="text-purple-600 font-medium">
+              Manual: {kpi?.manual_count?.toLocaleString() || 0}
+            </span>
+          </div>
+        }
           icon={<Hash size={18} />}
           color="#00b894"
         />

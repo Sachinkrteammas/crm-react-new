@@ -92,6 +92,9 @@ def outbound_kpi_summary(
             COUNT(DISTINCT vl.lead_id) AS total_data_assigned,
             COUNT(DISTINCT v.phone_number) AS unique_numbers_dialed,
             COUNT(*) AS total_attempts,
+            COUNT(CASE
+                WHEN vl.list_id = 998 THEN vl.lead_id
+            END) AS manual_count,
 
             ROUND(
                 COUNT(*) / NULLIF(COUNT(DISTINCT v.phone_number), 0),
@@ -136,6 +139,8 @@ def outbound_kpi_summary(
         if total_attempts else 0
     )
 
+    pd_count = int(total_attempts) - int(r.get("manual_count", 0) or 0)
+
     return {
         "totalDataAssigned": int(r.get("total_data_assigned", 0) or 0),
         "uniqueNumbersDialed": int(r.get("unique_numbers_dialed", 0) or 0),
@@ -144,10 +149,63 @@ def outbound_kpi_summary(
         "connectedCalls": connected_calls,
         "connectionRate": connection_rate,
         "qualifiedLeads": int(r.get("qualified_leads", 0) or 0),
+        "manual_count": int(r.get("manual_count", 0) or 0),
+        "pdCount": pd_count
     }
 
 
 
+@router.post("/outbound/pd-data")
+def pd_data(
+    company_id: int,
+    start_date: date,
+    end_date: date,
+    db=Depends(get_db4),
+    db2=Depends(get_db2)
+):
+    campaign_in = get_campaign_in_clause(db, company_id)
+
+    query = text(f"""
+        SELECT
+            v.uniqueid,
+            v.lead_id,
+            vl.list_id,
+            v.campaign_id,
+            v.call_date,
+            v.start_epoch,
+            v.end_epoch,
+            v.length_in_sec,
+            v.status,
+            v.phone_code,
+            v.phone_number,
+            v.user,
+            v.comments,
+            v.processed,
+            v.user_group,
+            v.term_reason,
+            v.alt_dial,
+            v.called_count
+        FROM vicidial_log v
+        JOIN vicidial_list vl
+            ON v.lead_id = vl.lead_id
+        WHERE v.call_date BETWEEN :start_dt AND :end_dt
+          AND v.campaign_id IN ({campaign_in})
+          AND vl.list_id != 998
+        ORDER BY v.call_date DESC
+    """)
+
+    rows = db2.execute(
+        query,
+        {
+            "start_dt": f"{start_date} 00:00:00",
+            "end_dt": f"{end_date} 23:59:59"
+        }
+    ).mappings().all()
+
+    return {
+        "total_records": len(rows),
+        "data": [dict(row) for row in rows]
+    }
 
 
 # @router.post("/outbound/call-funnel")
