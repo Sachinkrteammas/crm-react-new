@@ -734,13 +734,30 @@ async def save_client_fields(
                 })
 
         # 🔥 Save token
-        db.execute(text("""
-            INSERT INTO shopify_tokens_new (client_id, token)
-            VALUES (:cid, :token)
-        """), {
-            "cid": client_id,
-            "token": new_token
-        })
+        existing = db.execute(text("""
+            SELECT 1
+            FROM shopify_tokens_new
+            WHERE client_id = :cid
+            LIMIT 1
+        """), {"cid": client_id}).fetchone()
+
+        if existing:
+            db.execute(text("""
+                UPDATE shopify_tokens_new
+                SET token = :token
+                WHERE client_id = :cid
+            """), {
+                "cid": client_id,
+                "token": new_token
+            })
+        else:
+            db.execute(text("""
+                INSERT INTO shopify_tokens_new (client_id, token)
+                VALUES (:cid, :token)
+            """), {
+                "cid": client_id,
+                "token": new_token
+            })
 
         db.commit()
 
@@ -762,6 +779,7 @@ async def save_vicidial_lead(
     request: Request,
     auth_token: str = Header(None, alias="Auth-Token"),
     db2: Session = Depends(get_db2),
+    db: Session = Depends(get_db4),
 ):
     # 🔐 AUTH
     if not auth_token:
@@ -771,6 +789,15 @@ async def save_vicidial_lead(
 
     if not client_id:
         raise HTTPException(403, "Invalid Auth-Token")
+
+    token_data = db.execute(text("""
+        SELECT list_id
+        FROM shopify_tokens_new
+        WHERE client_id = :cid
+        LIMIT 1
+    """), {"cid": client_id}).fetchone()
+
+    list_id = token_data.list_id if token_data else ""
 
     data = await request.json()
 
@@ -795,7 +822,7 @@ async def save_vicidial_lead(
             "middle_initial": data.get("middle_initial") or "",
             "last_name": data.get("last_name") or "",
             "status": "NEW",
-            "list_id": '998',
+            "list_id": list_id,
 
             "address1": data.get("address1") or "",
             "address2": data.get("address2") or "",
