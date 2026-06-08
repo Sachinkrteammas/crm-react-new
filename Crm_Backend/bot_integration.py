@@ -782,7 +782,7 @@ async def save_vicidial_lead(
                 postal_code, country_code, gender, date_of_birth, entry_date, modify_date,
                 alt_phone, email, comments
             ) VALUES (
-                :phone_number, :title, :first_name, :middle_initial, :last_name, :status,
+                :phone_number, :title, :first_name, :middle_initial, :last_name, :status,:list_id,
                 :address1, :address2, :address3, :city, :state, :province, :phone_code, :called_since_last_reset, :gmt_offset_now,
                 :postal_code, :country_code, :gender, :date_of_birth,  NOW(), NOW(),
                 :alt_phone, :email, :comments
