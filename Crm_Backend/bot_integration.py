@@ -777,7 +777,7 @@ async def save_vicidial_lead(
     try:
         db2.execute(text("""
             INSERT INTO vicidial_list (
-                phone_number, title, first_name, middle_initial, last_name, status,
+                phone_number, title, first_name, middle_initial, last_name, status,list_id,
                 address1, address2, address3, city, state, province, phone_code, called_since_last_reset, gmt_offset_now,
                 postal_code, country_code, gender, date_of_birth, entry_date, modify_date,
                 alt_phone, email, comments
@@ -795,6 +795,7 @@ async def save_vicidial_lead(
             "middle_initial": data.get("middle_initial") or "",
             "last_name": data.get("last_name") or "",
             "status": "NEW",
+            "list_id": '998',
 
             "address1": data.get("address1") or "",
             "address2": data.get("address2") or "",

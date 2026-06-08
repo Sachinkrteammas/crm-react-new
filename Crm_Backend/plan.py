@@ -51,6 +51,8 @@ class PlanCreateRequest(BaseModel):
     remoteUser: Optional[bool] = False
     remoteUserRate: Optional[float] = 0.0
     totalRemoteUser: Optional[int] = 0
+    pulse: Optional[int] = 0
+    ratePerPulse: Optional[float] = 0.0
 
 
 # ✅ CREATE PLAN
@@ -68,7 +70,7 @@ def create_plan(plan: PlanCreateRequest):
             InboundCallCharge, InboundCallChargeNight, OutboundCallCharge,
             MissCallCharge, VFOCallCharge, SMSCharge, EmailCharge,
             NoOfFreeUser, ChargePerExtraUser, TransferAfterRental, IVR_Charge,
-            ib_pulse_sec, pulse_day_shift, rate_per_pulse_day_shift,
+            ib_pulse_sec,pulse_outbound_call_shift,rate_per_pulse_outbound_call_shift, pulse_day_shift, rate_per_pulse_day_shift,
             pulse_night_shift, rate_per_pulse_night_shift,
             MultiIBCharges, MultiOBCharges, MultiLiveChat, whatsapp_message_charge,
             pulse_ib_multi, rate_per_pulse_ib_multi,
@@ -80,7 +82,7 @@ def create_plan(plan: PlanCreateRequest):
             %s,%s,%s,
             %s,%s,%s,%s,
             %s,%s,%s,%s,
-            %s,%s,%s,
+            %s,%s,%s,%s,%s,
             %s,%s,
             %s,%s,%s,%s,
             %s,%s,
@@ -95,7 +97,7 @@ def create_plan(plan: PlanCreateRequest):
             plan.inboundChargeDay, plan.inboundChargeNight, plan.outboundCallCharge,
             plan.missCallCharge, plan.vfoCharge, plan.smsCharge, plan.emailCharge,
             plan.noOfUsers, plan.chargePerExtraUser, plan.transferafterrental, plan.ivrCharge,
-            plan.ibPulse, plan.pulseDay, plan.ratePerPulseDay,
+            plan.ibPulse, plan.pulse,plan.ratePerPulse, plan.pulseDay, plan.ratePerPulseDay,
             plan.pulseNight, plan.ratePerPulseNight,
             plan.multiIBCharges, plan.multiOBCharges, plan.multiLiveChat, plan.whatsappMessageCharge,
             plan.pulseIBMulti, plan.ratePerPulseIBMulti,
@@ -173,7 +175,7 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
             InboundCallCharge=%s, InboundCallChargeNight=%s, OutboundCallCharge=%s,
             MissCallCharge=%s, VFOCallCharge=%s, SMSCharge=%s, EmailCharge=%s,
             NoOfFreeUser=%s, ChargePerExtraUser=%s, TransferAfterRental=%s, IVR_Charge=%s,
-            ib_pulse_sec=%s, pulse_day_shift=%s, rate_per_pulse_day_shift=%s,
+            ib_pulse_sec=%s,pulse_outbound_call_shift=%s,rate_per_pulse_outbound_call_shift=%s, pulse_day_shift=%s, rate_per_pulse_day_shift=%s,
             pulse_night_shift=%s, rate_per_pulse_night_shift=%s,
             MultiIBCharges=%s, MultiOBCharges=%s, MultiLiveChat=%s, whatsapp_message_charge=%s,
             pulse_ib_multi=%s, rate_per_pulse_ib_multi=%s,
@@ -189,7 +191,7 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
             plan.inboundChargeDay, plan.inboundChargeNight, plan.outboundCallCharge,
             plan.missCallCharge, plan.vfoCharge, plan.smsCharge, plan.emailCharge,
             plan.noOfUsers, plan.chargePerExtraUser, plan.transferafterrental, plan.ivrCharge,
-            plan.ibPulse, plan.pulseDay, plan.ratePerPulseDay,
+            plan.ibPulse,plan.pulse,plan.ratePerPulse, plan.pulseDay, plan.ratePerPulseDay,
             plan.pulseNight, plan.ratePerPulseNight,
             plan.multiIBCharges, plan.multiOBCharges, plan.multiLiveChat, plan.whatsappMessageCharge,
             plan.pulseIBMulti, plan.ratePerPulseIBMulti,

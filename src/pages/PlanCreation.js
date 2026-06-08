@@ -291,6 +291,8 @@ export default function PlanManagement() {
     inboundChargeDay: form.inboundChargeDay,
     pulseDay: form.pulseDay,
     outboundCallCharge: form.outboundCallCharge,
+    pulse: form.pulse,
+    ratePerPulse: form.ratePerPulse,
     inboundChargeNight: form.inboundChargeNight,
     pulseNight: form.pulseNight,
     emailCharge: form.emailCharge,
@@ -359,12 +361,12 @@ export default function PlanManagement() {
       inboundChargeDay: plan.InboundCallCharge,
       pulseDay: plan.pulse_day_shift,
       outboundCallCharge: plan.OutboundCallCharge,
-      pulse: plan.pulse_day_shift,
+      pulse: plan.pulse_outbound_call_shift,
       inboundChargeNight: plan.InboundCallChargeNight,
       pulseNight: plan.pulse_night_shift,
       emailCharge: plan.EmailCharge,
       ratePerPulseNight: plan.rate_per_pulse_night_shift,
-      ratePerPulse: plan.rate_per_pulse_day_shift,
+      ratePerPulse: plan.rate_per_pulse_outbound_call_shift,
       smsCharge: plan.SMSCharge,
       missCallCharge: plan.MissCallCharge,
       ivrCallCharge: plan.IVR_Charge,
@@ -701,12 +703,6 @@ export default function PlanManagement() {
                       />
                     </div>
                     {renderInput(
-                      "Rate Per Pulse (Day Shift) - Rs.",
-                      "ratePerPulseDay",
-                      "Rate Per Pulse",
-                      "number"
-                    )}
-                    {renderInput(
                       "Inbound Call Charge (Day Shift) - Rs.",
                       "inboundChargeDay",
                       "Inbound Call Charge",
@@ -719,6 +715,14 @@ export default function PlanManagement() {
                       { value: "45", label: "45 Sec" },
                       { value: "60", label: "60 Sec" },
                     ])}
+                    {renderInput(
+                      "Rate Per Pulse (Day Shift) - Rs.",
+                      "ratePerPulseDay",
+                      "Rate Per Pulse",
+                      "number"
+                    )}
+
+
                     {renderInput(
                       "Outbound Call Charge - Rs.",
                       "outboundCallCharge",
@@ -733,6 +737,12 @@ export default function PlanManagement() {
                       { value: "60", label: "60 Sec" },
                     ])}
                     {renderInput(
+                      "Rate Per Pulse - Rs.",
+                      "ratePerPulse",
+                      "Rate Per Pulse",
+                      "number"
+                    )}
+                    {renderInput(
                       "Inbound Call Charge (Night Shift) - Rs.",
                       "inboundChargeNight",
                       "Inbound Call Charge",
@@ -746,23 +756,19 @@ export default function PlanManagement() {
                       { value: "60", label: "60 Sec" },
                     ])}
                     {renderInput(
-                      "Email Charge - Rs.",
-                      "emailCharge",
-                      "Per Email Charge",
-                      "number"
-                    )}
-                    {renderInput(
                       "Rate Per Pulse (Night Shift) - Rs.",
                       "ratePerPulseNight",
                       "Rate Per Pulse",
                       "number"
                     )}
                     {renderInput(
-                      "Rate Per Pulse - Rs.",
-                      "ratePerPulse",
-                      "Rate Per Pulse",
+                      "Email Charge - Rs.",
+                      "emailCharge",
+                      "Per Email Charge",
                       "number"
                     )}
+
+
                     {renderInput(
                       "SMS Charge 160",
                       "smsCharge",
