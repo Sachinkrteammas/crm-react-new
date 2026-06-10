@@ -11,6 +11,7 @@ const ShopifyIntegration = () => {
   const [loadingFields, setLoadingFields] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [shopifyToken, setShopifyToken] = useState("");
+  const [listId, setListId] = useState("");
 
   // ✅ Key → Label mapping
   const fieldMap = {
@@ -119,6 +120,7 @@ const ShopifyIntegration = () => {
         `/bot/save-client-fields?client_id=${activeClientId}`,
         {
             fields: selectedFields,
+            list_id: listId
         }
         );
 
@@ -145,6 +147,7 @@ const ShopifyIntegration = () => {
 
         if (res.data?.status === "success") {
             setShopifyToken(res.data.token || "");
+            setListId(res.data.list_id || "");
         }
         } catch (err) {
         console.error("Token fetch error:", err);
@@ -181,7 +184,19 @@ const ShopifyIntegration = () => {
               </select>
             </div>
           )}
+
+          <div style={{ maxWidth: "250px" }}>
+          <label className="form-label">List ID</label>
+          <input
+            type="number"
+            className="form-control"
+            value={listId}
+            onChange={(e) => setListId(e.target.value)}
+          />
         </div>
+        </div>
+
+
 
         {/* Mapping Section */}
         <div className="row g-3">

@@ -678,10 +678,12 @@ def run_sla_push_to_sheet():
 
 
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
+
 
 class FieldConfig(BaseModel):
     fields: List[str]
+    list_id: Optional[int] = None
 
 
 def generate_token(client_id: int):
@@ -708,6 +710,7 @@ async def save_client_fields(
     db: Session = Depends(get_db4)
 ):
     fields = payload.fields
+    list_id = payload.list_id
 
     if not client_id:
         raise HTTPException(400, "client_id is required")
@@ -744,19 +747,22 @@ async def save_client_fields(
         if existing:
             db.execute(text("""
                 UPDATE shopify_tokens_new
-                SET token = :token
+                SET token = :token,
+                list_id = :list_id
                 WHERE client_id = :cid
             """), {
                 "cid": client_id,
-                "token": new_token
+                "token": new_token,
+                "list_id": list_id
             })
         else:
             db.execute(text("""
-                INSERT INTO shopify_tokens_new (client_id, token)
-                VALUES (:cid, :token)
+                INSERT INTO shopify_tokens_new (client_id, token,list_id)
+                VALUES (:cid, :token,:list_id)
             """), {
                 "cid": client_id,
-                "token": new_token
+                "token": new_token,
+                "list_id": list_id
             })
 
         db.commit()
@@ -901,7 +907,7 @@ def get_shopify_token(
 
     try:
         row = db.execute(text("""
-            SELECT token
+            SELECT token, list_id
             FROM shopify_tokens_new
             WHERE client_id = :cid
             LIMIT 1
@@ -918,7 +924,8 @@ def get_shopify_token(
         return {
             "status": "success",
             "client_id": client_id,
-            "token": row["token"]
+            "token": row["token"],
+            "list_id": row["list_id"]
         }
 
     except Exception as e:
