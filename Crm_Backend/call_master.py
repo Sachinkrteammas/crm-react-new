@@ -108,7 +108,7 @@ def get_call_master_data(
         select_cols = ", ".join(columns)
 
         # Step 3: Execute final query
-        query = f"SELECT {select_cols} FROM call_master WHERE {where_clause}"
+        query = f"SELECT {select_cols} FROM call_master WHERE {where_clause} ORDER BY CallDate DESC"
         result = conn.execute(text(query), params).mappings().all()
 
         # Step 4: Format response
