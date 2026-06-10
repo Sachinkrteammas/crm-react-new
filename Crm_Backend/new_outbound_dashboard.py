@@ -172,6 +172,7 @@ def pd_data(
             vl.list_id,
             v.campaign_id,
             v.call_date,
+            vl.entry_date,
             v.start_epoch,
             v.end_epoch,
             v.length_in_sec,
