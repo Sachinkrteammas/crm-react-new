@@ -144,6 +144,12 @@ def save_lead_to_vicidial(db2: Session, lead):
         if len(phone) >= 10:
             phone = phone[-10:]
 
+        if not phone or len(phone) != 10:
+            logger.warning(
+                f"Lead Skipped - Invalid Phone | SalesforceId: {salesforce_id} | Phone: {lead.get('MobilePhone')}"
+            )
+            return
+
         # ---------------- INSERT QUERY ----------------
 
         insert_query = text("""
