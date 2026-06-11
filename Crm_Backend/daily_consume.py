@@ -302,8 +302,11 @@ def compute_ib_consumption(
                 t3.talk_sec AS TalkSec
             FROM asterisk.vicidial_log t2
             LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
+            LEFT JOIN vicidial_users t4 ON t2.user = t4.user
+            INNER JOIN asterisk.manual_call_log mcl ON RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10) AND mcl.uniqueid = t2.uniqueid
             WHERE DATE(t2.call_date) = :billing_date
-            AND t2.campaign_id = 'dialdesk'
+            AND t2.campaign_id IN ('dialdesk','Cryst002','Ajmal000','Superher')
+            AND t2.list_id in ('998','2001')
             AND t2.lead_id IS NOT NULL
             AND (LEFT(t2.phone_number,10), DATE(t2.call_date)) IN ({in_values})
         """)
