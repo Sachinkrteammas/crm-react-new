@@ -4300,6 +4300,12 @@ def tagging_variance_report(
             "variance_percent": f"{variance_percent}%"
         })
 
+    # Sort by Client Name (A-Z)
+    result = sorted(
+        result,
+        key=lambda x: (x["client_name"] or "").lower()
+    )
+
     return {
         "status": True,
         "data": result
@@ -4329,7 +4335,7 @@ def agentwise_tagging_variance_report(
         if row[3] == "Total":
             continue
 
-        process_type = row[0]
+        process_type = row[1]
         emp_code = row[2]
         agent_name = row[3]
 
@@ -4353,6 +4359,11 @@ def agentwise_tagging_variance_report(
             "variance": variance,
             "variance_percent": f"{variance_percent}%"
         })
+
+    # Agent Name Wise Sort
+    data.sort(
+        key=lambda x: (x["agent_name"] or "").strip().lower()
+    )
 
     return {
         "status": True,
