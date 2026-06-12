@@ -754,7 +754,28 @@ def download_excel_raw(
             WHERE Id = :plan_id
             LIMIT 1
         """), {"plan_id": balance_result.PlanId}).mappings().fetchone()
-        
+
+    # ---------------- EXCLUDED USERS FROM plan_details ----------------
+    plan_users = db.execute(text("""
+        SELECT remote_agents, dedicated_agents
+        FROM plandetails
+        WHERE client_id = :client_id
+    """), {"client_id": client_id}).mappings().fetchall()
+
+    excluded_users = set()
+
+    for row in plan_users:
+        remote_agents = row.get("remote_agents") or ""
+        dedicated_agents = row.get("dedicated_agents") or ""
+
+        # Split comma separated users
+        remote_list = [u.strip() for u in remote_agents.split(",") if u.strip()]
+        dedicated_list = [u.strip() for u in dedicated_agents.split(",") if u.strip()]
+
+        excluded_users.update(remote_list)
+        excluded_users.update(dedicated_list)
+
+    excluded_users = list(excluded_users)
 
     # parse plan values (with sensible defaults)
     try:
@@ -807,21 +828,35 @@ def download_excel_raw(
 
     Used_Amount = Decimal(0)
 
-    
-
     # Step 2: Call log data from vicidial DB
-    call_data = db2.execute(text(f"""
-        SELECT
-            IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
-            t2.phone_number,
-            t2.call_date,
-            t2.user
-        FROM vicidial_closer_log t2
-        LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
-        WHERE t2.user != 'VDCL'
-          AND t2.campaign_id IN :campaigns
-          AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
-    """), {"campaigns": tuple(campaign_list),"from_date": from_date, "to_date": to_date}).mappings().fetchall()
+    call_query = """
+            SELECT
+                IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
+                t2.phone_number,
+                t2.call_date,
+                t2.user
+            FROM vicidial_closer_log t2
+            LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+            WHERE t2.user != 'VDCL'
+              AND t2.campaign_id IN :campaigns
+              AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
+        """
+
+    params = {
+        "campaigns": tuple(campaign_list),
+        "from_date": from_date,
+        "to_date": to_date,
+    }
+
+    # Exclude users only if list exists
+    if excluded_users:
+        call_query += " AND t2.user NOT IN :excluded_users"
+        params["excluded_users"] = tuple(excluded_users)
+
+    call_data = db2.execute(
+        text(call_query),
+        params
+    ).mappings().fetchall()
 
     html_day_rows = ""
     html_night_rows = ""
@@ -842,10 +877,8 @@ def download_excel_raw(
     ob_secs = 0
     ob_total = Decimal(0)
 
-    
-
     # multilang_call_data = db2.execute(text(f"""
-    #     SELECT 
+    #     SELECT
     #         IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
     #         t2.phone_number,
     #         t2.call_date,
@@ -858,19 +891,51 @@ def download_excel_raw(
     # """), {"from_date": from_date, "to_date": to_date}).fetchall()
 
     # --- OUTBOUND (Vicidial Log) Section ---
-    aband_data = db2.execute(text("""
-            SELECT
-                (va.talk_sec-va.dead_sec) length_in_sec,
-                LEFT(v.phone_number, 10) AS phone_number,
-                v.call_date,
-                v.user
-            FROM vicidial_log v
-            JOIN vicidial_agent_log va ON v.uniqueid = va.uniqueid
-            WHERE length_in_sec != 0
-                AND v.user != 'VDAD'
-                AND v.campaign_id IN :campaigns
-              AND DATE(v.call_date) BETWEEN :from_date AND :to_date
-        """), {"campaigns": tuple(campaign_list),"client_id": client_id, "from_date": from_date, "to_date": to_date}).mappings().fetchall()
+    # aband_data = db2.execute(text("""
+    #         SELECT
+    #             (va.talk_sec-va.dead_sec) length_in_sec,
+    #             LEFT(v.phone_number, 10) AS phone_number,
+    #             v.call_date,
+    #             v.user
+    #         FROM vicidial_log v
+    #         JOIN vicidial_agent_log va ON v.uniqueid = va.uniqueid
+    #         WHERE length_in_sec != 0
+    #             AND v.user != 'VDAD'
+    #             AND v.campaign_id IN :campaigns
+    #           AND DATE(v.call_date) BETWEEN :from_date AND :to_date
+    #     """), {"campaigns": tuple(campaign_list), "client_id": client_id, "from_date": from_date,
+    #            "to_date": to_date}).mappings().fetchall()
+
+    aband_query = """
+        SELECT
+            (va.talk_sec - va.dead_sec) AS length_in_sec,
+            LEFT(v.phone_number, 10) AS phone_number,
+            v.call_date,
+            v.user
+        FROM vicidial_log v
+        JOIN vicidial_agent_log va
+            ON v.uniqueid = va.uniqueid
+        WHERE (va.talk_sec - va.dead_sec) != 0
+          AND v.user != 'VDAD'
+          AND v.campaign_id IN :campaigns
+          AND DATE(v.call_date) BETWEEN :from_date AND :to_date
+    """
+
+    params = {
+        "campaigns": tuple(campaign_list),
+        "from_date": from_date,
+        "to_date": to_date,
+    }
+
+    # Exclude users only if list exists
+    if excluded_users:
+        aband_query += " AND v.user NOT IN :excluded_users"
+        params["excluded_users"] = tuple(excluded_users)
+
+    aband_data = db2.execute(
+        text(aband_query),
+        params
+    ).mappings().fetchall()
 
     sql_get_ob = text("""
         SELECT LEFT(PhoneNo,10) AS PhoneNumber, DATE(Callbackdate) AS CallbackDate
@@ -887,9 +952,26 @@ def download_excel_raw(
         in_values = ", ".join(f"('{pn}','{dt}')" for pn, dt in phone_date_pairs)
     else:
         in_values = "('','0000-00-00')"  # guaranteed no match
-    
-    query = text(f"""
-                SELECT t2.list_id,
+
+    # query = text(f"""
+    #             SELECT t2.list_id,
+    #             t2.call_date AS CallDate,
+    #             TIME(FROM_UNIXTIME(t2.start_epoch)) AS StartTime,
+    #             LEFT(t2.phone_number,10) AS PhoneNumber,
+    #             t2.`user` AS Agent,
+    #             t3.talk_sec AS TalkSec
+    #         FROM asterisk.vicidial_log t2
+    #         LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
+    #         WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
+    #         AND t2.campaign_id = 'dialdesk'
+    #         AND t2.lead_id IS NOT NULL
+    #         AND (LEFT(t2.phone_number,10), DATE(t2.call_date)) IN ({in_values})
+    #         """)
+    #
+    # ab_data = db2.execute(query, {"from_date": from_date, "to_date": to_date}).mappings().fetchall()
+
+    query_str = f"""
+        SELECT t2.list_id,
                 t2.call_date AS CallDate,
                 TIME(FROM_UNIXTIME(t2.start_epoch)) AS StartTime,
                 LEFT(t2.phone_number,10) AS PhoneNumber,
@@ -904,9 +986,22 @@ def download_excel_raw(
             AND t2.list_id in ('998','2001')
             AND t2.lead_id IS NOT NULL
             AND (LEFT(t2.phone_number,10), DATE(t2.call_date)) IN ({in_values})
-            """)
+    """
 
-    ab_data = db2.execute(query, {"from_date": from_date, "to_date": to_date}).mappings().fetchall()
+    params = {
+        "from_date": from_date,
+        "to_date": to_date,
+    }
+
+    # Exclude users only if list exists
+    if excluded_users:
+        query_str += " AND t2.user NOT IN :excluded_users"
+        params["excluded_users"] = tuple(excluded_users)
+
+    ab_data = db2.execute(
+        text(query_str),
+        params
+    ).mappings().fetchall()
 
     # --- Initialize SMS variables
     sms_pulse = 0
@@ -1169,8 +1264,6 @@ def download_excel_raw(
     </table>
     """
 
-
-
     # html += """
     #     <table><tr><td>&nbsp;</td></tr></table>
 
@@ -1216,7 +1309,7 @@ def download_excel_raw(
             </tr>
         """
 
-    
+
     for ob in aband_data:
         raw_len = ob.get("length_in_sec")
         dt = ob.get("call_date")
@@ -1250,7 +1343,6 @@ def download_excel_raw(
         ab_pulse += total_pulse
         ab_total += amount
         ab_secs += 0
-
 
     # for row in outbound_data:
     #     dt = row.call_date
@@ -1358,13 +1450,12 @@ def download_excel_raw(
         sms_secs += smsChar
         sms_total += Decimal(sms_charge) * Decimal(sms_unit)
 
+        # for row in sms_data:
+        #     pulse = int(row.Unit) if row.Unit else 0
+        #     rate = pulse * 0.2  # Set your actual rate here
 
-    # for row in sms_data:
-    #     pulse = int(row.Unit) if row.Unit else 0
-    #     rate = pulse * 0.2  # Set your actual rate here
-
-    #     total_pulse5 += pulse
-    #     total_rate5 += rate
+        #     total_pulse5 += pulse
+        #     total_rate5 += rate
 
         html += f"""
             <tr>
@@ -1405,12 +1496,12 @@ def download_excel_raw(
         email_pulse += EmailUnit
         email_total += email_rate
 
-    # for row in email_data:
-    #     pulse = int(row.Unit) if row.Unit else 0
-    #     rate = pulse * 0.25  # Replace with actual per-email rate
+        # for row in email_data:
+        #     pulse = int(row.Unit) if row.Unit else 0
+        #     rate = pulse * 0.25  # Replace with actual per-email rate
 
-    #     total_pulse6 += pulse
-    #     total_rate6 += rate
+        #     total_pulse6 += pulse
+        #     total_rate6 += rate
 
         html += f"""
             <tr>
@@ -1489,13 +1580,13 @@ def download_excel_raw(
 
     # grand_total = ib_total + ibn_total + ob_total + ab_total + amount_sms + amount_email + amount_rx
     grand_total = (
-        Decimal(ib_total) +
-        Decimal(ibn_total) +
-        Decimal(ob_total) +
-        Decimal(ab_total) +
-        Decimal(sms_total) +
-        Decimal(email_total) +
-        Decimal(amount_rx)
+            Decimal(ib_total) +
+            Decimal(ibn_total) +
+            Decimal(ob_total) +
+            Decimal(ab_total) +
+            Decimal(sms_total) +
+            Decimal(email_total) +
+            Decimal(amount_rx)
     )
 
     # used_amount = (
@@ -1510,9 +1601,8 @@ def download_excel_raw(
     # print("#######",used_amount)
     # html = html.replace("{Used_Amount}", f"{used_amount:.2f}")
 
-
     # === 3️⃣ Append Summary Table ===
-    summary_html  = f"""
+    summary_html = f"""
     <table><tr><td>&nbsp;</td></tr></table>
     <table border='1' width='600' cellpadding='2' cellspacing='2' style='font-size:11pt;'>
         <tr>
@@ -1539,8 +1629,6 @@ def download_excel_raw(
     """
 
     html = html.replace("{SUMMARY_TABLE}", summary_html)
-
-
 
     html += "</table></body></html>"
 

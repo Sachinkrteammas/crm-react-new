@@ -184,6 +184,8 @@ import HVClient from "./pages/HV_Client_report";
 import AdvisorDisconnect from "./pages/advisor_disconnect_report";
 import PlanSettings from "./pages/Plan_settings";
 import C2PCDRReports from "./pages/C2PCDRReports";
+import ClientWiseVarianceReport from "./pages/ClientWiseTaggingVarianceReport";
+import AgentwiseVarianceReport from "./pages/AgentwiseTaggingVarianceReport";
 
 
 
@@ -480,6 +482,8 @@ function App() {
               <Route path="/advisor-disconnect" element={<AdvisorDisconnect />} />
               <Route path="/PlanSettings" element={<PlanSettings />} />
               <Route path="/C2PCDRReports" element={<C2PCDRReports />} />
+              <Route path="/ClientWiseVarianceReport" element={<ClientWiseVarianceReport />} />
+              <Route path="/AgentwiseVarianceReport" element={<AgentwiseVarianceReport />} />
               <></>
           </Route>
       </Route>

@@ -7,7 +7,7 @@ from corrective_report import generate_corrective_excel
 from logger import logger
 from call_scenario import send_call_summary
 from datetime import date
-from reports import generate_outbound_excel, get_zero_call_clients
+from reports import generate_outbound_excel, get_zero_call_clients,advisor_disconnect_report_email
 from sla_reports import generate_rl_sl_excel
 from datetime import timedelta
 import time
@@ -207,6 +207,36 @@ def run_report_scheduler():
                 )
 
                 print(f"Zero Call report sent to {to_email}")
+
+            #####
+            elif report_name == "Agent Disconnect Report":
+                print("starts")
+                now = datetime.now()
+                report_date = now.date()
+
+                logger.info(f"Agent Disconnect Report Date: {report_date}")
+
+                excel_stream = advisor_disconnect_report_email(
+                    report_date=report_date,
+                    db=db,
+                    db2=db2,
+                    return_stream=True
+                )
+
+                send_email_with_excel(
+                    to_email=to_email,
+                    cc_emails=cc,
+                    subject=f"Agent Disconnect Report ({report_date.strftime('%d-%m-%Y')})",
+                    body="""
+                        <p>Please find attached Agent Disconnect Report.</p>
+                        <br>
+                        <p>Best Regards,<br>Team Ispark Data Connect</p>
+                        """,
+                    excel_stream=excel_stream,
+                    filename="Agent_Disconnect_Report.xlsx"
+                )
+
+                print(f"Agent Disconnect Report sent to {to_email}")
 
     except Exception as e:
         print(f"Scheduler error: {str(e)}")
