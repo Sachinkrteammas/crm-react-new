@@ -552,28 +552,30 @@ def compute_ib_consumption(
     wasms_flat = 0
     wasms_total = Decimal(0)
 
-    # Plan charge for WhatsApp Alerts
-    wasms_charge = Decimal(plan_row.get("whatsapp_message_charge", 0) or 0)
+    if request.company_id != 659:
+
+        # Plan charge for WhatsApp Alerts
+        wasms_charge = Decimal(plan_row.get("whatsapp_message_charge", 0) or 0)
 
 
-    wa_sms_sql = text("""
-        SELECT CallDate, CallTime, CallFrom, Unit
-        FROM billing_master
-        WHERE clientId = :client_id
-        AND DedType = 'WhatsappAlert'
-        AND DATE(CallDate) = :billing_date
-    """)
+        wa_sms_sql = text("""
+            SELECT CallDate, CallTime, CallFrom, Unit
+            FROM billing_master
+            WHERE clientId = :client_id
+            AND DedType = 'WhatsappAlert'
+            AND DATE(CallDate) = :billing_date
+        """)
 
-    wa_sms_rows = db.execute(
-        wa_sms_sql,
-        {"client_id": request.company_id, "billing_date": billing_date}
-    ).mappings().fetchall()
+        wa_sms_rows = db.execute(
+            wa_sms_sql,
+            {"client_id": request.company_id, "billing_date": billing_date}
+        ).mappings().fetchall()
 
-    for wasms_row in wa_sms_rows:
-        wasms_unit = int(wasms_row.get("Unit") or 0)
+        for wasms_row in wa_sms_rows:
+            wasms_unit = int(wasms_row.get("Unit") or 0)
 
-        wasms_pulse += wasms_unit
-        wasms_total += wasms_charge * Decimal(wasms_unit)
+            wasms_pulse += wasms_unit
+            wasms_total += wasms_charge * Decimal(wasms_unit)
 
 
 
@@ -589,7 +591,7 @@ def compute_ib_consumption(
     wasms_total = to_decimal(wasms_total, places=2)
 
     # cm_total = float(ib_total + ibn_total + ivr_total + sms_total + email_total + miss_total + wasms_total)
-    cm_total = float(ib_total + ibn_total + ob_total + ivr_total + sms_total + email_total + miss_total)
+    cm_total = float(ib_total + ibn_total + ob_total + ivr_total + sms_total + email_total + miss_total + wasms_total)
 
     # prepare insert (same as before)
     insert_sql = text("""
@@ -601,7 +603,8 @@ def compute_ib_consumption(
         ivr_pulse, ivr_charge, ivr_flat, ivr_total,
         sms_pulse, sms_charge, sms_flat, sms_total,
         email_pulse, email_charge, email_flat, email_total,              
-        miss_pulse, miss_charge, miss_flat, miss_total,             
+        miss_pulse, miss_charge, miss_flat, miss_total,
+        whatsapp_sms_pulse, whatsapp_sms_charge, whatsapp_sms_flat, whatsapp_sms_total,          
         created_at, plan_id)
         VALUES
         (:client_id, :cm_date, :cm_total,
@@ -612,6 +615,7 @@ def compute_ib_consumption(
         :sms_pulse, :sms_charge, :sms_flat, :sms_total,
         :email_pulse, :email_charge, :email_flat, :email_total,
         :miss_pulse, :miss_charge, :miss_flat, :miss_total,
+        :whatsapp_sms_pulse, :whatsapp_sms_charge, :whatsapp_sms_flat, :whatsapp_sms_total,
         NOW(), :plan_id)
     """)
 

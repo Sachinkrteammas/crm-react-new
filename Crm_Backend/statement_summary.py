@@ -482,6 +482,47 @@ def statement_summary(
         total_rate7 += rate
 
 
+    # --- Initialize WHATSAPP variables ---
+    wasms_pulse = 0
+    wasms_secs = 0
+    wasms_charge = Decimal(0)
+    wasms_total = Decimal(0)
+
+    if client_id != 659:
+
+        # Plan charge for WhatsApp
+        wasms_charge = Decimal(plan_result.get("whatsapp_message_charge", 0) or 0)
+
+        wasms_query = text("""
+            SELECT 
+                DATE_FORMAT(CallDate,'%d %b %y') AS CallDate1,
+                CallDate,
+                CallTime,
+                CallFrom,
+                Unit
+            FROM billing_master
+            WHERE clientId = :client_id
+            AND DedType = 'WhatsappAlert'
+            AND DATE(CallDate) BETWEEN :from_date AND :to_date
+        """)
+
+        wasms_data = db.execute(wasms_query, {
+            "client_id": client_id,
+            "from_date": from_date,
+            "to_date": to_date
+        }).mappings().fetchall()
+
+
+
+        for row in wasms_data:
+
+            unit = int(row.get("Unit") or 0)
+
+            wasms_pulse += unit
+            wasms_total += Decimal(unit) * wasms_charge
+
+
+
     # === 1️⃣ Get dynamic rates with fallback ===
     rate_icb = plan_result.InboundRate if plan_result and hasattr(plan_result, "InboundRate") else 0.5
     rate_multilang = plan_result.MultiLangInboundRate if plan_result and hasattr(plan_result,
@@ -509,7 +550,8 @@ def statement_summary(
         Decimal(ab_total) +
         Decimal(sms_total) +
         Decimal(email_total) +
-        Decimal(amount_rx)
+        Decimal(amount_rx) +
+        Decimal(wasms_total)
     )
 
     # used_amount = (
@@ -546,6 +588,7 @@ def statement_summary(
         <tr><td>SMS</td><td>{sms_pulse}</td><td>{sms_charge} Rs./Min</td><td>{sms_total:.2f}</td></tr>
         <tr><td>Email</td><td>{email_pulse}</td><td>{email_charge} Rs./Min</td><td>{email_total:.2f}</td></tr>
         <tr><td>IVR</td><td>{total_pulse7}</td><td>{ivr_charge} Rs./Min</td><td>{amount_rx:.2f}</td></tr>
+        <tr><td>WHATSAPP ALERT</td><td>{wasms_pulse}</td><td>{wasms_charge} Rs./Min</td><td>{wasms_total:.2f}</td></tr>
         <tr style='font-weight:bold; background-color:#e0e0e0;'>
             <td colspan='3' align='right'>Grand Total ({from_date}/{to_date})</td>
             <td>{grand_total:.2f}</td>
