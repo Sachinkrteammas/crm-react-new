@@ -115,12 +115,9 @@ export default function PlanManagement() {
     let newErrors = { ...errors };
 
     const decimalFields = [
-      "inboundChargeDay",
-      "ratePerPulseDay",
-      "ratePerPulseNight",
-      "ratePerPulse",
-      "inboundChargeNight",
-    ];
+          "inboundChargeDay",
+          "inboundChargeNight",
+        ];
 
     if (decimalFields.includes(name)) {
       const regex = /^\d*\.?\d{0,2}$/;
@@ -171,6 +168,64 @@ export default function PlanManagement() {
       ...form,
       [name]: value,
     };
+
+    // Auto calculate Day Shift Rate
+    const dayCharge = parseFloat(updatedForm.inboundChargeDay || 0);
+    const dayPulse = parseFloat(updatedForm.pulseDay || 0);
+
+    if (dayCharge > 0 && dayPulse > 0) {
+      updatedForm.ratePerPulseDay = (
+          (dayCharge * dayPulse) / 60
+        ).toFixed(2);
+    } else {
+      updatedForm.ratePerPulseDay = "";
+    }
+
+    // Auto calculate Night Shift Rate
+    const nightCharge = parseFloat(updatedForm.inboundChargeNight || 0);
+    const nightPulse = parseFloat(updatedForm.pulseNight || 0);
+
+    if (nightCharge > 0 && nightPulse > 0) {
+      updatedForm.ratePerPulseNight = (
+          (nightCharge * nightPulse) / 60
+        ).toFixed(2);
+    } else {
+      updatedForm.ratePerPulseNight = "";
+    }
+
+    const outboundCharge = parseFloat(updatedForm.outboundCallCharge || 0);
+    const outboundPulse = parseFloat(updatedForm.pulse || 0);
+
+    if (outboundCharge > 0 && outboundPulse > 0) {
+      updatedForm.ratePerPulse = (
+        (outboundCharge * outboundPulse) / 60
+      ).toFixed(2);
+    } else {
+      updatedForm.ratePerPulse = "";
+    }
+
+    const multiInboundCharge = parseFloat(updatedForm.multiInboundCharge || 0);
+    const multiInboundPulse = parseFloat(updatedForm.pulseMultiLang || 0);
+
+    if (multiInboundCharge > 0 && multiInboundPulse > 0) {
+      updatedForm.ratePerPulseMultiLang = (
+        (multiInboundCharge * multiInboundPulse) / 60
+      ).toFixed(2);
+    } else {
+      updatedForm.ratePerPulseMultiLang = "";
+    }
+
+    // Auto calculate Multi Language Outbound Rate Per Pulse
+    const multiOutboundCharge = parseFloat(updatedForm.multiOutboundCharge || 0);
+    const multiOutboundPulse = parseFloat(updatedForm.pulseMultiOutbound || 0);
+
+    if (multiOutboundCharge > 0 && multiOutboundPulse > 0) {
+      updatedForm.ratePerPulseMultiOutbound = (
+        (multiOutboundCharge * multiOutboundPulse) / 60
+      ).toFixed(2);
+    } else {
+      updatedForm.ratePerPulseMultiOutbound = "";
+    }
 
     // ✅ Auto calculate Credit Value as per Plan Mode
     const creditValue = parseFloat(updatedForm.creditValue || 0);
@@ -357,7 +412,9 @@ export default function PlanManagement() {
         : "",
       creditValuePerMode: plan.CreditValue,
       creditValue: plan.Balance,
-      ratePerPulseDay: plan.rate_per_pulse_day_shift,
+      ratePerPulseDay:
+      (parseFloat(plan.InboundCallCharge || 0) *
+        parseFloat(plan.pulse_day_shift || 0)) / 60,
       inboundChargeDay: plan.InboundCallCharge,
       pulseDay: plan.pulse_day_shift,
       outboundCallCharge: plan.OutboundCallCharge,
@@ -365,7 +422,9 @@ export default function PlanManagement() {
       inboundChargeNight: plan.InboundCallChargeNight,
       pulseNight: plan.pulse_night_shift,
       emailCharge: plan.EmailCharge,
-      ratePerPulseNight: plan.rate_per_pulse_night_shift,
+      ratePerPulseNight:
+      (parseFloat(plan.InboundCallChargeNight || 0) *
+        parseFloat(plan.pulse_night_shift || 0)) / 60,
       ratePerPulse: plan.rate_per_pulse_outbound_call_shift,
       smsCharge: plan.SMSCharge,
       missCallCharge: plan.MissCallCharge,
@@ -715,12 +774,17 @@ export default function PlanManagement() {
                       { value: "45", label: "45 Sec" },
                       { value: "60", label: "60 Sec" },
                     ])}
-                    {renderInput(
-                      "Rate Per Pulse (Day Shift) - Rs.",
-                      "ratePerPulseDay",
-                      "Rate Per Pulse",
-                      "number"
-                    )}
+                    <div className="col-md-4 mb-2">
+                      <label className="form-label">
+                        Rate Per Pulse (Day Shift) - Rs.
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={form.ratePerPulseDay}
+                        readOnly
+                      />
+                    </div>
 
 
                     {renderInput(
@@ -736,12 +800,17 @@ export default function PlanManagement() {
                       { value: "45", label: "45 Sec" },
                       { value: "60", label: "60 Sec" },
                     ])}
-                    {renderInput(
-                      "Rate Per Pulse - Rs.",
-                      "ratePerPulse",
-                      "Rate Per Pulse",
-                      "number"
-                    )}
+                    <div className="col-md-4 mb-2">
+                      <label className="form-label">
+                        Rate Per Pulse - Rs.
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={form.ratePerPulse}
+                        readOnly
+                      />
+                    </div>
                     {renderInput(
                       "Inbound Call Charge (Night Shift) - Rs.",
                       "inboundChargeNight",
@@ -755,12 +824,17 @@ export default function PlanManagement() {
                       { value: "45", label: "45 Sec" },
                       { value: "60", label: "60 Sec" },
                     ])}
-                    {renderInput(
-                      "Rate Per Pulse (Night Shift) - Rs.",
-                      "ratePerPulseNight",
-                      "Rate Per Pulse",
-                      "number"
-                    )}
+                    <div className="col-md-4 mb-2">
+                      <label className="form-label">
+                        Rate Per Pulse (Night Shift) - Rs.
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={form.ratePerPulseNight}
+                        readOnly
+                      />
+                    </div>
                     {renderInput(
                       "Email Charge - Rs.",
                       "emailCharge",
@@ -866,12 +940,17 @@ export default function PlanManagement() {
                       { value: "45", label: "45 Sec" },
                       { value: "60", label: "60 Sec" },
                     ])}
-                    {renderInput(
-                      "Rate Per Pulse (Multi Language) - Rs.",
-                      "ratePerPulseMultiLang",
-                      "Rate Per Pulse",
-                      "number"
-                    )}
+                    <div className="col-md-4 mb-2">
+                      <label className="form-label">
+                        Rate Per Pulse (Multi Language) - Rs.
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={form.ratePerPulseMultiLang}
+                        readOnly
+                      />
+                    </div>
                     {renderInput(
                       "Multi Language (Outbound Charge) - Rs.",
                       "multiOutboundCharge",
@@ -889,12 +968,17 @@ export default function PlanManagement() {
                         { value: "60", label: "60 Sec" },
                       ]
                     )}
-                    {renderInput(
-                      "Rate Per Pulse (Multi Language OB) - Rs.",
-                      "ratePerPulseMultiOutbound",
-                      "Rate Per Pulse",
-                      "number"
-                    )}
+                    <div className="col-md-4 mb-2">
+                      <label className="form-label">
+                        Rate Per Pulse (Multi Language OB) - Rs.
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        value={form.ratePerPulseMultiOutbound}
+                        readOnly
+                      />
+                    </div>
                     {renderInput(
                       "Multi Language (Live Chat)",
                       "multiLiveChat",

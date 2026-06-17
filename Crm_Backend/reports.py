@@ -4370,3 +4370,122 @@ def agentwise_tagging_variance_report(
         "count": len(data),
         "data": data
     }
+
+
+#############################################################  saatvik_dashboard ################
+class IVRReportRequest(BaseModel):
+    from_date: str
+    to_date: str
+
+@router.post("/saatvik_dashboard")
+def saatvik_dashboard(
+    request: IVRReportRequest,
+    db2: Session = Depends(get_db2)
+) -> Dict[str, Any]:
+
+    # IVR Summary
+    ivr_query = text("""
+        SELECT
+            COUNT(*) AS total_incoming_calls,
+
+            SUM(
+                CASE
+                    WHEN status IN ('AB','NA')
+                    THEN 1 ELSE 0
+                END
+            ) AS missed_calls,
+
+            SUM(
+                CASE
+                    WHEN status NOT IN ('AB','NA')
+                    THEN 1 ELSE 0
+                END
+            ) AS connected_calls,
+
+            SUM(
+                CASE
+                    WHEN user <> 'VDAD'
+                    THEN 1 ELSE 0
+                END
+            ) AS outbound_calls
+
+        FROM vicidial_log
+        WHERE campaign_id='SAATV001'
+        AND DATE(call_date)
+            BETWEEN :from_date
+            AND :to_date
+    """)
+
+    ivr = db2.execute(
+        ivr_query,
+        {
+            "from_date": request.from_date,
+            "to_date": request.to_date
+        }
+    ).mappings().first()
+
+    # Digital Leads (Salesforce / Website)
+    digital_query = text("""
+        SELECT
+            COUNT(*) AS total_leads,
+
+            SUM(
+                CASE
+                    WHEN status='NEW'
+                    THEN 1 ELSE 0
+                END
+            ) AS pending_leads,
+
+            SUM(
+                CASE
+                    WHEN status<>'NEW'
+                    THEN 1 ELSE 0
+                END
+            ) AS processed_leads
+
+        FROM vicidial_list
+        WHERE list_id=3333333
+        AND DATE(entry_date)
+            BETWEEN :from_date
+            AND :to_date
+    """)
+
+    digital = db2.execute(
+        digital_query,
+        {
+            "from_date": request.from_date,
+            "to_date": request.to_date
+        }
+    ).mappings().first()
+
+    # Latest LIFO Leads
+    lifo_query = text("""
+        SELECT
+            lead_id,
+            phone_number,
+            source_id,
+            status,
+            comments,
+            entry_date
+        FROM vicidial_list
+        WHERE list_id=3333333
+        AND DATE(entry_date)
+            BETWEEN :from_date
+            AND :to_date
+        ORDER BY entry_date DESC
+        LIMIT 50
+    """)
+
+    latest_leads = db2.execute(
+        lifo_query,
+        {
+            "from_date": request.from_date,
+            "to_date": request.to_date
+        }
+    ).mappings().all()
+
+    return {
+        "ivr_summary": dict(ivr) if ivr else {},
+        "digital_summary": dict(digital) if digital else {},
+        "latest_leads": [dict(x) for x in latest_leads]
+    }

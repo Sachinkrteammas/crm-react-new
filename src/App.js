@@ -186,6 +186,7 @@ import PlanSettings from "./pages/Plan_settings";
 import C2PCDRReports from "./pages/C2PCDRReports";
 import ClientWiseVarianceReport from "./pages/ClientWiseTaggingVarianceReport";
 import AgentwiseVarianceReport from "./pages/AgentwiseTaggingVarianceReport";
+import SaatvikDashboards from "./pages/Saatvik-dashboards";
 
 
 
@@ -484,6 +485,7 @@ function App() {
               <Route path="/C2PCDRReports" element={<C2PCDRReports />} />
               <Route path="/ClientWiseVarianceReport" element={<ClientWiseVarianceReport />} />
               <Route path="/AgentwiseVarianceReport" element={<AgentwiseVarianceReport />} />
+              <Route path="/SaatvikDashboards" element={<SaatvikDashboards />} />
               <></>
           </Route>
       </Route>
