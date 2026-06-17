@@ -2915,6 +2915,28 @@ def download_excel_raw_old(
             WHERE Id = :plan_id
             LIMIT 1
         """), {"plan_id": balance_result.PlanId}).mappings().fetchone()
+
+    # ---------------- EXCLUDED USERS FROM plan_details ----------------
+    plan_users = db.execute(text("""
+        SELECT remote_agents, dedicated_agents
+        FROM plandetails
+        WHERE client_id = :client_id
+    """), {"client_id": client_id}).mappings().fetchall()
+
+    excluded_users = set()
+
+    for row in plan_users:
+        remote_agents = row.get("remote_agents") or ""
+        dedicated_agents = row.get("dedicated_agents") or ""
+
+        # Split comma separated users
+        remote_list = [u.strip() for u in remote_agents.split(",") if u.strip()]
+        dedicated_list = [u.strip() for u in dedicated_agents.split(",") if u.strip()]
+
+        excluded_users.update(remote_list)
+        excluded_users.update(dedicated_list)
+
+    excluded_users = list(excluded_users)
         
 
     # parse plan values (with sensible defaults)
@@ -2991,23 +3013,35 @@ def download_excel_raw_old(
     if from_date <= cutoff_date:
         old_to = min(to_date, cutoff_date)
 
-        old_data = db_old.execute(text(f"""
+        call_query = """
             SELECT
                 IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
                 t2.phone_number,
                 t2.call_date,
                 t2.user
             FROM vicidial_closer_log t2
-            LEFT JOIN vicidial_agent_log t3 
-                ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+            LEFT JOIN vicidial_agent_log t3
+                ON t2.uniqueid = t3.uniqueid
+                AND t2.user = t3.user
             WHERE t2.user != 'VDCL'
-            AND t2.campaign_id IN :campaigns
-            AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
-        """), {
+              AND t2.campaign_id IN :campaigns
+              AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
+        """
+
+        params = {
             "campaigns": tuple(campaign_list),
             "from_date": from_date,
             "to_date": old_to
-        }).mappings().fetchall()
+        }
+
+        if excluded_users:
+            call_query += " AND t2.user NOT IN :excluded_users"
+            params["excluded_users"] = tuple(excluded_users)
+
+        old_data = db_old.execute(
+            text(call_query),
+            params
+        ).mappings().fetchall()
 
         call_data.extend(old_data)
 
@@ -3016,23 +3050,37 @@ def download_excel_raw_old(
     if to_date > cutoff_date:
         new_from = max(from_date, cutoff_date + timedelta(days=1))
 
-        new_data = db2.execute(text(f"""
-            SELECT
-                IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
-                t2.phone_number,
-                t2.call_date,
-                t2.user
-            FROM vicidial_closer_log t2
-            LEFT JOIN vicidial_agent_log t3 
-                ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
-            WHERE t2.user != 'VDCL'
-            AND t2.campaign_id IN :campaigns
-            AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
-        """), {
+        call_query = """
+                SELECT
+                    IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
+                    t2.phone_number,
+                    t2.call_date,
+                    t2.user
+                FROM vicidial_closer_log t2
+                LEFT JOIN vicidial_agent_log t3
+                    ON t2.uniqueid = t3.uniqueid
+                    AND t2.user = t3.user
+                WHERE t2.user != 'VDCL'
+                  AND t2.campaign_id IN :campaigns
+                  AND DATE(t2.call_date) BETWEEN :from_date AND :to_date
+            """
+
+        params = {
             "campaigns": tuple(campaign_list),
             "from_date": new_from,
             "to_date": to_date
-        }).mappings().fetchall()
+        }
+
+        # Exclude Remote + Dedicated Agents
+        if excluded_users:
+            call_query += " AND t2.user NOT IN :excluded_users"
+            params["excluded_users"] = tuple(excluded_users)
+
+        new_data = db2.execute(
+            text(call_query),
+            params
+        ).mappings().fetchall()
+
 
         call_data.extend(new_data)
 
@@ -3092,7 +3140,7 @@ def download_excel_raw_old(
     if from_date <= cutoff_date:
         old_to = min(to_date, cutoff_date)
 
-        old_aband = db_old.execute(text("""
+        aband_query = """
             SELECT
                 (va.talk_sec-va.dead_sec) length_in_sec,
                 LEFT(v.phone_number, 10) AS phone_number,
@@ -3101,23 +3149,39 @@ def download_excel_raw_old(
             FROM vicidial_log v
             JOIN vicidial_agent_log va ON v.uniqueid = va.uniqueid
             WHERE length_in_sec != 0
-                AND v.user != 'VDAD'
-                AND v.campaign_id IN :campaigns
-            AND DATE(v.call_date) BETWEEN :from_date AND :to_date
-        """), {
+              AND v.user != 'VDAD'
+              AND v.campaign_id IN :campaigns
+              AND DATE(v.call_date) BETWEEN :from_date AND :to_date
+        """
+
+        params = {
             "campaigns": tuple(campaign_list),
             "from_date": from_date,
             "to_date": old_to
-        }).mappings().fetchall()
+        }
+
+        if excluded_users:
+            aband_query += " AND v.user NOT IN :excluded_users"
+
+            old_aband = db_old.execute(
+                text(aband_query).bindparams(
+                    bindparam("excluded_users", expanding=True)
+                ),
+                {**params, "excluded_users": excluded_users}
+            ).mappings().fetchall()
+        else:
+            old_aband = db_old.execute(
+                text(aband_query),
+                params
+            ).mappings().fetchall()
 
         aband_data.extend(old_aband)
-
 
     # -------- NEW DIALER (22 April onwards) --------
     if to_date > cutoff_date:
         new_from = max(from_date, cutoff_date + timedelta(days=1))
 
-        new_aband = db2.execute(text("""
+        aband_query = """
             SELECT
                 (va.talk_sec-va.dead_sec) length_in_sec,
                 LEFT(v.phone_number, 10) AS phone_number,
@@ -3126,14 +3190,31 @@ def download_excel_raw_old(
             FROM vicidial_log v
             JOIN vicidial_agent_log va ON v.uniqueid = va.uniqueid
             WHERE length_in_sec != 0
-                AND v.user != 'VDAD'
-                AND v.campaign_id IN :campaigns
-            AND DATE(v.call_date) BETWEEN :from_date AND :to_date
-        """), {
+              AND v.user != 'VDAD'
+              AND v.campaign_id IN :campaigns
+              AND DATE(v.call_date) BETWEEN :from_date AND :to_date
+        """
+
+        params = {
             "campaigns": tuple(campaign_list),
             "from_date": new_from,
             "to_date": to_date
-        }).mappings().fetchall()
+        }
+
+        if excluded_users:
+            aband_query += " AND v.user NOT IN :excluded_users"
+
+            new_aband = db2.execute(
+                text(aband_query).bindparams(
+                    bindparam("excluded_users", expanding=True)
+                ),
+                {**params, "excluded_users": excluded_users}
+            ).mappings().fetchall()
+        else:
+            new_aband = db2.execute(
+                text(aband_query),
+                params
+            ).mappings().fetchall()
 
         aband_data.extend(new_aband)
 
@@ -3177,7 +3258,7 @@ def download_excel_raw_old(
     if from_date <= cutoff_date:
         old_to = min(to_date, cutoff_date)
 
-        old_query = text(f"""
+        query_text = f"""
             SELECT t2.list_id,
             t2.call_date AS CallDate,
             TIME(FROM_UNIXTIME(t2.start_epoch)) AS StartTime,
@@ -3187,27 +3268,44 @@ def download_excel_raw_old(
             FROM asterisk.vicidial_log t2
             LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
             LEFT JOIN vicidial_users t4 ON t2.user = t4.user
-            INNER JOIN asterisk.manual_call_log mcl ON RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10) AND mcl.uniqueid = t2.uniqueid
+            INNER JOIN asterisk.manual_call_log mcl
+                ON RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10)
+                AND mcl.uniqueid = t2.uniqueid
             WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
             AND t2.campaign_id IN ('dialdesk','Cryst002','Ajmal000','Superher')
-            AND t2.list_id in ('998','2001')
+            AND t2.list_id IN ('998','2001')
             AND t2.lead_id IS NOT NULL
             AND (LEFT(t2.phone_number,10), DATE(t2.call_date)) IN ({in_values})
-        """)
+        """
 
-        old_data = db_old.execute(old_query, {
+        params = {
             "from_date": from_date,
             "to_date": old_to
-        }).mappings().fetchall()
+        }
+
+        if excluded_users:
+            query_text += " AND t2.user NOT IN :excluded_users"
+
+            old_query = text(query_text).bindparams(
+                bindparam("excluded_users", expanding=True)
+            )
+
+            params["excluded_users"] = excluded_users
+        else:
+            old_query = text(query_text)
+
+        old_data = db_old.execute(
+            old_query,
+            params
+        ).mappings().fetchall()
 
         ab_data.extend(old_data)
-
 
     # -------- NEW DIALER (22 April onwards) --------
     if to_date > cutoff_date:
         new_from = max(from_date, cutoff_date + timedelta(days=1))
 
-        new_query = text(f"""
+        query_text = f"""
             SELECT t2.list_id,
             t2.call_date AS CallDate,
             TIME(FROM_UNIXTIME(t2.start_epoch)) AS StartTime,
@@ -3216,16 +3314,37 @@ def download_excel_raw_old(
             t3.talk_sec AS TalkSec
             FROM asterisk.vicidial_log t2
             LEFT JOIN vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid
+            LEFT JOIN vicidial_users t4 ON t2.user = t4.user
+            INNER JOIN asterisk.manual_call_log mcl
+                ON RIGHT(mcl.phone_number,10) = RIGHT(t2.phone_number,10)
+                AND mcl.uniqueid = t2.uniqueid
             WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
-            AND t2.campaign_id = 'dialdesk'
+            AND t2.campaign_id IN ('dialdesk','Cryst002','Ajmal000','Superher')
+            AND t2.list_id IN ('998','2001')
             AND t2.lead_id IS NOT NULL
             AND (LEFT(t2.phone_number,10), DATE(t2.call_date)) IN ({in_values})
-        """)
+        """
 
-        new_data = db2.execute(new_query, {
+        params = {
             "from_date": new_from,
             "to_date": to_date
-        }).mappings().fetchall()
+        }
+
+        if excluded_users:
+            query_text += " AND t2.user NOT IN :excluded_users"
+
+            new_query = text(query_text).bindparams(
+                bindparam("excluded_users", expanding=True)
+            )
+
+            params["excluded_users"] = excluded_users
+        else:
+            new_query = text(query_text)
+
+        new_data = db2.execute(
+            new_query,
+            params
+        ).mappings().fetchall()
 
         ab_data.extend(new_data)
 
