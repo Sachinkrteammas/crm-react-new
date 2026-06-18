@@ -108,6 +108,7 @@ function sumDurations(...durations) {
             return {
                 agent: row.agent,
                 phone: row.phone_number,
+                CallSource: row.CallSource,
                 callDate: row.call_date,
                 startTimeQueue: row.queue_start,
                 startTime: row.start_time,
@@ -174,6 +175,7 @@ const handleExport = async () => {
             return {
                 CallDate: row.call_date,
                 Time: row.start_time,
+                CallSource: row.CallSource,
                 AgentId: row.agent,
                 AgentName: row.full_name,
                 Calltype: 'Inbound',
@@ -386,6 +388,7 @@ const handleExport = async () => {
               <tr>
                 <th>Agent</th>
                 <th>Phone Number</th>
+                <th>Call Source</th>
                 <th>Call Date</th>
                 <th>Queue Time</th>
                 <th>Start Time - Queue</th>
@@ -410,6 +413,7 @@ const handleExport = async () => {
                 <tr key={idx}>
                   <td>{row.agent}</td>
                   <td>{row.phone}</td>
+                  <td>{row.CallSource}</td>
                   <td>{row.callDate}</td>
                   <td>{row.queueTime}</td>
                   <td>{row.startTimeQueue}</td>

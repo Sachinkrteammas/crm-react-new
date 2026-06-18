@@ -275,6 +275,27 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
     """)
     scenario_data2 = db.execute(scenario_query2).mappings().fetchall()
 
+    aband_query = text("""
+        SELECT DISTINCT PhoneNo
+        FROM aband_call_master
+        WHERE Callbackdate IS NOT NULL
+          AND DATE(CallDate) BETWEEN :from_date AND :to_date
+    """)
+
+    aband_rows = db.execute(
+        aband_query,
+        {
+            "from_date": request.from_date,
+            "to_date": request.to_date
+        }
+    ).mappings().fetchall()
+
+    aband_phones = {
+        str(row["PhoneNo"])[-10:]
+        for row in aband_rows
+        if row["PhoneNo"]
+    }
+
     # Merge into map by LeadId
     scenario_map = {}
     for row in scenario_data1 + scenario_data2:
@@ -342,6 +363,13 @@ def get_cdr_report(request: CDRReportRequest, db: Session = Depends(get_db4), db
             enriched_row["Recording"] = recording_link
         else:
             enriched_row["Recording"] = None
+
+        phone = str(enriched_row.get("phone_number", ""))[-10:]
+
+        if phone in aband_phones:
+            enriched_row["CallSource"] = "Abandoned Callback Connected"
+        else:
+            enriched_row["CallSource"] = "Inbound Answered"
 
         enriched_result.append(enriched_row)
 
