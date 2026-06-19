@@ -13,3 +13,22 @@ class User(Base):
     updated_by = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ObdList(Base):
+    __tablename__ = "obd_list"
+
+    id = Column(Integer, primary_key=True)
+    list_id = Column(String(50))
+    description = Column(String(255))
+    created_by = Column(String(100))
+    createdate = Column(DateTime)
+
+
+class ObdData(Base):
+    __tablename__ = "obd_data"
+
+    id = Column(Integer, primary_key=True)
+    list_id = Column(String(50))
+    msisdn = Column(String(20))
+    createdate = Column(DateTime)

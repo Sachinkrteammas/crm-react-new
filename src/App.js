@@ -187,6 +187,10 @@ import C2PCDRReports from "./pages/C2PCDRReports";
 import ClientWiseVarianceReport from "./pages/ClientWiseTaggingVarianceReport";
 import AgentwiseVarianceReport from "./pages/AgentwiseTaggingVarianceReport";
 import SaatvikDashboards from "./pages/Saatvik-dashboards";
+import Obd_Managements_report from "./pages/Obd_Managements_report";
+import ObdManagements_Data_Upload from "./pages/ObdManagements_Data_Upload";
+import Obd_Managements_addlist from "./pages/Obd_Managements_addlist";
+import OrderStatus from "./pages/OrderStatus";
 
 
 
@@ -486,6 +490,10 @@ function App() {
               <Route path="/ClientWiseVarianceReport" element={<ClientWiseVarianceReport />} />
               <Route path="/AgentwiseVarianceReport" element={<AgentwiseVarianceReport />} />
               <Route path="/SaatvikDashboards" element={<SaatvikDashboards />} />
+              <Route path="/ObdManagements/report" element={<Obd_Managements_report />} />
+              <Route path="/ObdManagements/DataUpload" element={<ObdManagements_Data_Upload />} />
+              <Route path="/ObdManagements/addlist" element={<Obd_Managements_addlist />} />
+              <Route path="/OrderStatus" element={<OrderStatus />} />
               <></>
           </Route>
       </Route>
