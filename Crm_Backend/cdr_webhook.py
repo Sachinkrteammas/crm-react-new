@@ -465,7 +465,14 @@ def c2p_cdr_queues(
 
         result = db.execute(query).fetchall()
 
-        queue_names = [row[0] for row in result]
+        #queue_names = [row[0] for row in result]
+        queue_names = sorted({
+            row[0].strip()
+            for row in result
+            if row[0]
+               and row[0].strip()
+               and row[0].strip().lower() != "null"
+        })
 
         return {
             "status": True,
