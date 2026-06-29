@@ -131,6 +131,26 @@ def outbound_kpi_summary(
         {"start_dt": start_dt, "end_dt": end_dt}
     ).mappings().fetchone() or {}
 
+    qualified_leads = int(r.get("qualified_leads", 0) or 0)
+
+    # For company 663, use call_master count instead
+    if company_id == 663:
+        qualified_leads = db.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM call_master
+                WHERE DATE(CallDate) BETWEEN :start_date AND :end_date
+                AND ClientId = :company_id
+                AND Category1 = 'OB Leads Call'
+                AND Category2 = 'Interested'
+            """),
+            {
+                "start_date": start_date,
+                "end_date": end_date,
+                "company_id": company_id
+            }
+        ).scalar() or 0
+
     total_attempts = int(r.get("total_attempts", 0) or 0)
     connected_calls = int(r.get("connected_calls", 0) or 0)
 
@@ -148,7 +168,7 @@ def outbound_kpi_summary(
         "avgAttemptsPerNumber": float(r.get("avg_attempts_per_number") or 0),
         "connectedCalls": connected_calls,
         "connectionRate": connection_rate,
-        "qualifiedLeads": int(r.get("qualified_leads", 0) or 0),
+        "qualifiedLeads": int(qualified_leads),
         "manual_count": int(r.get("manual_count", 0) or 0),
         "pdCount": pd_count
     }
