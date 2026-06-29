@@ -332,11 +332,31 @@ def outbound_call_funnel(
         {"start_dt": start_dt, "end_dt": end_dt}
     ).mappings().fetchone() or {}
 
+    qualified = int(r.get("qualified", 0) or 0)
+
+    # For company 663, use call_master qualified count instead
+    if company_id == 663:
+        qualified = db.execute(
+            text("""
+                SELECT COUNT(*)
+                FROM call_master
+                WHERE DATE(CallDate) BETWEEN :start_date AND :end_date
+                AND ClientId = :company_id
+                AND Category1 = 'OB Leads Call'
+                AND Category2 = 'Interested'
+            """),
+            {
+                "start_date": start_date,
+                "end_date": end_date,
+                "company_id": company_id,
+            },
+        ).scalar() or 0
+
     total_data = int(r.get("total_data", 0) or 0)
     unique_dialed = int(r.get("unique_dialed", 0) or 0)
     total_attempts = int(r.get("total_attempts", 0) or 0)
     connected = int(r.get("connected", 0) or 0)
-    qualified = int(r.get("qualified", 0) or 0)
+    # qualified = int(r.get("qualified", 0) or 0)
 
     dial_rate = (unique_dialed * 100 / total_data) if total_data else 0
     connect_rate = (connected * 100 / unique_dialed) if unique_dialed else 0
@@ -441,6 +461,39 @@ def outbound_performance_trend(
         }
         for r in attempt_rows
     }
+
+    # For company 663, use daily qualified count from call_master
+    if company_id == 663:
+        qualified_query = text("""
+            SELECT
+                DATE(CallDate) AS day,
+                COUNT(*) AS qualified
+            FROM call_master
+            WHERE DATE(CallDate) BETWEEN :start_date AND :end_date
+            AND ClientId = :company_id
+            AND Category1 = 'OB Leads Call'
+            AND Category2 = 'Interested'
+            GROUP BY DATE(CallDate)
+        """)
+
+        qualified_rows = db.execute(
+            qualified_query,
+            {
+                "start_date": start_date,
+                "end_date": end_date,
+                "company_id": company_id,
+            }
+        ).mappings().all()
+
+        # Reset sales to 0
+        for day in trend_data:
+            trend_data[day]["sales"] = 0
+
+        # Replace with call_master counts
+        for r in qualified_rows:
+            day = r["day"]
+            if day in trend_data:
+                trend_data[day]["sales"] = int(r["qualified"] or 0)
 
     # -----------------------------------
     # 2️⃣ Daily Connected (Optimized Join)
@@ -647,6 +700,41 @@ def agent_performance(
         }
         for r in calls_rows
     }
+
+    # For company 663, use qualified count from call_master
+    if company_id == 663:
+        qualified_query = text("""
+            SELECT
+                am.username AS agent,
+                COUNT(*) AS qualified
+            FROM call_master cm
+            INNER JOIN agent_master am
+                ON cm.AgentId = am.id
+            WHERE cm.CallDate BETWEEN :start_dt AND :end_dt
+            AND cm.ClientId = :company_id
+            AND cm.Category1 = 'OB Leads Call'
+            AND cm.Category2 = 'Interested'
+            GROUP BY am.username
+        """)
+
+        qualified_rows = db.execute(
+            qualified_query,
+            {
+                "start_dt": start_dt,
+                "end_dt": end_dt,
+                "company_id": company_id,
+            },
+        ).mappings().all()
+
+        # Reset sales
+        for agent in agent_data:
+            agent_data[agent]["sales"] = 0
+
+        # Replace with call_master counts
+        for r in qualified_rows:
+            agent = str(r["agent"])
+            if agent in agent_data:
+                agent_data[agent]["sales"] = int(r["qualified"] or 0)
 
     # ---------------------------------------
     # 2️⃣ Connected Calls (Optimized Join)
