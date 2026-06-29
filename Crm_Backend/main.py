@@ -88,6 +88,7 @@ from plan_settings import router as plan_settings_router
 from cdr_webhook import router as cdr_webhook_router
 from Obd_Managements import router as Obd_Managements
 
+
 app = FastAPI(title="CRM Backend")
 
 app.mount("/training_file", StaticFiles(directory="uploads/training_file"), name="training_file")
@@ -276,7 +277,7 @@ scheduler = BackgroundScheduler()
 #scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
 scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
 scheduler.add_job(run_report_scheduler, "interval", minutes=1)
-scheduler.add_job(pull_salesforce_leads, "interval", minutes=3)
+scheduler.add_job(pull_salesforce_leads, "interval", minutes=1)
 # scheduler.add_job(run_cdr_scheduler, 'cron', hour=13, minute=15)
 # scheduler.add_job(run_agent_apr_scheduler, 'cron', hour=15, minute=52)
 
