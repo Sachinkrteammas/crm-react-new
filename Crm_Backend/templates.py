@@ -127,6 +127,8 @@ class AlertMechanismCreate(BaseModel):
     alert_on: str
     template_name: str
     template_text: str
+    template_id: Optional[str] = None
+    abandon: bool = False
     WHATSAPP_API_KEY: Optional[str] = None
     WHATSAPP_SESSION_ID: Optional[str] = None
 
@@ -181,8 +183,8 @@ def create_alert_mechanism(payload: AlertMechanismCreate):
 
     insert_query = text("""
         INSERT INTO alert_mechanisms
-        (client_id, alert_category, alert_on, template_name, template_text, WHATSAPP_API_KEY, WHATSAPP_SESSION_ID, created_at)
-        VALUES (:client_id, :alert_category, :alert_on, :template_name, :template_text, :WHATSAPP_API_KEY, :WHATSAPP_SESSION_ID, NOW())
+        (client_id, alert_category, alert_on, template_name, template_id, abandon,template_text, WHATSAPP_API_KEY, WHATSAPP_SESSION_ID, created_at)
+        VALUES (:client_id, :alert_category, :alert_on, :template_name,:template_id, :abandon, :template_text, :WHATSAPP_API_KEY, :WHATSAPP_SESSION_ID, NOW())
     """)
 
     try:
@@ -192,6 +194,8 @@ def create_alert_mechanism(payload: AlertMechanismCreate):
                 "alert_category": payload.alert_category,
                 "alert_on": payload.alert_on,
                 "template_name": payload.template_name,
+                "template_id": payload.template_id,
+                "abandon": payload.abandon,
                 "template_text": payload.template_text,
                 "WHATSAPP_API_KEY": payload.WHATSAPP_API_KEY,
                 "WHATSAPP_SESSION_ID": payload.WHATSAPP_SESSION_ID
@@ -212,6 +216,8 @@ class AlertMechanismUpdate(BaseModel):
     alert_on: Optional[str] = None
     template_name: Optional[str] = None
     template_text: Optional[str] = None
+    template_id: Optional[str] = None
+    abandon: Optional[bool] = None
     WHATSAPP_API_KEY: Optional[str] = None
     WHATSAPP_SESSION_ID: Optional[str] = None
 
@@ -231,6 +237,14 @@ def update_caller_alert_mechanism(alert_id: int, payload: AlertMechanismUpdate):
         if payload.template_text:
             update_fields.append("template_text = :template_text")
             params["template_text"] = payload.template_text
+
+        if payload.template_id is not None:
+            update_fields.append("template_id = :template_id")
+            params["template_id"] = payload.template_id
+
+        if payload.abandon is not None:
+            update_fields.append("abandon = :abandon")
+            params["abandon"] = payload.abandon
 
         if payload.WHATSAPP_API_KEY is not None:
             update_fields.append("WHATSAPP_API_KEY = :WHATSAPP_API_KEY")

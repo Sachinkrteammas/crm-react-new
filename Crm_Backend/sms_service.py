@@ -4,83 +4,48 @@ from sqlalchemy import text
 from database import get_db4, get_db2
 import json
 import requests
-
+import re
+import html
 router = APIRouter()
-
-# ---------------------------------------------
-# SMS Configuration
-# ---------------------------------------------
-SMS_CONFIG = {
-    "FABONOW": {
-        "template_id": "1707178211044395154",
-        "message": (
-            "Thank you for connecting with Fabo Laundry & Services. "
-            "Your booking is not yet complete. "
-            "To schedule your pickup, visit www.fabonow.com "
-            "or connect with us on WhatsApp at +91 8977005508. Ispark"
-        )
-    },
-    "PRISTINO": {
-        "template_id": "1707178211041542150",
-        "message": (
-            "Thank you for connecting with Pristino Laundry & Services. "
-            "Your booking is not yet complete. "
-            "To schedule your pickup, visit www.thepristino.com "
-            "or connect with us on WhatsApp at +91 8106047373. Ispark"
-        )
-    }
-}
 
 
 
 def send_sms(phone: str, message: str, template_id: str):
     try:
-        # ---- Normalize mobile number (same as PHP) ----
+        # Normalize mobile number (same as PHP)
         phone = str(phone)
-        phone = phone[-10:]  # last 10 digits
+        phone = phone[-10:]  # Last 10 digits
 
         if len(phone) < 11:
             phone = "91" + phone
 
         payload = {
-            "username": "mascallnet.trans",
-            "password": "COjap",
+            "username": "mascl1.trans",
+            "password": "tWE7_VF@",
             "unicode": "False",
             "from": "Ispark",
             "to": phone,
             "dltContentId": template_id,
-            "text": message
+            "text": message,
+            "dltPrincipalEntityId": "1001485540000016211"
         }
-
-
 
         headers = {
             "Content-Type": "application/x-www-form-urlencoded"
         }
 
         response = requests.post(
-            "https://api.smartping.ai/fe/api/v1/send",
+            "https://pgapi.sparc.smartping.io/fe/api/v1/send",
             data=payload,
             headers=headers,
             timeout=10
         )
-        
 
-        # API usually returns text / JSON
-        response_text = response.text
-
-        # ---- Decide success ----
-        if response.status_code == 200:
-            return {
-                "status": "success",
-                "response": response_text
-            }
-        else:
-            return {
-                "status": "failed",
-                "http_status": response.status_code,
-                "response": response_text
-            }
+        return {
+            "status": "success" if response.status_code == 200 else "failed",
+            "http_status": response.status_code,
+            "response": response.text
+        }
 
     except Exception as e:
         return {
@@ -89,153 +54,166 @@ def send_sms(phone: str, message: str, template_id: str):
         }
 
 
-
-
-
-
-
-
-# ---------------------------------------------
-# Identify client from campaign
-# ---------------------------------------------
-# def get_client(campaign_id: str):
-
-#     if not campaign_id:
-#         return None
-
-#     campaign = campaign_id.upper()
-
-#     if "FABO" in campaign:
-#         return "FABONOW"
-
-#     if "PRISTINO" in campaign:
-#         return "PRISTINO"
-
-#     return None
-
-
-def get_client(campaign_id: str):
-    if not campaign_id:
-        return None
-
-    campaign = campaign_id.strip().upper()
-
-    # Fabonow Campaigns
-    fabonow_campaigns = {
-        "FABON000",
-        "FABOE000",
-        "FABOIN0000",
-        "FABONOW0000",
-        "FABOINBOUNDOB000",
-        "FABOOBH000",
-        "FABOOBF0000",
-        "FABOOBP000"
-    }
-
-    # Pristino Campaigns
-    pristino_campaigns = {
-        "FaboPristino00001",
-        "FABOPRISTINO00001"
-    }
-
-    if campaign in fabonow_campaigns:
-        return "FABONOW"
-
-    if campaign in pristino_campaigns:
-        return "PRISTINO"
-
-    return None
-
-
-
 # ---------------------------------------------
 # API
 # ---------------------------------------------
+
+def clean_html(text: str) -> str:
+    if not text:
+        return ""
+
+    text = re.sub(r"<[^>]+>", "", text)
+    text = html.unescape(text)
+
+    # [text](url) -> text
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+
+    # Remove extra spaces
+    text = re.sub(r"\s+", " ", text).strip()
+
+    return text
+
+
 @router.get("/run")
-def abandoned_call_sms(db: Session = Depends(get_db4), db2: Session = Depends(get_db2)):
-
-    # Fetch abandoned calls
-    query = text("""
-        SELECT
-            uniqueid,
-            phone_number,
-            campaign_id,
-            call_date
-        FROM vicidial_closer_log
-        WHERE user='VDCL'
-        ORDER BY call_date DESC
-    """)
-
-    calls = db2.execute(query).mappings().all()
+def abandoned_call_sms(
+    db: Session = Depends(get_db4),
+    db2: Session = Depends(get_db2)
+):
 
     total_sms = 0
     response_list = []
 
-    for call in calls:
+    # Get all enabled SMS configurations
+    configs = db.execute(text("""
+        SELECT
+            client_id,
+            template_id,
+            template_text
+        FROM alert_mechanisms
+        WHERE
+            alert_category='caller'
+            AND alert_on='SMS'
+            AND abandon=1
+    """)).mappings().all()
 
-        # Prevent duplicate SMS
-        already_sent = db.execute(
+    for config in configs:
+
+        client_id = config["client_id"]
+
+        # Get campaigns for this client
+        campaigns = db.execute(
             text("""
-                SELECT id
-                FROM abandoned_sms_log
-                WHERE uniqueid=:uid
+                SELECT campaignid
+                FROM registration_master
+                WHERE company_id=:client_id
             """),
-            {"uid": call["uniqueid"]}
-        ).first()
+            {"client_id": client_id}
+        ).scalars().all()
 
-        if already_sent:
+        if not campaigns:
             continue
 
-        client = get_client(call["campaign_id"])
+        # convert it into a Python list.
+        campaign_string = campaigns[0]
 
-        if not client:
-            continue
+        campaigns = [
+            x.strip().strip("'")
+            for x in campaign_string.split(",")
+        ]
 
-        sms_data = SMS_CONFIG[client]
 
-        sms_response = send_sms(
-            phone=call["phone_number"],
-            message=sms_data["message"],
-            template_id=sms_data["template_id"]
+        placeholders = ",".join(
+            f":c{i}" for i in range(len(campaigns))
         )
 
-        db.execute(
-            text("""
-                INSERT INTO abandoned_sms_log
-                (
+        params = {
+            f"c{i}": campaigns[i]
+            for i in range(len(campaigns))
+        }
+
+
+        # Get abandoned calls only for this client's campaigns
+        calls = db2.execute(
+            text(f"""
+                SELECT
                     uniqueid,
-                    phone,
+                    phone_number,
                     campaign_id,
-                    sms_status,
-                    provider_response
-                )
-                VALUES
-                (
-                    :uid,
-                    :phone,
-                    :campaign,
-                    :status,
-                    :response
-                )
+                    call_date
+                FROM vicidial_closer_log
+                WHERE
+                    user='VDCL'
+                    AND campaign_id IN ({placeholders})
+                    AND DATE(call_date) = CURDATE()
+                ORDER BY call_date DESC
             """),
-            {
-                "uid": call["uniqueid"],
+            params
+        ).mappings().all()
+
+
+
+        for call in calls:
+
+            # Prevent duplicate SMS
+            already_sent = db.execute(
+                text("""
+                    SELECT id
+                    FROM abandoned_sms_log
+                    WHERE uniqueid=:uid
+                """),
+                {"uid": call["uniqueid"]}
+            ).first()
+
+            if already_sent:
+                continue
+
+            message = clean_html(config["template_text"])
+
+
+            sms_response = send_sms(
+                phone=call["phone_number"],
+                message=message,
+                template_id=config["template_id"]
+            )
+
+
+            db.execute(
+                text("""
+                    INSERT INTO abandoned_sms_log
+                    (
+                        uniqueid,
+                        phone,
+                        campaign_id,
+                        sms_status,
+                        provider_response
+                    )
+                    VALUES
+                    (
+                        :uid,
+                        :phone,
+                        :campaign,
+                        :status,
+                        :response
+                    )
+                """),
+                {
+                    "uid": call["uniqueid"],
+                    "phone": call["phone_number"],
+                    "campaign": call["campaign_id"],
+                    "status": 1 if sms_response["status"] == "success" else 0,
+                    "response": json.dumps(sms_response)
+                }
+            )
+
+            total_sms += 1
+
+            response_list.append({
+                "client_id": client_id,
+                "uniqueid": call["uniqueid"],
                 "phone": call["phone_number"],
                 "campaign": call["campaign_id"],
-                "status": 1 if sms_response["status"] == "success" else 0,
-                "response": json.dumps(sms_response)
-            }
-        )
-
-        total_sms += 1
-
-        response_list.append({
-            "uniqueid": call["uniqueid"],
-            "phone": call["phone_number"],
-            "campaign": call["campaign_id"],
-            "client": client,
-            "sms_response": sms_response
-        })
+                "sms_response": sms_response
+            })
 
     db.commit()
 
@@ -244,15 +222,6 @@ def abandoned_call_sms(db: Session = Depends(get_db4), db2: Session = Depends(ge
         "sms_sent": total_sms,
         "details": response_list
     }
-
-
-
-
-
-
-
-
-
 
 
 

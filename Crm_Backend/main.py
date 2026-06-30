@@ -87,6 +87,7 @@ from bot_integration import run_push_to_sheet,run_sla_push_to_sheet
 from plan_settings import router as plan_settings_router
 from cdr_webhook import router as cdr_webhook_router
 from Obd_Managements import router as Obd_Managements
+from sms_service import router as sms_service
 
 
 app = FastAPI(title="CRM Backend")
@@ -167,6 +168,7 @@ app.include_router(backup_reports_router, tags=["Backup Reports"], dependencies=
 app.include_router(bot_integration, tags=["Bot Integration"])
 app.include_router(plan_settings_router, tags=["Plan Settings"], dependencies=[Depends(verify_token)])
 app.include_router(Obd_Managements, tags=["Obd Managements"], dependencies=[Depends(verify_token)])
+app.include_router(sms_service, tags=["SMS Service"], dependencies=[Depends(verify_token)])
 
 app.include_router(dialer_router, prefix="/api")
 app.include_router(cdr_webhook_router)

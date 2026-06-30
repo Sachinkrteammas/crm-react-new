@@ -63,6 +63,9 @@ export default function ManageAlertsEscalations() {
   const [activeAlertSection, setActiveAlertSection] = useState("caller");
   const [alertMenuOpen, setAlertMenuOpen] = useState(true);
 
+  const [templateId, setTemplateId] = useState("");
+  const [abandon, setAbandon] = useState(false);
+
   // Fetch clients for Admin/Super-Admin
   useEffect(() => {
     const fetchClients = async () => {
@@ -226,6 +229,8 @@ export default function ManageAlertsEscalations() {
     setCallerAlertOn("");
     setSelectedTemplate("");
     setCallerTemplateText("");
+    setTemplateId("");
+    setAbandon(false);
     setWhatsappkey("");          
     setSessionId("");  
     fetchCallerAlerts();
@@ -242,6 +247,8 @@ export default function ManageAlertsEscalations() {
         alert_category: "caller",
         alert_on: callerAlertOn,
         template_name: selectedTemplate,
+        template_id: templateId,
+        abandon: abandon,
         template_text: callerTemplateText,
         WHATSAPP_API_KEY: Whatsappkey,
         WHATSAPP_SESSION_ID: SessionId,
@@ -269,6 +276,8 @@ export default function ManageAlertsEscalations() {
     setCallerAlertOn(alert.alert_on);
     setSelectedTemplate(alert.template_name);
     setCallerTemplateText(alert.template_text);
+    setTemplateId(alert.template_id || "");
+    setAbandon(Boolean(alert.abandon));
     setWhatsappkey(alert.WHATSAPP_API_KEY || "");
     setSessionId(alert.WHATSAPP_SESSION_ID || "");
 
@@ -750,6 +759,8 @@ export default function ManageAlertsEscalations() {
                                 setCallerTemplateText(
                                   found?.template_text || ""
                                 );
+                                setTemplateId(found?.template_id || "");
+                                setAbandon(found?.abandon || false);
                               }}
                             >
                               <option value="">Select Template</option>
@@ -760,6 +771,38 @@ export default function ManageAlertsEscalations() {
                               ))}
                             </select>
                           </div>
+
+                          {callerAlertOn === "SMS" && (
+                              <>
+                                <div className="col-md-3">
+                                  <label className="form-label fw-semibold">
+                                    Template ID
+                                  </label>
+
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={templateId}
+                                    onChange={(e) => setTemplateId(e.target.value)}
+                                  />
+                                </div>
+
+                                <div className="col-md-2 d-flex align-items-end">
+                                  <div className="form-check mb-2">
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      checked={abandon}
+                                      onChange={(e) => setAbandon(e.target.checked)}
+                                    />
+
+                                    <label className="form-check-label">
+                                      Abandon
+                                    </label>
+                                  </div>
+                                </div>
+                              </>
+                            )}
 
                           {/* Template Text (Readonly) */}
                           <div className="col-md-8">
