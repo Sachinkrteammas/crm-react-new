@@ -88,6 +88,7 @@ from plan_settings import router as plan_settings_router
 from cdr_webhook import router as cdr_webhook_router
 from Obd_Managements import router as Obd_Managements
 from sms_service import router as sms_service
+from sms_service import run_abandoned_call_sms
 
 
 app = FastAPI(title="CRM Backend")
@@ -285,6 +286,7 @@ scheduler.add_job(pull_salesforce_leads, "interval", minutes=1)
 
 # scheduler.add_job(run_push_to_sheet, "interval", minutes=1, max_instances=1)
 #scheduler.add_job(run_sla_push_to_sheet, "interval", minutes=1, max_instances=1)
+scheduler.add_job(run_abandoned_call_sms, "interval", minutes=1)
 
 
 @app.on_event("startup")

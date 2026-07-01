@@ -224,6 +224,16 @@ def abandoned_call_sms(
     }
 
 
+def run_abandoned_call_sms():
+    db = next(get_db4())
+    db2 = next(get_db2())
+
+    try:
+        abandoned_call_sms(db=db, db2=db2)
+    finally:
+        db.close()
+        db2.close()
+
 
 @router.get("/test-sms")
 def test_sms():
