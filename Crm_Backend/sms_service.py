@@ -1,3 +1,5 @@
+import math
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -137,6 +139,7 @@ def abandoned_call_sms(
             text(f"""
                 SELECT
                     uniqueid,
+                    lead_id,
                     phone_number,
                     campaign_id,
                     call_date
@@ -168,6 +171,12 @@ def abandoned_call_sms(
                 continue
 
             message = clean_html(config["template_text"])
+
+            # Duration = number of words
+            duration = len(message.split())
+
+            # Unit = word count / 60 (minimum 1 unit)
+            unit = max(1, math.ceil(duration / 60))
 
 
             sms_response = send_sms(
@@ -202,6 +211,83 @@ def abandoned_call_sms(
                     "campaign": call["campaign_id"],
                     "status": 1 if sms_response["status"] == "success" else 0,
                     "response": json.dumps(sms_response)
+                }
+            )
+
+            db.execute(
+                text("""
+                    INSERT INTO sms_log
+                    (
+                        clientID,
+                        alertType,
+                        data_id,
+                        sms_status,
+                        sms_time,
+                        smsNumber,
+                        smsMsg,
+                        processType
+                    )
+                    VALUES
+                    (
+                        :client_id,
+                        'Alert',
+                        :lead_id,
+                        :sms_status,
+                        NOW(),
+                        :phone,
+                        :sms_msg,
+                        1
+                    )
+                """),
+                {
+                    "client_id": client_id,
+                    "lead_id": call["lead_id"],
+                    "sms_status": json.dumps(sms_response),
+                    "phone": call["phone_number"],
+                    "sms_msg": message,
+                }
+            )
+
+            db.execute(
+                text("""
+                    INSERT INTO billing_master
+                    (
+                        clientId,
+                        data_id,
+                        CallDate,
+                        CallTime,
+                        LeadId,
+                        CallFrom,
+                        Duration,
+                        Unit,
+                        Amount,
+                        DedType,
+                        DedSubType,
+                        send_status
+                    )
+                    VALUES
+                    (
+                        :client_id,
+                        :lead_id,
+                        CURDATE(),
+                        CURTIME(),
+                        :lead_id,
+                        :phone,
+                        :duration,
+                        :unit,
+                        0,
+                        'SMS',
+                        'Alert',
+                        :send_status
+                    )
+                """),
+                {
+                    "client_id": client_id,
+                    "lead_id": call["lead_id"],
+                    "phone": call["phone_number"],
+                    "duration": duration,
+                    "unit": unit,
+                    "send_status": 1 if sms_response["status"] == "success" else 0,
                 }
             )
 

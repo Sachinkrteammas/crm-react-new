@@ -24,7 +24,9 @@ import PriorityCalls from "./pages/PriorityCalls";
 import CsatView from "./pages/csat_view";
 import CsatViewOld from "./pages/csat_view_old";
 import CurrentBillStatement from "./pages/CurrentBillStatement";
+import CurrentBillStatementAudio from "./pages/CurrentBillStatementAudio";
 import CurrentBillStatementOld from "./pages/CurrentBillStatement_Old";
+import CurrentBillStatementOldAudio from "./pages/CurrentBillStatement_Old_Audio";
 import TaggingPage from "./pages/TaggingPage";
 import ManageAdminLogins from "./pages/ManageAdminLogins";
 import ManageAdminAccess from "./pages/ManageAdminAccess";
@@ -330,7 +332,9 @@ function App() {
               <Route path="/AbandCallback/csat_view" element={<CsatView />} />
               <Route path="/AbandCallback/csat_view_old" element={<CsatViewOld />} />
               <Route path="/BillingReports/get_stmt" element={<CurrentBillStatement />} />
+              <Route path="/BillingReports/get_stmt_audio" element={<CurrentBillStatementAudio />} />
               <Route path="/BillingReports/get_stmt_old" element={<CurrentBillStatementOld />} />
+              <Route path="/BillingReports/get_stmt_old_audio" element={<CurrentBillStatementOldAudio />} />
               <Route path="/tagging" element={<TaggingPage />} />
               <Route path="/admin_login" element={<ManageAdminLogins />} />
               <Route path="/admin_access" element={<ManageAdminAccess />} />
