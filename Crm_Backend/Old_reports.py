@@ -4730,10 +4730,6 @@ def download_excel_raw_old_audio(
             <td>{call_pulse}</td>
             <td>{call_rate:.2f}</td>
 
-            <td>{recording_length}</td>
-            <td>{rec_pulse}</td>
-            <td>{rec_rate:.2f}</td>
-            <td>{difference:.2f}</td>
 
             <td>{audio_length}</td>
             <td>{audio_pulse}</td>
@@ -4793,10 +4789,6 @@ def download_excel_raw_old_audio(
             <td>{call_pulse}</td>
             <td>{call_rate:.2f}</td>
 
-            <td>{recording_length}</td>
-            <td>{rec_pulse}</td>
-            <td>{rec_rate:.2f}</td>
-            <td>{difference:.2f}</td>
 
             <td>{audio_length}</td>
             <td>{audio_pulse}</td>
@@ -4816,10 +4808,8 @@ def download_excel_raw_old_audio(
     # --- Create DAY table ---
     html += f"""
     <table border='1' width='600' cellpadding='2' cellspacing='2' style="font-size:11pt;">
-    <tr><td colspan='15' style='font-size:15pt;background-color:#607d8b;color:#fff;'>{client_result.company_name if client_result else ''} (INBOUND DAY)</td></tr>
-    <tr><th>Date</th><th>Time</th><th>Call From</th><th>Agent</th><th>Talk Time</th><th>Pulse</th><th>Rate</th><th>Recording Talk Time</th>
-    <th>Recording Pulse</th>
-    <th>Recording Rate</th><th>Difference</th><th>Audio Talk Time</th>
+    <tr><td colspan='11' style='font-size:15pt;background-color:#607d8b;color:#fff;'>{client_result.company_name if client_result else ''} (INBOUND DAY)</td></tr>
+    <tr><th>Date</th><th>Time</th><th>Call From</th><th>Agent</th><th>Talk Time</th><th>Pulse</th><th>Rate</th><th>Audio Talk Time</th>
     <th>Audio Pulse</th>
     <th>Audio Rate</th>
     <th>Difference</th></tr>
@@ -4830,10 +4820,7 @@ def download_excel_raw_old_audio(
         <td>{ib_pulse}</td>
         <td>{ib_total:.2f}</td>
 
-        <td>{ib_rec_secs}</td>
-        <td>{ib_rec_pulse}</td>
-        <td>{ib_rec_total:.2f}</td>
-        <td>{ib_diff_total:.2f}</td>
+        
 
         <td>{ib_audio_secs}</td>
         <td>{ib_audio_pulse}</td>
@@ -4847,10 +4834,8 @@ def download_excel_raw_old_audio(
     html += f"""
     <table><tr><td>&nbsp;</td></tr></table>
     <table border='1' width='600' cellpadding='2' cellspacing='2' style="font-size:11pt;">
-    <tr><td colspan='15' style="font-size:15pt;background-color:#607d8b;color:#fff;">{client_result.company_name if client_result else ''} (INBOUND NIGHT)</td></tr>
-    <tr><th>Date</th><th>Time</th><th>Call From</th><th>Agent</th><th>Talk Time</th><th>Pulse</th><th>Rate</th><th>Recording Talk Time</th>
-    <th>Recording Pulse</th>
-    <th>Recording Rate</th><th>Difference</th><th>Audio Talk Time</th>
+    <tr><td colspan='11' style="font-size:15pt;background-color:#607d8b;color:#fff;">{client_result.company_name if client_result else ''} (INBOUND NIGHT)</td></tr>
+    <tr><th>Date</th><th>Time</th><th>Call From</th><th>Agent</th><th>Talk Time</th><th>Pulse</th><th>Rate</th><th>Audio Talk Time</th>
     <th>Audio Pulse</th>
     <th>Audio Rate</th>
     <th>Difference</th></tr>
@@ -4861,10 +4846,7 @@ def download_excel_raw_old_audio(
         <td>{ibn_pulse}</td>
         <td>{ibn_total:.2f}</td>
 
-        <td>{ibn_rec_secs}</td>
-        <td>{ibn_rec_pulse}</td>
-        <td>{ibn_rec_total:.2f}</td>
-        <td>{ibn_diff_total:.2f}</td>
+        
         <td>{ibn_audio_secs}</td>
         <td>{ibn_audio_pulse}</td>
         <td>{ibn_audio_total:.2f}</td>
