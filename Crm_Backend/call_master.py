@@ -3852,8 +3852,8 @@ WHERE t2.user != 'VDCL'
             <th>Rate</th>
             <th>Amount</th>
         </tr>
-        <tr><td>ICB</td><td>{ib_call_count}</td><td>{ib_pulse}</td><td>{ib_pulse_rate} Rs./{ib_pulse_sec} Sec</td><td>{ib_total:.2f}</td></tr>
-        <tr><td>ICB Night</td><td>{ibn_call_count}</td><td>{ibn_pulse}</td><td>{ibn_pulse_rate} Rs./{ibn_pulse_sec} Sec</td><td>{ibn_total:.2f}</td></tr>
+        <tr><td>ICB</td><td>{ib_call_count}</td><td>{ib_pulse}</td><td>{ib_pulse_rate} Rs./{ib_pulse_sec} Sec</td><td>{ib_min_rate_total:.2f}</td></tr>
+        <tr><td>ICB Night</td><td>{ibn_call_count}</td><td>{ibn_pulse}</td><td>{ibn_pulse_rate} Rs./{ibn_pulse_sec} Sec</td><td>{ibn_min_rate_total:.2f}</td></tr>
         <tr><td>ABCB</td><td></td><td>{ob_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ob_total:.2f}</td></tr>
         <tr><td>OCB</td><td></td><td>{ab_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ab_total:.2f}</td></tr>
         <tr><td>SMS</td><td></td><td>{sms_pulse}</td><td>{sms_charge} Rs./Min</td><td>{sms_total:.2f}</td></tr>
