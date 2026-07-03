@@ -3813,8 +3813,8 @@ WHERE t2.user != 'VDCL'
 
     # grand_total = ib_total + ibn_total + ob_total + ab_total + amount_sms + amount_email + amount_rx
     grand_total = (
-            Decimal(ib_total) +
-            Decimal(ibn_total) +
+            Decimal(ib_min_rate_total) +
+            Decimal(ibn_min_rate_total) +
             Decimal(ob_total) +
             Decimal(ab_total) +
             Decimal(sms_total) +
