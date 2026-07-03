@@ -4133,7 +4133,6 @@ def download_excel_raw_old_audio(
         call_query = """
             SELECT
             IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
-            t4.length_in_sec AS recording_length,
             t5.length_in_sec AS audio_length,
             t2.phone_number,
             t2.call_date,
@@ -4142,9 +4141,6 @@ def download_excel_raw_old_audio(
         LEFT JOIN vicidial_agent_log t3
             ON t2.uniqueid = t3.uniqueid
             AND t2.user = t3.user
-        LEFT JOIN recording_log t4
-            ON t2.lead_id = t4.lead_id
-            AND t2.user = t4.user
         LEFT JOIN recording_log_audio t5
         ON t2.lead_id = t5.lead_id
         AND t2.user = t5.user
@@ -4177,7 +4173,6 @@ def download_excel_raw_old_audio(
         call_query = """
                 SELECT
                 IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
-                t4.length_in_sec AS recording_length,
                 t5.length_in_sec AS audio_length,
                 t2.phone_number,
                 t2.call_date,
@@ -4186,9 +4181,6 @@ def download_excel_raw_old_audio(
             LEFT JOIN vicidial_agent_log t3
                 ON t2.uniqueid = t3.uniqueid
                 AND t2.user = t3.user
-            LEFT JOIN recording_log t4
-                ON t2.lead_id = t4.lead_id
-                AND t2.user = t4.user
                 LEFT JOIN recording_log_audio t5
                 ON t2.lead_id = t5.lead_id
                 AND t2.user = t5.user
@@ -4651,7 +4643,6 @@ def download_excel_raw_old_audio(
 
     for r in call_data:
         length = r.get("length_in_sec")
-        recording_length = float(r.get("recording_length") or 0)
         audio_length = float(r.get("audio_length") or 0)
         call_date = r.get("call_date")
         # skip empty durations
@@ -4697,14 +4688,6 @@ def download_excel_raw_old_audio(
             ibn_secs += call_pulsesec  # PHP increments by call_pulsesec which is 0
             ibn_total += call_rate
 
-            rec_pulse = int(ceil(recording_length / ibn_pulse_sec)) if recording_length > 0 else 0
-            rec_rate = (Decimal(rec_pulse) * ibn_pulse_rate).quantize(Decimal("0.0001"))
-            difference = (call_rate - rec_rate).quantize(Decimal("0.0001"))
-            ibn_rec_secs += recording_length
-            ibn_rec_pulse += rec_pulse
-            ibn_rec_total += rec_rate
-            ibn_diff_total += difference
-
             audio_pulse = int(ceil(audio_length / ibn_pulse_sec)) if audio_length > 0 else 0
 
             audio_rate = (Decimal(audio_pulse) * ibn_pulse_rate).quantize(
@@ -4714,7 +4697,7 @@ def download_excel_raw_old_audio(
             audio_difference = (call_rate - audio_rate).quantize(
                 Decimal("0.0001")
             )
-            min_rate = min(call_rate, rec_rate, audio_rate)
+            min_rate = min(call_rate, audio_rate)
 
             ibn_audio_secs += audio_length
             ibn_audio_pulse += audio_pulse
@@ -4758,14 +4741,8 @@ def download_excel_raw_old_audio(
             ib_pulse += call_pulse
             ib_secs += call_pulsesec  # PHP increments by call_pulsesec which is 0
             ib_total += call_rate
-            rec_pulse = int(ceil(recording_length / ib_pulse_sec)) if recording_length > 0 else 0
-            rec_rate = (Decimal(rec_pulse) * ib_pulse_rate).quantize(Decimal("0.0001"))
-            difference = (call_rate - rec_rate).quantize(Decimal("0.0001"))
 
-            ib_rec_secs += recording_length
-            ib_rec_pulse += rec_pulse
-            ib_rec_total += rec_rate
-            ib_diff_total += difference
+
 
             audio_pulse = int(ceil(audio_length / ib_pulse_sec)) if audio_length > 0 else 0
 
@@ -4776,7 +4753,7 @@ def download_excel_raw_old_audio(
             audio_difference = (call_rate - audio_rate).quantize(
                 Decimal("0.0001")
             )
-            min_rate = min(call_rate, rec_rate, audio_rate)
+            min_rate = min(call_rate, audio_rate)
 
             ib_audio_secs += audio_length
             ib_audio_pulse += audio_pulse
