@@ -930,3 +930,159 @@ def get_shopify_token(
 
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+########################## Webhook Sokudu #############
+
+class Summary(BaseModel):
+    walletBalance: float
+    availableMinutes: float
+    monthUsageMinutes: float
+    currentBilling: float
+    daysRemaining: int
+    lowBalanceThreshold: float
+
+
+class Usage(BaseModel):
+    date: str
+    botId: str
+    bot: str
+    callId: str
+    minutes: float
+    rate: float
+    usageCost: float
+    gst: float
+    total: float
+
+
+class BotsBreakdown(BaseModel):
+    id: str
+    name: str
+    minutes: float
+    cost: float
+    allocation: float
+
+
+class BotList(BaseModel):
+    id: str
+    name: str
+
+
+class DashboardWebhook(BaseModel):
+    summary: Summary
+    usage: Usage
+    botsBreakdown: BotsBreakdown
+    botList: BotList
+
+
+# -----------------------------
+# Webhook
+# -----------------------------
+
+@router.post("/webhook/Sokudu")
+async def dashboard_webhook(
+    data: DashboardWebhook,
+    db: Session = Depends(get_db4)
+):
+
+    db.execute(
+        text("""
+        INSERT INTO dashboard_webhook_sokudu
+        (
+            wallet_balance,
+            available_minutes,
+            month_usage_minutes,
+            current_billing,
+            days_remaining,
+            low_balance_threshold,
+
+            usage_date,
+            bot_id,
+            bot_name,
+            call_id,
+            minutes,
+            rate,
+            usage_cost,
+            gst,
+            total,
+
+            allocation,
+            bot_cost,
+            bot_minutes,
+
+            dropdown_bot_id,
+            dropdown_bot_name,
+
+            payload
+        )
+        VALUES
+        (
+            :wallet_balance,
+            :available_minutes,
+            :month_usage_minutes,
+            :current_billing,
+            :days_remaining,
+            :low_balance_threshold,
+
+            :usage_date,
+            :bot_id,
+            :bot_name,
+            :call_id,
+            :minutes,
+            :rate,
+            :usage_cost,
+            :gst,
+            :total,
+
+            :allocation,
+            :bot_cost,
+            :bot_minutes,
+
+            :dropdown_bot_id,
+            :dropdown_bot_name,
+
+            :payload
+        )
+        """),
+        {
+
+            # Summary
+            "wallet_balance": data.summary.walletBalance,
+            "available_minutes": data.summary.availableMinutes,
+            "month_usage_minutes": data.summary.monthUsageMinutes,
+            "current_billing": data.summary.currentBilling,
+            "days_remaining": data.summary.daysRemaining,
+            "low_balance_threshold": data.summary.lowBalanceThreshold,
+
+            # Usage
+            "usage_date": data.usage.date,
+            "bot_id": data.usage.botId,
+            "bot_name": data.usage.bot,
+            "call_id": data.usage.callId,
+            "minutes": data.usage.minutes,
+            "rate": data.usage.rate,
+            "usage_cost": data.usage.usageCost,
+            "gst": data.usage.gst,
+            "total": data.usage.total,
+
+            # Bot Breakdown
+            "allocation": data.botsBreakdown.allocation,
+            "bot_cost": data.botsBreakdown.cost,
+            "bot_minutes": data.botsBreakdown.minutes,
+
+            # Bot List
+            "dropdown_bot_id": data.botList.id,
+            "dropdown_bot_name": data.botList.name,
+
+            # Full Payload
+            "payload": json.dumps(data.model_dump())
+        }
+    )
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Dashboard webhook saved successfully",
+        "data": data
+    }
