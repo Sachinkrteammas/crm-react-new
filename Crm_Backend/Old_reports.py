@@ -4247,6 +4247,9 @@ def download_excel_raw_old_audio(
     ibn_audio_total = Decimal(0)
     ibn_audio_diff_total = Decimal(0)
 
+    ib_min_rate_total = Decimal(0)
+    ibn_min_rate_total = Decimal(0)
+
     ab_pulse = 0
     ab_secs = 0
     ab_total = Decimal(0)
@@ -4711,11 +4714,13 @@ def download_excel_raw_old_audio(
             audio_difference = (call_rate - audio_rate).quantize(
                 Decimal("0.0001")
             )
+            min_rate = min(call_rate, rec_rate, audio_rate)
 
             ibn_audio_secs += audio_length
             ibn_audio_pulse += audio_pulse
             ibn_audio_total += audio_rate
             ibn_audio_diff_total += audio_difference
+            ibn_min_rate_total += min_rate
 
             # Add row to night table
             # html_night_rows += f"<tr><td>{call_dt.date()}</td><td>{call_dt.time()}</td><td>{r.phone_number}</td><td>{r.user}</td><td>{length}</td><td>{call_pulse}</td><td>{call_rate:.2f}</td></tr>"
@@ -4735,6 +4740,7 @@ def download_excel_raw_old_audio(
             <td>{audio_pulse}</td>
             <td>{audio_rate:.2f}</td>
             <td>{audio_difference:.2f}</td>
+            <td>{min_rate:.2f}</td>
             </tr>
             """
         else:
@@ -4770,11 +4776,13 @@ def download_excel_raw_old_audio(
             audio_difference = (call_rate - audio_rate).quantize(
                 Decimal("0.0001")
             )
+            min_rate = min(call_rate, rec_rate, audio_rate)
 
             ib_audio_secs += audio_length
             ib_audio_pulse += audio_pulse
             ib_audio_total += audio_rate
             ib_audio_diff_total += audio_difference
+            ib_min_rate_total += min_rate
 
             # Add row to day table
             # html_day_rows += f"<tr><td>{call_dt.date()}</td><td>{call_dt.time()}</td><td>{r.phone_number}</td><td>{r.user}</td><td>{length}</td><td>{call_pulse}</td><td>{call_rate:.2f}</td></tr>"
@@ -4794,6 +4802,8 @@ def download_excel_raw_old_audio(
             <td>{audio_pulse}</td>
             <td>{audio_rate:.2f}</td>
             <td>{audio_difference:.2f}</td>
+            <td>{min_rate:.2f}</td>
+            
             </tr>
             """
     # html += f"""
@@ -4808,11 +4818,11 @@ def download_excel_raw_old_audio(
     # --- Create DAY table ---
     html += f"""
     <table border='1' width='600' cellpadding='2' cellspacing='2' style="font-size:11pt;">
-    <tr><td colspan='11' style='font-size:15pt;background-color:#607d8b;color:#fff;'>{client_result.company_name if client_result else ''} (INBOUND DAY)</td></tr>
+    <tr><td colspan='12' style='font-size:15pt;background-color:#607d8b;color:#fff;'>{client_result.company_name if client_result else ''} (INBOUND DAY)</td></tr>
     <tr><th>Date</th><th>Time</th><th>Call From</th><th>Agent</th><th>Talk Time</th><th>Pulse</th><th>Rate</th><th>Audio Talk Time</th>
     <th>Audio Pulse</th>
     <th>Audio Rate</th>
-    <th>Difference</th></tr>
+    <th>Difference</th><th>Min Rate</th></tr>
     {html_day_rows}
     <tr style='font-weight:bold; background-color:#e0e0e0;'>
         <td colspan='4' align='right'>Total</td>
@@ -4826,6 +4836,7 @@ def download_excel_raw_old_audio(
         <td>{ib_audio_pulse}</td>
         <td>{ib_audio_total:.2f}</td>
         <td>{ib_audio_diff_total:.2f}</td>
+        <td>{ib_min_rate_total:.2f}</td>
     </tr>
     </table>
     """
@@ -4834,11 +4845,11 @@ def download_excel_raw_old_audio(
     html += f"""
     <table><tr><td>&nbsp;</td></tr></table>
     <table border='1' width='600' cellpadding='2' cellspacing='2' style="font-size:11pt;">
-    <tr><td colspan='11' style="font-size:15pt;background-color:#607d8b;color:#fff;">{client_result.company_name if client_result else ''} (INBOUND NIGHT)</td></tr>
+    <tr><td colspan='12' style="font-size:15pt;background-color:#607d8b;color:#fff;">{client_result.company_name if client_result else ''} (INBOUND NIGHT)</td></tr>
     <tr><th>Date</th><th>Time</th><th>Call From</th><th>Agent</th><th>Talk Time</th><th>Pulse</th><th>Rate</th><th>Audio Talk Time</th>
     <th>Audio Pulse</th>
     <th>Audio Rate</th>
-    <th>Difference</th></tr>
+    <th>Difference</th><th>Min Rate</th></tr>
     {html_night_rows}
     <tr style='font-weight:bold; background-color:#e0e0e0;'>
         <td colspan='4' align='right'>Total</td>
@@ -4851,6 +4862,7 @@ def download_excel_raw_old_audio(
         <td>{ibn_audio_pulse}</td>
         <td>{ibn_audio_total:.2f}</td>
         <td>{ibn_audio_diff_total:.2f}</td>
+        <td>{ibn_min_rate_total:.2f}</td>
     </tr>
     </table>
     """
@@ -5167,8 +5179,8 @@ def download_excel_raw_old_audio(
 
     # grand_total = ib_total + ibn_total + ob_total + ab_total + amount_sms + amount_email + amount_rx
     grand_total = (
-            Decimal(ib_total) +
-            Decimal(ibn_total) +
+            Decimal(ib_min_rate_total) +
+            Decimal(ibn_min_rate_total) +
             Decimal(ob_total) +
             Decimal(ab_total) +
             Decimal(sms_total) +
@@ -5204,8 +5216,8 @@ def download_excel_raw_old_audio(
             <th>Rate</th>
             <th>Amount</th>
         </tr>
-        <tr><td>ICB</td><td>{ib_call_count}</td><td>{ib_pulse}</td><td>{ib_pulse_rate} Rs./{ib_pulse_sec} Sec</td><td>{ib_total:.2f}</td></tr>
-        <tr><td>ICB Night</td><td>{ibn_call_count}</td><td>{ibn_pulse}</td><td>{ibn_pulse_rate} Rs./{ibn_pulse_sec} Sec</td><td>{ibn_total:.2f}</td></tr>
+        <tr><td>ICB</td><td>{ib_call_count}</td><td>{ib_pulse}</td><td>{ib_pulse_rate} Rs./{ib_pulse_sec} Sec</td><td>{ib_min_rate_total:.2f}</td></tr>
+        <tr><td>ICB Night</td><td>{ibn_call_count}</td><td>{ibn_pulse}</td><td>{ibn_pulse_rate} Rs./{ibn_pulse_sec} Sec</td><td>{ibn_min_rate_total:.2f}</td></tr>
         <tr><td>ABCB</td><td></td><td>{ob_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ob_total:.2f}</td></tr>
         <tr><td>OCB</td><td></td><td>{ab_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ab_total:.2f}</td></tr>
         <tr><td>SMS</td><td></td><td>{sms_pulse}</td><td>{sms_charge} Rs./Min</td><td>{sms_total:.2f}</td></tr>
