@@ -129,6 +129,7 @@ const SLAClientWise = () => {
           Shared: values["Shared"],
           Dedicated: values["Dedicated"],
           Other: values["Other"],
+          ACHT: values["ACHT"],
           Talk: values["Talk"],
           Wait: values["wait"],
           Dispo: values["dispo"],

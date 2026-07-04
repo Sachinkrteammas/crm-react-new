@@ -742,6 +742,7 @@ def slot_wise_utilization(
             "dispo": dispo,
             "pause": pause,
             "hold": hold,
+            "ACHT": talk + dispo,
 
             "Al %": round((answered / total * 100) if total else 0, 2),
             "SL %": round((within_sla / answered * 100) if answered else 0, 2),
