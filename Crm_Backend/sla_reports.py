@@ -561,6 +561,25 @@ def export_sla_day_wise(
     return data
 
 
+def calculate_manpower(login_time, logout_time, slot_start, slot_end):
+    """
+    Returns manpower contribution for one slot.
+    Example:
+        60 min = 1.0
+        30 min = 0.5
+        15 min = 0.25
+    """
+
+    actual_start = max(login_time, slot_start)
+    actual_end = min(logout_time, slot_end)
+
+    if actual_end <= actual_start:
+        return 0
+
+    active_seconds = (actual_end - actual_start).total_seconds()
+
+    return active_seconds / 3600
+
 @router.get("/slot-wise-utilization")
 def slot_wise_utilization(
     startdate: str = Query(...),
@@ -635,9 +654,31 @@ def slot_wise_utilization(
         start_time = cur.strftime("%Y-%m-%d %H:%M:%S")
         end_time = (cur + timedelta(hours=1)).strftime("%Y-%m-%d %H:%M:%S")
 
+        slot_start = datetime.strptime(start_time, "%Y-%m-%d %H:%M:%S")
+        slot_end = datetime.strptime(end_time, "%Y-%m-%d %H:%M:%S")
+
         datearray.append(date_label)
         timearray.append(time_label)
         datetimeArray.setdefault(date_label, []).append(time_label)
+
+        login_sql = text("""
+        SELECT
+            user,
+            event,
+            event_date
+        FROM vicidial_user_log
+        WHERE event_date < :slot_end
+        AND event IN ('LOGIN','LOGOUT')
+        ORDER BY user,event_date
+        """)
+
+        login_rows = db2.execute(
+            login_sql,
+            {
+                "slot_start": start_time,
+                "slot_end": end_time
+            }
+        ).fetchall()
 
         qry = text(f"""
             SELECT 
@@ -728,13 +769,77 @@ def slot_wise_utilization(
         #     "Other Agents": ",".join([f"{ag_list.get(a)}({a})" for a in (r.Other_ag or "").split(",") if a]),
         # }
 
+        manpower = 0
+        agent_slot_time = {}
+
+        from collections import defaultdict
+
+        user_sessions = defaultdict(list)
+
+        for row in login_rows:
+            user_sessions[row.user].append(row)
+
+
+
+        for user, events in user_sessions.items():
+
+            login_time = None
+            worked_seconds = 0
+
+            # Was the agent already logged in before this slot?
+            for e in events:
+                if e.event_date >= slot_start:
+                    break
+
+                if e.event.upper() == "LOGIN":
+                    login_time = slot_start
+
+                elif e.event.upper() == "LOGOUT":
+                    login_time = None
+
+            for e in events:
+
+                # Events before this slot are already handled
+                if e.event_date < slot_start:
+                    continue
+
+                if e.event.upper() == "LOGIN":
+                    login_time = e.event_date
+
+                elif e.event.upper() == "LOGOUT" and login_time:
+
+                    overlap_start = max(login_time, slot_start)
+                    overlap_end = min(e.event_date, slot_end)
+
+                    if overlap_end > overlap_start:
+                        worked_seconds += (overlap_end - overlap_start).total_seconds()
+
+                    login_time = None
+
+            # Still logged in
+            if login_time:
+
+                overlap_start = max(login_time, slot_start)
+                overlap_end = slot_end
+
+                if overlap_end > overlap_start:
+                    worked_seconds += (overlap_end - overlap_start).total_seconds()
+
+            manpower += worked_seconds / 3600
+
+            agent_slot_time[user] = {
+                "worked": round(worked_seconds / 60),
+                "slot": 60,
+                "display": f"{round(worked_seconds / 60)}/60"
+            }
+
 
         data.setdefault(date_label, {})[time_label] = {
             "Total": total,
             "Answered": answered,
-            "Manpower": len(agents_set),
-            "Shared": len(shared_set),
-            "Dedicated": len(dedicated_set),
+            "Manpower": round(manpower,2),
+            # "Shared": len(shared_set),
+            # "Dedicated": len(dedicated_set),
             "Other": len(other_set),
 
             "Talk": talk,
@@ -742,7 +847,7 @@ def slot_wise_utilization(
             "dispo": dispo,
             "pause": pause,
             "hold": hold,
-            "ACHT": talk + dispo,
+            "ACHT": round(talk / answered, 2) if answered else 0,
 
             "Al %": round((answered / total * 100) if total else 0, 2),
             "SL %": round((within_sla / answered * 100) if answered else 0, 2),
@@ -751,13 +856,19 @@ def slot_wise_utilization(
             "Net login": talk + wait + dispo + hold,
 
             "Utilization %": round(
-                ((talk + dispo + hold) / (talk + wait + dispo + hold) * 100)
-                if (talk + wait + dispo + hold) else 0, 2
+                (talk / (talk + wait + dispo + hold) * 100)
+                if (talk + wait + dispo + hold) else 0,
+                2
             ),
 
             "WIthinSLA": within_sla,
 
-            "Manpower Agents": ",".join([f"{ag_list.get(a)}({a})" for a in agents_set]),
+            "Manpower Agents": ",".join(
+                [
+                    f"{ag_list.get(a)}({a}) {agent_slot_time.get(a, {}).get('display', '0/60')}"
+                    for a in agents_set
+                ]
+            ),
             "Shared Agents": ",".join([f"{ag_list.get(a)}({a})" for a in shared_set]),
             "Dedicated Agents": ",".join([f"{ag_list.get(a)}({a})" for a in dedicated_set]),
             "Other Agents": ",".join([f"{ag_list.get(a)}({a})" for a in other_set]),
@@ -785,8 +896,8 @@ def slot_wise_utilization(
 
     return {
         "data": data,
-        "datearray": list(set(datearray)),
-        "timearray": list(set(timearray)),
+        "datearray": sorted(set(datearray)),
+        "timearray": sorted(set(timearray)),
         "datetimeArray": datetimeArray
     }
 
