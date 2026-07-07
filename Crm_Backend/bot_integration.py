@@ -948,101 +948,100 @@ async def dashboard_webhook(
     payload = json.dumps(data)
 
     # Extract data safely
-    summary = data.get("summary", {})
-    usage = data.get("usage", {})
-    breakdown = data.get("botsBreakdown", {})
-    bot = data.get("botList", {})
+    feedback = data.get("feedback", {})
+
+    def feedback_value(key):
+        value = feedback.get(key)
+
+        if isinstance(value, dict):
+            return value.get("value")
+
+        return value
 
     db.execute(
         text("""
         INSERT INTO dashboard_webhook_sokudu
         (
-            wallet_balance,
-            available_minutes,
-            month_usage_minutes,
-            current_billing,
-            days_remaining,
-            low_balance_threshold,
-
-            usage_date,
-            bot_id,
-            bot_name,
-            call_id,
-            minutes,
-            rate,
-            usage_cost,
-            gst,
-            total,
-
-            allocation,
-            bot_cost,
-            bot_minutes,
-
-            dropdown_bot_id,
-            dropdown_bot_name,
-
+            phone,
+            campaign,
+            call_time,
+            status,
+            call_duration,
+            call_status,
+            recording_url,
+            direction,
+            outcome,
+            classification,
+            disposition,
+            reference_id,
+            account_id,
+            webhook_id,
+            call_url,
+            terminated_by,
+            caller_city,
+            issue_description,
+            callback_requested,
+            issue_category,
+            scooter_model,
+            whatsapp_number,
+            transcript,
             payload
         )
         VALUES
         (
-            :wallet_balance,
-            :available_minutes,
-            :month_usage_minutes,
-            :current_billing,
-            :days_remaining,
-            :low_balance_threshold,
-
-            :usage_date,
-            :bot_id,
-            :bot_name,
-            :call_id,
-            :minutes,
-            :rate,
-            :usage_cost,
-            :gst,
-            :total,
-
-            :allocation,
-            :bot_cost,
-            :bot_minutes,
-
-            :dropdown_bot_id,
-            :dropdown_bot_name,
-
+            :phone,
+            :campaign,
+            :call_time,
+            :status,
+            :call_duration,
+            :call_status,
+            :recording_url,
+            :direction,
+            :outcome,
+            :classification,
+            :disposition,
+            :reference_id,
+            :account_id,
+            :webhook_id,
+            :call_url,
+            :terminated_by,
+            :caller_city,
+            :issue_description,
+            :callback_requested,
+            :issue_category,
+            :scooter_model,
+            :whatsapp_number,
+            :transcript,
             :payload
         )
         """),
         {
-            # Summary
-            "wallet_balance": summary.get("walletBalance"),
-            "available_minutes": summary.get("availableMinutes"),
-            "month_usage_minutes": summary.get("monthUsageMinutes"),
-            "current_billing": summary.get("currentBilling"),
-            "days_remaining": summary.get("daysRemaining"),
-            "low_balance_threshold": summary.get("lowBalanceThreshold"),
+            "phone": data.get("phone"),
+            "campaign": data.get("campaign"),
+            "call_time": data.get("time"),
+            "status": data.get("status"),
+            "call_duration": data.get("call_duration"),
+            "call_status": data.get("call_status"),
+            "recording_url": data.get("call_recording_url"),
+            "direction": data.get("direction"),
+            "outcome": data.get("outcome"),
+            "classification": data.get("classification"),
+            "disposition": data.get("disposition"),
+            "reference_id": data.get("reference_id"),
+            "account_id": data.get("account_id"),
+            "webhook_id": data.get("id"),
+            "call_url": data.get("call_url"),
+            "terminated_by": data.get("call_terminated_by"),
 
-            # Usage
-            "usage_date": usage.get("date"),
-            "bot_id": usage.get("botId"),
-            "bot_name": usage.get("bot"),
-            "call_id": usage.get("callId"),
-            "minutes": usage.get("minutes"),
-            "rate": usage.get("rate"),
-            "usage_cost": usage.get("usageCost"),
-            "gst": usage.get("gst"),
-            "total": usage.get("total"),
+            "caller_city": feedback_value("caller_city"),
+            "issue_description": feedback_value("issue_description"),
+            "callback_requested": feedback_value("callback_requested"),
+            "issue_category": feedback_value("issue_category"),
+            "scooter_model": feedback_value("scooter_model"),
+            "whatsapp_number": feedback_value("whatsapp_number_shared"),
 
-            # Bot Breakdown
-            "allocation": breakdown.get("allocation"),
-            "bot_cost": breakdown.get("cost"),
-            "bot_minutes": breakdown.get("minutes"),
-
-            # Bot Dropdown
-            "dropdown_bot_id": bot.get("id"),
-            "dropdown_bot_name": bot.get("name"),
-
-            # Complete JSON
-            "payload": payload
+            "transcript": json.dumps(data.get("transcript", [])),
+            "payload": json.dumps(data)
         }
     )
 
