@@ -30,10 +30,25 @@ def auto_fit_columns(ws):
 @router.get("/export-excel")
 def export_did_logs_excel(db: Session = Depends(get_db4)):
 
+    # query = text("""
+    #     SELECT id, client_name, did_number, vendor_name, unique_id, call_time
+    #     FROM did_logs
+    #     ORDER BY id ASC
+    # """)
     query = text("""
-        SELECT id, client_name, did_number, vendor_name, unique_id, call_time
-        FROM did_logs
-        ORDER BY id ASC
+        SELECT d.id,d.client_name, d.did_number, d.vendor_name, d.unique_id, d.call_time
+
+            FROM did_logs d
+
+            INNER JOIN (
+
+                SELECT MAX(id) AS id
+
+                FROM did_logs
+
+                GROUP BY client_name, did_number, vendor_name
+
+            ) x ON d.id = x.id;
     """)
 
     rows = db.execute(query).fetchall()
