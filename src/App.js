@@ -193,6 +193,7 @@ import Obd_Managements_report from "./pages/Obd_Managements_report";
 import ObdManagements_Data_Upload from "./pages/ObdManagements_Data_Upload";
 import Obd_Managements_addlist from "./pages/Obd_Managements_addlist";
 import OrderStatus from "./pages/OrderStatus";
+import WeeboInformation from "./pages/weebo_information";
 
 
 
@@ -498,6 +499,7 @@ function App() {
               <Route path="/ObdManagements/DataUpload" element={<ObdManagements_Data_Upload />} />
               <Route path="/ObdManagements/addlist" element={<Obd_Managements_addlist />} />
               <Route path="/OrderStatus" element={<OrderStatus />} />
+              <Route path="/WeeboInformation" element={<WeeboInformation />} />
               <></>
           </Route>
       </Route>

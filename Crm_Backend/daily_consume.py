@@ -180,11 +180,15 @@ def compute_ib_consumption(
     inbound_sql = text("""
         SELECT
             IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
+            t5.length_in_sec AS audio_length,
             t2.phone_number,
             t2.call_date
         FROM vicidial_closer_log t2
         LEFT JOIN vicidial_agent_log t3
           ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
+        LEFT JOIN recording_log_audio t5
+            ON t2.lead_id = t5.lead_id
+            AND t2.user = t5.user
         WHERE t2.user != 'VDCL'
           AND t2.campaign_id IN :campaigns
           AND DATE(t2.call_date) = :last_date
@@ -214,6 +218,7 @@ def compute_ib_consumption(
 
     for r in vic_rows:
         length = r.get("length_in_sec")
+        audio_length = float(r.get("audio_length") or 0)
         call_date = r.get("call_date")
         # skip empty durations
         if not length:
@@ -253,9 +258,19 @@ def compute_ib_consumption(
             else:
                 call_pulse = int(ceil(duration / ibn_pulse_sec)) if ibn_pulse_sec > 0 else int(ceil(duration))
             call_rate = (Decimal(call_pulse) * ibn_pulse_rate).quantize(Decimal("0.0001"))
-            ibn_pulse += call_pulse
+
+
+            audio_pulse = int(ceil(audio_length / ibn_pulse_sec)) if audio_length > 0 else 0
+
+            audio_rate = (Decimal(audio_pulse) * ibn_pulse_rate).quantize(Decimal("0.0001"))
+
+            min_pulsesec = min(call_pulse, audio_pulse)
+            min_rate = min(call_rate, audio_rate)
+
+            ibn_pulse += min_pulsesec
             ibn_secs += call_pulsesec    # PHP increments by call_pulsesec which is 0
-            ibn_total += call_rate
+            ibn_total += min_rate
+
         else:
             convrt_pulse = duration / ib_pulse_sec if ib_pulse_sec > 0 else duration
             if first_minute_enabled:
@@ -267,9 +282,18 @@ def compute_ib_consumption(
             else:
                 call_pulse = int(ceil(duration / ib_pulse_sec)) if ib_pulse_sec > 0 else int(ceil(duration))
             call_rate = (Decimal(call_pulse) * ib_pulse_rate).quantize(Decimal("0.0001"))
-            ib_pulse += call_pulse
+
+
+            audio_pulse = int(ceil(audio_length / ib_pulse_sec)) if audio_length > 0 else 0
+
+            audio_rate = (Decimal(audio_pulse) * ib_pulse_rate).quantize(Decimal("0.0001"))
+
+            min_pulsesec = min(call_pulse, audio_pulse)
+            min_rate = min(call_rate, audio_rate)
+
+            ib_pulse += min_pulsesec
             ib_secs += call_pulsesec    # PHP increments by call_pulsesec which is 0
-            ib_total += call_rate
+            ib_total += min_rate
 
     # -----------------------------
     # STEP 2: Compute abandoned outbound (fixed)

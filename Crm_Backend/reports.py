@@ -4517,3 +4517,31 @@ def saatvik_dashboard(
         "digital_summary": dict(digital) if digital else {},
         "latest_leads": [dict(x) for x in latest_leads]
     }
+
+
+
+
+@router.get("/information-log")
+def get_weebo_information_log(
+    start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
+    end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    db: Session = Depends(get_db2),
+):
+    query = text("""
+        SELECT *
+        FROM weebo_information_log
+        WHERE DATE(call_time) BETWEEN :start_date AND :end_date
+        ORDER BY call_time ASC
+    """)
+
+    result = db.execute(
+        query,
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    )
+
+    rows = [dict(row._mapping) for row in result]
+
+    return rows
