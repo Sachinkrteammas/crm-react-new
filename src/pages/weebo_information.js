@@ -13,6 +13,7 @@ const WeeboInformation = () => {
   const [clientId, setClientId] = useState(companyId);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [tableData, setTableData] = useState([]);
 
 
   const activeClientId =
@@ -53,6 +54,32 @@ const WeeboInformation = () => {
 
     return `${year}-${month}-${day}`;
   };
+
+
+  const fetchData = async () => {
+    if (!startDate || !endDate) {
+        alert("Please select start date and end date");
+        return;
+    }
+
+    const formattedStartDate = formatDate(startDate);
+    const formattedEndDate = formatDate(endDate);
+
+    try {
+        setLoading(true);
+
+        const response = await api.get(
+        `/report/information-log?start_date=${formattedStartDate}&end_date=${formattedEndDate}`
+        );
+
+        setTableData(response.data || []);
+    } catch (error) {
+        console.error(error);
+        alert("Failed to fetch data");
+    } finally {
+        setLoading(false);
+    }
+    };
 
 
 
@@ -158,6 +185,13 @@ const WeeboInformation = () => {
                   />
                 </div>
 
+                <button
+                    className="btn btn-success fw-semibold"
+                    onClick={fetchData}
+                    >
+                    VIEW
+                </button>
+
                 {/* Export Button */}
                 <button
                   className="btn btn-primary fw-semibold"
@@ -168,6 +202,35 @@ const WeeboInformation = () => {
 
               </div>
             </div>
+            {tableData.length > 0 && (
+  <div className="card p-3">
+    <div className="table-responsive">
+      <table className="table table-bordered table-striped">
+        <thead className="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Caller Number</th>
+            <th>DID</th>
+            <th>Call Time</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {tableData.map((row) => (
+            <tr key={row.id}>
+              <td>{row.id}</td>
+              <td>{row.caller_number}</td>
+              <td>{row.did}</td>
+              <td>{new Date(row.call_time).toLocaleString()}</td>
+              <td>{row.duration}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+)}
           </div>
         </div>
       </div>
