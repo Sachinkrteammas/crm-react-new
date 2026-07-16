@@ -781,7 +781,12 @@ def slot_wise_utilization(
 
 
 
-        for user, events in user_sessions.items():
+        # for user, events in user_sessions.items():
+            # For client-wise report, count only agents who handled calls
+        active_agents = agents_set if clientID != "All" else user_sessions.keys()
+
+        for user in active_agents:
+            events = user_sessions.get(user, [])
 
             login_time = None
             worked_seconds = 0
@@ -799,7 +804,6 @@ def slot_wise_utilization(
 
             for e in events:
 
-                # Events before this slot are already handled
                 if e.event_date < slot_start:
                     continue
 
@@ -812,18 +816,20 @@ def slot_wise_utilization(
                     overlap_end = min(e.event_date, slot_end)
 
                     if overlap_end > overlap_start:
-                        worked_seconds += (overlap_end - overlap_start).total_seconds()
+                        worked_seconds += (
+                                overlap_end - overlap_start
+                        ).total_seconds()
 
                     login_time = None
 
-            # Still logged in
             if login_time:
-
                 overlap_start = max(login_time, slot_start)
                 overlap_end = slot_end
 
                 if overlap_end > overlap_start:
-                    worked_seconds += (overlap_end - overlap_start).total_seconds()
+                    worked_seconds += (
+                            overlap_end - overlap_start
+                    ).total_seconds()
 
             manpower += worked_seconds / 3600
 
