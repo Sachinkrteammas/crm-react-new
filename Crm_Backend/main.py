@@ -90,6 +90,7 @@ from Obd_Managements import router as Obd_Managements
 from sms_service import router as sms_service
 from sms_service import run_abandoned_call_sms
 from recording_sync import sync_recordings
+from shopify import router
 
 
 app = FastAPI(title="CRM Backend")
@@ -174,6 +175,7 @@ app.include_router(sms_service, tags=["SMS Service"], dependencies=[Depends(veri
 
 app.include_router(dialer_router, prefix="/api")
 app.include_router(cdr_webhook_router)
+app.include_router(router)
 
 
 # ✅ Create a function that runs the API logic automatically
