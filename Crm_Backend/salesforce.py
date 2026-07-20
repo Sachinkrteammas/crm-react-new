@@ -204,14 +204,14 @@ def save_lead_to_vicidial(db2: Session, lead):
                 "phone_number": phone,
                 "first_name": lead.get("FirstName", ""),
                 "last_name": lead.get("LastName", ""),
-                "address1": lead.get("Expected_capacity__c", ""),
+                "address1": lead.get("ExpectedCapacity", ""),
                 "address2": lead.get("Company", ""),
                 "city": lead.get("City", ""),
                 "state": lead.get("State", ""),
                 "postal_code": lead.get("PostalCode", ""),
-                "country_code": lead.get("Region__c", ""),
+                "country_code": lead.get("Region", ""),
                 "email": lead.get("Email", ""),
-                "comments": lead.get("Description__c", "")
+                "comments": lead.get("Description", "")
             }
         )
 
