@@ -1216,5 +1216,4 @@ def get_call_followups():
         db.close()
 
 
-# Usage
-leads = get_call_followups()
+
