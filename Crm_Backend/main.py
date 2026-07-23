@@ -83,7 +83,7 @@ from Old_reports import router as Old_reports_router
 from configure_report import router as configure_report_router
 from backup_reports import router as backup_reports_router
 from bot_integration import router as bot_integration
-from bot_integration import run_push_to_sheet,run_sla_push_to_sheet
+from bot_integration import run_push_to_sheet,run_sla_push_to_sheet,get_call_followups
 from plan_settings import router as plan_settings_router
 from cdr_webhook import router as cdr_webhook_router
 from Obd_Managements import router as Obd_Managements
@@ -291,6 +291,8 @@ scheduler.add_job(pull_salesforce_leads, "interval", minutes=1)
 #scheduler.add_job(run_sla_push_to_sheet, "interval", minutes=1, max_instances=1)
 scheduler.add_job(run_abandoned_call_sms, "interval", minutes=1)
 scheduler.add_job(sync_recordings, "cron", hour=1, minute=30)
+scheduler.add_job(get_call_followups, "interval", minutes=30)
+
 
 
 

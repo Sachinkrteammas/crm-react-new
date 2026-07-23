@@ -1052,3 +1052,169 @@ async def dashboard_webhook(
         "message": "Webhook saved successfully",
         "received_payload": data
     }
+
+
+##################################  InternetWale Leads Get ###################################
+
+import requests
+from sqlalchemy import text
+
+BASE_URL = "https://internetwale.com/api/v1"
+
+EMAIL = "saurabh.singh@dialdesk.net"
+PASSWORD = "@Nr!2hDT0j$f"
+
+
+
+
+
+def save_leads(db2, response, list_id):
+
+    if isinstance(response, list):
+        leads = response
+    else:
+        leads = response.get("data", [])
+    for lead in leads:
+
+        phone = (lead.get("phone") or "").strip()
+
+        if not phone:
+            continue
+
+        # Check duplicate
+        exists = db2.execute(
+            text("""
+                SELECT 1
+                FROM vicidial_list
+                WHERE phone_number = :phone
+                  AND list_id = :list_id
+                LIMIT 1
+            """),
+            {
+                "phone": phone,
+                "list_id": list_id
+            }
+        ).fetchone()
+
+        print(exists,"exists==")
+
+        if exists:
+            continue
+
+        db2.execute(text("""
+            INSERT INTO vicidial_list (
+                phone_number, title, first_name, middle_initial, last_name,
+                status, list_id,
+                address1, address2, address3,
+                city, state, province,
+                phone_code, called_since_last_reset, gmt_offset_now,
+                postal_code, country_code,
+                gender, date_of_birth,
+                entry_date, modify_date,
+                alt_phone, email, comments
+            )
+            VALUES (
+                :phone_number, :title, :first_name, :middle_initial, :last_name,
+                :status, :list_id,
+                :address1, :address2, :address3,
+                :city, :state, :province,
+                :phone_code, :called_since_last_reset, :gmt_offset_now,
+                :postal_code, :country_code,
+                :gender, :date_of_birth,
+                NOW(), NOW(),
+                :alt_phone, :email, :comments
+            )
+        """), {
+            "phone_number": phone,
+            "title": "",
+            "first_name": lead.get("contact_name") or lead.get("typed_contact_name") or "",
+            "middle_initial": "",
+            "last_name": "",
+            "status": "NEW",
+            "list_id": list_id,
+            "address1": lead.get("contact_address") or "",
+            "address2": "",
+            "address3": "",
+            "city": lead.get("locality") or "",
+            "state": "",
+            "province": "",
+            "phone_code": "1",
+            "called_since_last_reset": "N",
+            "gmt_offset_now": "5.50",
+            "postal_code": lead.get("pincode") or "",
+            "country_code": "",
+            "gender": "",
+            "date_of_birth": "",
+            "alt_phone": "",
+            "email": "",
+            "comments": lead.get("remarks") or ""
+        })
+
+    db2.commit()
+
+def get_token():
+    url = f"{BASE_URL}/auth/email/login"
+
+    payload = {
+        "email": EMAIL,
+        "password": PASSWORD
+    }
+
+    response = requests.post(url, json=payload)
+    response.raise_for_status()
+
+    data = response.json()
+
+    # Update this key if your API returns a different structure
+    return data["token"]
+
+
+
+def get_call_followups():
+    db_gen = get_db2()
+    db: Session = next(db_gen)
+
+    try:
+        token = get_token()
+        list_id = 4444444
+
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+
+        page = 23
+
+        while True:
+
+            url = f"{BASE_URL}/admin/call-follow-ups?page={page}&limit=20"
+
+            print(f"Fetching Page {page}")
+
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+
+            result = response.json()
+
+            leads = result.get("data", [])
+
+            if not leads:
+                break
+
+            save_leads(db, leads, list_id)
+
+            total_pages = result.get("totalPages", 1)
+
+            if page >= total_pages:
+                break
+
+            page += 1
+
+        print("All pages synced successfully.")
+
+
+    finally:
+        db.close()
+
+
+# Usage
+leads = get_call_followups()
