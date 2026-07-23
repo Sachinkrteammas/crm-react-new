@@ -1076,7 +1076,7 @@ def save_leads(db2, response, list_id):
         leads = response.get("data", [])
     for lead in leads:
 
-        phone = (lead.get("phone") or "").strip()
+        phone = (lead.get("phone") or "").strip()[-10:]
 
         if not phone:
             continue
