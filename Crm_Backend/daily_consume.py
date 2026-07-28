@@ -108,6 +108,24 @@ def compute_ib_consumption(
     campaign_list = [c.strip().strip("'") for c in raw_campaign.split(",") if c.strip()]
     print("RAW campaign_list =", campaign_list)
 
+    # --- EXCLUDED USERS FROM plandetails ---
+    plan_users_q = db.execute(text("""
+        SELECT remote_agents, dedicated_agents
+        FROM plandetails
+        WHERE client_id = :client_id
+    """), {"client_id": request.company_id}).mappings().fetchall()
+
+    excluded_users = set()
+    for row in plan_users_q:
+        remote_agents = row.get("remote_agents") or ""
+        dedicated_agents = row.get("dedicated_agents") or ""
+        remote_list = [u.strip() for u in remote_agents.split(",") if u.strip()]
+        dedicated_list = [u.strip() for u in dedicated_agents.split(",") if u.strip()]
+        excluded_users.update(remote_list)
+        excluded_users.update(dedicated_list)
+
+    excluded_users = list(excluded_users)
+
     # # --- VALIDATE CAMPAIGNS ONLY FOR OUTBOUND ---
     # valid_campaigns_sql = text("""
     #     SELECT DISTINCT campaign_id
@@ -177,7 +195,7 @@ def compute_ib_consumption(
     billing_date = request.billing_date
 
     # 3) inbound query (vicidial_closer_log left join vicidial_agent_log)
-    inbound_sql = text("""
+    inbound_query = """
         SELECT
             IF(t3.talk_sec IS NULL, t2.length_in_sec, t3.talk_sec) AS length_in_sec,
             t5.length_in_sec AS audio_length,
@@ -192,8 +210,13 @@ def compute_ib_consumption(
         WHERE t2.user != 'VDCL'
           AND t2.campaign_id IN :campaigns
           AND DATE(t2.call_date) = :last_date
-    """)
-    vic_rows = db2.execute(inbound_sql, {"campaigns": tuple(campaign_list), "last_date": billing_date}).mappings().fetchall()
+    """
+    inbound_params = {"campaigns": tuple(campaign_list), "last_date": billing_date}
+    if excluded_users:
+        inbound_query += " AND t2.user NOT IN :excluded_users"
+        inbound_params["excluded_users"] = tuple(excluded_users)
+    inbound_sql = text(inbound_query)
+    vic_rows = db2.execute(inbound_sql, inbound_params).mappings().fetchall()
 
     debug_sql = text("""
         SELECT DISTINCT campaign_id 
@@ -317,7 +340,9 @@ def compute_ib_consumption(
     if phone_date_pairs:
         in_values = ", ".join(f"('{pn}','{dt}')" for pn, dt in phone_date_pairs)
 
-        sql_vicidial = text(f"""
+        aband_params = {"billing_date": billing_date}
+
+        sql_vicidial_str = f"""
             SELECT t2.list_id,
                 DATE(t2.call_date) AS CallDate,
                 TIME(FROM_UNIXTIME(t2.start_epoch)) AS StartTime,
@@ -333,9 +358,14 @@ def compute_ib_consumption(
             AND t2.list_id in ('998','2001')
             AND t2.lead_id IS NOT NULL
             AND (LEFT(t2.phone_number,10), DATE(t2.call_date)) IN ({in_values})
-        """)
+        """
 
-        vicidial_rows = db2.execute(sql_vicidial, {"billing_date": billing_date}).mappings().fetchall()
+        if excluded_users:
+            sql_vicidial_str += " AND t2.user NOT IN :excluded_users"
+            aband_params["excluded_users"] = tuple(excluded_users)
+
+        sql_vicidial = text(sql_vicidial_str)
+        vicidial_rows = db2.execute(sql_vicidial, aband_params).mappings().fetchall()
         for call in vicidial_rows:
             talk_sec = float(call.get("TalkSec") or 0)
             if talk_sec <= 0:
@@ -364,7 +394,7 @@ def compute_ib_consumption(
     # -----------------------------------------------------------
     # STEP 1.5 — NORMAL OUTBOUND BILLING (1-day only)
     # -----------------------------------------------------------
-    outbound_sql = text("""
+    outbound_query = """
         SELECT
             (va.talk_sec-va.dead_sec) length_in_sec,
             LEFT(v.phone_number, 10) AS phone_number,
@@ -376,27 +406,18 @@ def compute_ib_consumption(
         AND v.user != 'VDAD'
         AND v.campaign_id IN :campaigns
         AND DATE(v.call_date) = :billing_date
-    """)
-    # outbound_sql = text("""
-    #     SELECT
-    #         GREATEST(CAST(va.talk_sec AS SIGNED) - CAST(va.dead_sec AS SIGNED), 0) AS length_in_sec,
-    #         LEFT(v.phone_number, 10) AS phone_number,
-    #         v.call_date,
-    #         v.user
-    #     FROM vicidial_log v
-    #     JOIN vicidial_agent_log va ON v.uniqueid = va.uniqueid
-    #     WHERE GREATEST(CAST(va.talk_sec AS SIGNED) - CAST(va.dead_sec AS SIGNED), 0) != 0
-    #     AND v.user != 'VDAD'
-    #     AND v.campaign_id IN :campaigns
-    #     AND DATE(v.call_date) = :billing_date
-    # """)
+    """
+    outbound_params = {
+        "campaigns": tuple(campaign_list),
+        "billing_date": billing_date
+    }
+    if excluded_users:
+        outbound_query += " AND v.user NOT IN :excluded_users"
+        outbound_params["excluded_users"] = tuple(excluded_users)
 
     outbound_rows = db2.execute(
-        outbound_sql,
-        {
-            "campaigns": tuple(campaign_list),
-            "billing_date": billing_date
-        }
+        text(outbound_query),
+        outbound_params
     ).mappings().fetchall()
     print("****",outbound_rows)
 
