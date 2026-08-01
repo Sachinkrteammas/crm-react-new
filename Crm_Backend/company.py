@@ -53,16 +53,17 @@ def hash_password(password: str):
 
 #     return {"success": True, "message": "OTP verified successfully, password set to 123456"}
 
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = "uploads/company_docs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # ---------------- Helper Functions ----------------
 def save_file(file: Optional[UploadFile], field_name: str) -> str:
     if file:
-        file_path = os.path.join(UPLOAD_DIR, f"{field_name}_{file.filename}")
+        safe_name = os.path.basename(file.filename.replace("\\", "/"))
+        file_path = os.path.join(UPLOAD_DIR, f"{field_name}_{safe_name}")
         with open(file_path, "wb") as f:
             shutil.copyfileobj(file.file, f)
-        return file_path
+        return f"{UPLOAD_DIR}/{field_name}_{safe_name}"
     return ""
 
 def save_multiple_files(files: Optional[List[UploadFile]], prefix: str) -> str:
@@ -107,13 +108,14 @@ async def register_company(
     designation3: Optional[str] = Form(None),
     mobile3: Optional[str] = Form(None),
     email3: Optional[str] = Form(None),
-    incorporationCertificate: UploadFile = File(...),
-    panCard: UploadFile = File(...),
+    incorporationCertificate: Optional[UploadFile] = File(None),
+    panCard: Optional[UploadFile] = File(None),
     authorizedAddressProof: Optional[UploadFile] = File(None),
     otherDocuments: Optional[List[UploadFile]] = File(None),
     billingAddressProof: Optional[UploadFile] = File(None),
     authorizedId: Optional[UploadFile] = File(None),
     companyLogo: Optional[UploadFile] = File(None),
+    is_shared: Optional[str] = Form(None),
     termsAccepted: bool = Form(...),
 ):
     if not termsAccepted:
@@ -180,7 +182,7 @@ async def register_company(
             contact_person3, cp3_designation, cp3_phone, cp3_email,
             incorporation_certificate, pancard, auth_person_address_prof,
             bill_address_prof, authorized_id_prof, company_logo, other_documents,
-            status, ip, email_verify
+            status, ip, email_verify, client_category, is_shared
         ) VALUES (
             NOW(), %(company_name)s, %(reg1)s, %(reg2)s, %(city)s, %(state)s, %(pincode)s, %(gst)s,
             %(auth_person)s, %(designation)s, %(phone)s, %(email)s, %(password)s,
@@ -189,7 +191,7 @@ async def register_company(
             %(cp2)s, %(cp2d)s, %(cp2p)s, %(cp2e)s,
             %(cp3)s, %(cp3d)s, %(cp3p)s, %(cp3e)s,
             %(incorp)s, %(pancard)s, %(auth_addr)s, %(billing)s, %(auth_id)s, %(logo)s, %(other_docs)s,
-            %(status)s,  %(ip)s, %(email_verify)s
+            %(status)s,  %(ip)s, %(email_verify)s, %(client_category)s, %(is_shared)s
         )
         """
 
@@ -232,7 +234,9 @@ async def register_company(
             "other_docs": other_docs_combined,
             "status": "A",
             "ip": client_ip,  # optional IP, can be None
-            "email_verify": email_verify
+            "email_verify": email_verify,
+            "client_category": "MV",
+            "is_shared": is_shared or None
         }
 
         cursor.execute(sql, values)
@@ -348,6 +352,9 @@ async def update_company(
     billingAddressProof: Optional[UploadFile] = File(None),
     authorizedId: Optional[UploadFile] = File(None),
     companyLogo: Optional[UploadFile] = File(None),
+    client_category: Optional[str] = Form(None),
+    status: Optional[str] = Form(None),
+    is_shared: Optional[str] = Form(None),
 ):
     try:
         # Password match check
@@ -394,6 +401,10 @@ async def update_company(
         if designation3: fields["cp3_designation"] = designation3
         if mobile3: fields["cp3_phone"] = mobile3
         if email3: fields["cp3_email"] = email3
+
+        if client_category: fields["client_category"] = client_category
+        if status: fields["status"] = status
+        if is_shared: fields["is_shared"] = is_shared
 
         if incorporation_path: fields["incorporation_certificate"] = incorporation_path
         if pan_path: fields["pancard"] = pan_path

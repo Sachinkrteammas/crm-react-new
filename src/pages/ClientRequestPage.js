@@ -200,11 +200,11 @@ const handleEdit = async (companyId) => {
                   <th style={{ minWidth: "40px" }}>SRN.</th>
                   <th style={{ minWidth: "150px" }}>COMPANY NAME</th>
                   <th style={{ minWidth: "120px" }}>CLIENT NAME</th>
-                  <th style={{ minWidth: "120px" }}>REQUEST TYPE</th>
-                  <th style={{ minWidth: "120px" }}>REQUEST STATUS</th>
-                  <th style={{ minWidth: "120px" }}>REQUEST DATA</th>
+                  <th style={{ minWidth: "120px" }}>CLIENT EMAIL</th>
+                  <th style={{ minWidth: "120px" }}>STATUS</th>
+                  <th style={{ minWidth: "120px" }}>STATE</th>
                   <th style={{ minWidth: "120px" }}>REQUEST DATE</th>
-                  <th style={{ minWidth: "120px" }}>RESPONSE DATE</th>
+                  {/* <th style={{ minWidth: "120px" }}>RESPONSE DATE</th> */}
                   <th style={{ minWidth: "80px" }}>ACTION</th>
                 </tr>
               </thead>
@@ -249,12 +249,12 @@ const handleEdit = async (companyId) => {
                       >
                         {company.create_date}
                       </td>
-                      <td
+                      {/* <td
                         className="text-truncate"
                         style={{ maxWidth: "120px" }}
                       >
                         {company.response_date || "N/A"}
-                      </td>
+                      </td> */}
                       <td>
                         <button
                           className="btn btn-sm btn-primary"

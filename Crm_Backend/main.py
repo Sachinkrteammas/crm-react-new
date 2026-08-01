@@ -96,6 +96,7 @@ from shopify import router
 app = FastAPI(title="CRM Backend")
 
 app.mount("/training_file", StaticFiles(directory="uploads/training_file"), name="training_file")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
@@ -116,7 +117,7 @@ app.include_router(dashboard_router, prefix="/dashboard", tags=["Home2"], depend
 app.include_router(agents_router, prefix="/agents", tags=["Agents"], dependencies=[Depends(verify_token)])
 app.include_router(real_time_agents_router, prefix="/real_time_agents", tags=["Real Time Agents"], dependencies=[Depends(verify_token)])
 app.include_router(plan_router, prefix="/plan", tags=["Plan Management"], dependencies=[Depends(verify_token)])
-app.include_router(company_router, prefix="/company", tags=["Company Management"], dependencies=[Depends(verify_token)])
+app.include_router(company_router, prefix="/company", tags=["Company Management"])
 app.include_router(dynamic_menu_router, prefix="/dynamic_menu", tags=["Dynamic Menu"], dependencies=[Depends(verify_token)])
 app.include_router(in_call_management_router, prefix="/in_call", tags=["In Call Management"], dependencies=[Depends(verify_token)])
 app.include_router(ecr_router, dependencies=[Depends(verify_token)])

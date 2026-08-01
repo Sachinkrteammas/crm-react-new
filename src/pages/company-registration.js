@@ -65,6 +65,11 @@ export default function WizardForm({
     authorizedId: null,
     companyLogo: null,
 
+    // Edit-only fields
+    client_category: "",
+    status: "",
+    is_shared: "Shared",
+
     // Agreement
     termsAccepted: false,
     existingFiles: {},
@@ -129,6 +134,11 @@ export default function WizardForm({
         },
 
         termsAccepted: initialData.termsAccepted || false,
+
+        // Edit-only fields
+        client_category: initialData.client_category || "",
+        status: initialData.status || "",
+        is_shared: initialData.is_shared ? "Shared" : "Dedicated",
       }));
     }
   }, [initialData]);
@@ -470,6 +480,13 @@ export default function WizardForm({
         data.delete("confirmPassword");
       }
 
+      // Append client_category/status (edit-only) and is_shared (all modes)
+      if (isEdit && formData.client_category) data.append("client_category", formData.client_category);
+      if (isEdit && formData.status) data.append("status", formData.status);
+      if (formData.is_shared) {
+        data.append("is_shared", formData.is_shared === "Shared" ? "1" : "0");
+      }
+
       // --- Build URL & method ---
       const url = isEdit
         ? `/company/update/${initialData.id}` // ✅ relative path
@@ -672,6 +689,53 @@ export default function WizardForm({
                   {step === 1 && (
                     <div>
                       <h6>Company Registration</h6>
+
+                      {/* Client Category & Status: Edit-only; Shared: always */}
+                      <div className="row g-3 mt-3">
+                        {isEdit && (
+                          <>
+                            <div className="col-sm-4">
+                              <select
+                                name="client_category"
+                                className="form-select"
+                                value={formData.client_category}
+                                onChange={handleChange}
+                              >
+                                <option value="">Select Client Category</option>
+                                <option value="HV">HV</option>
+                                <option value="MV">MV</option>
+                                <option value="LV">LV</option>
+                              </select>
+                            </div>
+                            <div className="col-sm-4">
+                              <select
+                                name="status"
+                                className="form-select"
+                                value={formData.status}
+                                onChange={handleChange}
+                              >
+                                <option value="">Select Status</option>
+                                <option value="A">Active</option>
+                                <option value="D">Deactivated</option>
+                                <option value="CL">Closed</option>
+                              </select>
+                            </div>
+                          </>
+                        )}
+                        <div className="col-sm-4">
+                          <select
+                            name="is_shared"
+                            className="form-select"
+                            value={formData.is_shared}
+                            onChange={handleChange}
+                          >
+                            <option value="">Select Shared Type</option>
+                            <option value="Shared">Shared</option>
+                            <option value="Dedicated">Dedicated</option>
+                          </select>
+                        </div>
+                      </div>
+
                       <div className="row g-3 mt-3">
                         {/* Left Column */}
                         <div className="col-sm-4">
