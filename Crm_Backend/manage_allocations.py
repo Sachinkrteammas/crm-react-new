@@ -101,18 +101,26 @@ def create_allocation(
 
     headers = [h.strip() for h in rows[0]]
 
-    # ✅ 3️⃣ Validate headers (ONLY Field1–Field20 allowed)
-    allowed_fields = [f"Field{i}" for i in range(1, 21)]
+    # ✅ 3️⃣ Validate column COUNT (like PHP count_field)
+    # PHP: if (count($filedata) != $cntField) → "Does not Match This Campaign Formate."
+    campaign_row = db.execute(text("""
+        SELECT TotalCount
+        FROM ob_campaign
+        WHERE ClientId = :cid AND id = :campaignId
+    """), {"cid": ClientId, "campaignId": CampaignId}).fetchone()
 
-    invalid_fields = [h for h in headers if h not in allowed_fields]
+    if not campaign_row:
+        raise HTTPException(status_code=400, detail="Campaign not found")
 
-    if invalid_fields:
+    cnt_field = int(campaign_row[0] or 0)
+
+    if len(headers) != cnt_field:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid column(s) in Excel: {invalid_fields}. Only Field1–Field20 allowed."
+            detail="Does not Match This Campaign Formate."
         )
 
-    # 🔥 Column count (like PHP)
+    # 🔥 Column count (like PHP: TotalCount => count of header row)
     total_count = len(headers)
 
     # ✅ 3️⃣ Insert allocation
@@ -143,9 +151,11 @@ def create_allocation(
             **{f"Field{i}": None for i in range(1, 21)}
         }
 
-        # 🔥 Map header → correct Field
-        for header, value in zip(headers, row):
-            data_dict[header] = value
+        # 🔥 Map positionally (like PHP): column c → Field{c+1}, header names ignored
+        for c, value in enumerate(row):
+            if c >= 20:
+                break
+            data_dict[f"Field{c+1}"] = value
 
         insert_campaign_data = text("""
             INSERT INTO ob_campaign_data

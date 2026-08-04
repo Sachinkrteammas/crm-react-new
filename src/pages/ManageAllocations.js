@@ -395,7 +395,7 @@ const ManageAllocations = () => {
                 }
               />
               <small className="text-muted d-block">
-                Note - (Upload only CSV file with header <code>Field1,Field2,...,Field20</code>; and , Field1 = phone number)
+                Note - (Upload only CSV file with header)
               </small>
             </div>
 
