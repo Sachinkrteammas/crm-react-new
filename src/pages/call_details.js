@@ -398,6 +398,57 @@ const handleViewClick = async () => {
   }
 };
 
+  const handleCloseloopDownload = async () => {
+    if (!activeCompanyId || activeCompanyId === "null") {
+      alert("Please select Client.");
+      return;
+    }
+
+    if (!startDate || !endDate) {
+      alert("Please select both start and end dates.");
+      return;
+    }
+
+    setLoading(true);
+
+    const formattedStart = format(startDate, "yyyy-MM-dd");
+    const formattedEnd = format(endDate, "yyyy-MM-dd");
+
+    try {
+      const response = await api.get(
+        `/call/call-master/${activeCompanyId}/download-csv`,
+        {
+          params: {
+            client_id: activeCompanyId,
+            from_date: formattedStart,
+            to_date: formattedEnd,
+            call_id: call_id || null,
+            in_call_action: inCallAction,
+            Category1: scenarioName?.trim(),
+            Category2: scenario1Name?.trim(),
+            Category3: scenario2Name?.trim(),
+            Category4: scenario3Name?.trim(),
+            Category5: "",
+          },
+          responseType: "blob",
+        }
+      );
+
+      const disposition = response.headers["content-disposition"] || "";
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const filename =
+        match?.[1] ||
+        `call_master_${formattedStart}_to_${formattedEnd}.csv`;
+
+      saveAs(new Blob([response.data], { type: "text/csv" }), filename);
+    } catch (error) {
+      console.error("Closeloop CSV download failed:", error);
+      alert("CSV download failed. Check console.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const tableColumns = [
     "View",
     "Recording",
@@ -649,9 +700,13 @@ const handleViewClick = async () => {
                       View
                     </button>
 
-                    {/* <button type="submit" className="btn btn-primary px-4 py-2">
+                    <button
+                      type="button"
+                      className="btn btn-primary px-4 py-2"
+                      onClick={handleCloseloopDownload}
+                    >
                       Closeloop
-                    </button> */}
+                    </button>
                   </div>
                 </div>
 

@@ -193,6 +193,15 @@ const fetchData = async () => {
       }
     });
 
+    // 🔥 Prefill close field scenarios (CField values saved in call_master)
+    closeFieldScenarios.forEach((sc) => {
+      const savedValue =
+        record[sc.Scenario] ??
+        record[`${sc.Scenario} (Close)`] ??
+        "";
+      copy[sc.Scenario] = savedValue || "";
+    });
+
     
 
 
@@ -444,6 +453,12 @@ const handleSubmit = async () => {
       payload[backendKey] = form[formKey] ?? null;
     });
 
+    // 🔥🔥🔥 MAP CLOSE FIELD SCENARIOS (CField columns)
+    closeFieldScenarios.forEach((sc) => {
+      const backendKey = `CField${sc.Label}`;   // CField1, CField2, CField3...
+      payload[backendKey] = form[sc.Scenario] ?? null;
+    });
+
     // ✅ Add mapped Category fields for backend
     payload.Category1 = getNameById(scenarioList, form.Scenario);
     payload.Category2 = getNameById(subScenarioList1, form["Sub-scenario1"]);
@@ -547,6 +562,48 @@ const handleSubmit = async () => {
   } catch (err) {
     console.error(err);
     alert("Failed to close the call.");
+  }
+};
+
+
+const handleCloseFieldScenariosUpdate = async () => {
+  if (!urlClientId || !callId) {
+    return alert("Client ID or Record ID not found.");
+  }
+
+  if (closeFieldScenarios.length === 0) return;
+
+  setLoading(true);
+  try {
+    const payload = {};
+    closeFieldScenarios.forEach((sc) => {
+      payload[`CField${sc.Label}`] = form[sc.Scenario] ?? null;
+    });
+
+    const res = await api.put(
+      `/close_fields/${urlClientId}/${callId}/call-master-cfields`,
+      payload
+    );
+
+    if (res.status === 200) {
+      alert("Close field values updated successfully!");
+
+      // 🔹 Sync apiRecord state with saved close field values
+      setApiRecord((prev) => {
+        const updated = { ...(prev || {}) };
+        closeFieldScenarios.forEach((sc) => {
+          updated[sc.Scenario] = form[sc.Scenario] ?? "";
+        });
+        return updated;
+      });
+    } else {
+      alert("Update failed.");
+    }
+  } catch (err) {
+    console.error("Close field update error:", err);
+    alert("Close field update request failed.");
+  } finally {
+    setLoading(false);
   }
 };
 
@@ -671,6 +728,8 @@ useEffect(() => {
     { label: "REMARKS", type: "textarea" },
   ]);
 
+  const [closeFieldScenarios, setCloseFieldScenarios] = useState([]);
+
 
   // 🔥 ADD THIS RIGHT HERE
   useEffect(() => {
@@ -705,6 +764,28 @@ useEffect(() => {
     };
 
     fetchCallActions();
+  }, [urlClientId]);
+
+
+  // 🔥 Load close field scenarios (GET /close_fields/{client_id}/scenarios)
+  useEffect(() => {
+    const loadCloseFieldScenarios = async () => {
+      let companyId = localStorage.getItem("company_id");
+      if (companyId === "null" || companyId === "undefined") companyId = null;
+
+      const clientId = urlClientId || companyId;
+
+      if (!clientId) return;
+
+      try {
+        const res = await api.get(`/close_fields/${clientId}/scenarios`);
+        setCloseFieldScenarios(res.data?.scenarios || []);
+      } catch (err) {
+        console.error("Failed to load close field scenarios:", err);
+      }
+    };
+
+    loadCloseFieldScenarios();
   }, [urlClientId]);
 
 
@@ -992,6 +1073,62 @@ useEffect(() => {
           {/* RIGHT: CLOSE FIELDS */}
           <div className="bg-white shadow rounded-xl p-4" style={{ flex: 1 }}>
             <h6 className="font-semibold text-gray-700 mb-2">CLOSE FIELDS</h6>
+
+            {closeFieldScenarios.length > 0 && (
+              <>
+                <table className="w-full border border-gray-200 text-sm mb-3">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="p-2 text-left font-semibold border">FIELD</th>
+                    <th className="p-2 text-left font-semibold border">VALUE</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {closeFieldScenarios.map((sc) => (
+                    <tr key={sc.id}>
+                      <td className="border p-2">{sc.Scenario}</td>
+                      <td className="border p-2">
+                        {sc.children && sc.children.length > 0 ? (
+                          <select
+                            style={selectStyle}
+                            name={sc.Scenario}
+                            value={form[sc.Scenario] || ""}
+                            onChange={handleChange}
+                          >
+                            <option value="">Select {sc.Scenario}</option>
+                            {sc.children.map((child) => (
+                              <option key={child.id} value={child.Scenario}>
+                                {child.Scenario}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            name={sc.Scenario}
+                            value={form[sc.Scenario] || ""}
+                            onChange={handleChange}
+                            style={commonInputStyle}
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="mt-3 text-right">
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCloseFieldScenariosUpdate}
+                  disabled={loading}
+                >
+                  {loading ? "Updating..." : "UPDATE"}
+                </button>
+              </div>
+              </>
+            )}
+
             <table className="w-full border border-gray-200 text-sm">
               <thead>
                 <tr className="bg-gray-100">

@@ -1,8 +1,9 @@
 # Crm_Backend/call_master.py
+import csv
 from http.client import HTTPException
-from io import BytesIO
+from io import BytesIO, StringIO
 
-from fastapi import APIRouter, Query, Depends, Body, Form, HTTPException
+from fastapi import APIRouter, Query, Depends, Body, Form, HTTPException, UploadFile, File
 from sqlalchemy import text, bindparam
 from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, EmailStr, create_model
@@ -74,6 +75,19 @@ def get_call_master_data(
         # Build column list
         field_map = {f["fieldNumber"]: f["FieldName"] for f in field_meta}
         columns = [f"field{fnum}" for fnum in field_map]
+
+        # Step 1b: Fetch close field mappings
+        close_field_query = """
+            SELECT fieldNumber, FieldName 
+            FROM close_field 
+            WHERE ClientId = :client_id 
+              AND (FieldStatus IS NULL OR FieldStatus != 'D')
+            ORDER BY Priority DESC
+        """
+        close_field_meta = conn.execute(text(close_field_query), {"client_id": client_id}).mappings().all()
+        close_field_map = {f["fieldNumber"]: f["FieldName"] for f in close_field_meta}
+        columns += [f"CField{fnum}" for fnum in close_field_map]
+
         columns += ["SrNo","CallDate","MSISDN","tat","duedate","callcreated","CloseLoopingDate","CloseLoopCate1","CloseLoopCate2", "Category1", "Category2", "Category3", "Category4", "Category5","closelooping_remarks","FollowupDate","CaseCloseBy","LeadId","Field49"]
 
         # Step 2: WHERE clause setup
@@ -146,6 +160,11 @@ def get_call_master_data(
             record["Due Date"] = row.get("duedate")
             record["Call Created"] = row.get("callcreated")                                   
             record["LeadId"] = row.get("LeadId")
+
+            for cfnum, label in close_field_map.items():
+                if label in record:
+                    label = f"{label} (Close)"
+                record[label] = row.get(f"CField{cfnum}")
             # record.update({
             #     "callId": row.get("SrNo"),
             #     "CallDate": row.get("CallDate"),
@@ -169,6 +188,132 @@ def get_call_master_data(
             response.append(record)
 
         return response
+
+
+@router.get("/call-master/{client_id}/download-csv")
+def download_call_master_csv(
+    client_id: int,
+    from_date: Optional[str] = Query(None),
+    to_date: Optional[str] = Query(None),
+    call_id: Optional[int] = Query(None),
+    in_call_action: Optional[str] = Query(None),
+    Category1: Optional[str] = Query(None),
+    Category2: Optional[str] = Query(None),
+    Category3: Optional[str] = Query(None),
+    Category4: Optional[str] = Query(None),
+    Category5: Optional[str] = Query(None),
+):
+    engine = get_engine4()
+    with engine.connect() as conn:
+        where_clauses = ["ClientId = :client_id", "CloseLoopCate1 = 'Open'"]
+        params = {"client_id": client_id}
+
+        if from_date:
+            where_clauses.append("DATE(CallDate) >= :from_date")
+            params["from_date"] = from_date
+        if to_date:
+            where_clauses.append("DATE(CallDate) <= :to_date")
+            params["to_date"] = to_date
+        if call_id:
+            where_clauses.append("SrNo = :call_id")
+            params["call_id"] = call_id
+        if in_call_action:
+            where_clauses.append("CloseLoopCate1 = :in_call_action")
+            params["in_call_action"] = in_call_action
+
+        for i, val in enumerate([Category1, Category2, Category3, Category4, Category5], start=1):
+            if val:
+                where_clauses.append(f"Category{i} = :Category{i}")
+                params[f"Category{i}"] = val
+
+        where_clause = " AND ".join(where_clauses)
+        query = f"""
+            SELECT Id, ClientId, SrNo, MSISDN
+            FROM call_master
+            WHERE {where_clause}
+            ORDER BY CallDate DESC
+        """
+        result = conn.execute(text(query), params).mappings().all()
+
+        stream = StringIO()
+        writer = csv.writer(stream)
+        writer.writerow(["Id", "ClientId", "Sr No", "MSISDN", "status", "remarks"])
+        for row in result:
+            writer.writerow([
+                row.get("Id"),
+                row.get("ClientId"),
+                row.get("SrNo"),
+                row.get("MSISDN"),
+                "",
+                "",
+            ])
+
+        stream.seek(0)
+        filename = f"call_master_{datetime.now().strftime('%d_%m_%Y_%H_%M_%S')}.csv"
+        return StreamingResponse(
+            iter([stream.getvalue()]),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f"attachment; filename={filename}"},
+        )
+
+
+@router.post("/call-master/{client_id}/upload-csv")
+async def upload_call_master_csv(
+    client_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db4),
+):
+    if not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="File Format not valid! Upload in CSV format.")
+
+    content = await file.read()
+
+    try:
+        csv_text = content.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        csv_text = content.decode("latin-1")
+
+    csv_reader = csv.reader(StringIO(csv_text))
+    next(csv_reader, None)
+
+    updated_count = 0
+
+    for row in csv_reader:
+        if not row or len(row) < 6:
+            continue
+
+        call_id = row[0].strip()
+        row_client_id = row[1].strip()
+        status = row[4]
+        remarks = row[5].replace("'", "")
+
+        if not call_id or not row_client_id:
+            continue
+
+        update_query = text("""
+            UPDATE call_master
+            SET CField1 = :status,
+                CField4 = :remarks,
+                CFieldUpdate = NOW()
+            WHERE Id = :call_id
+              AND ClientId = :row_client_id
+        """)
+
+        result = db.execute(update_query, {
+            "status": status,
+            "remarks": remarks,
+            "call_id": call_id,
+            "row_client_id": row_client_id,
+        })
+        updated_count += result.rowcount
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": "Tickets Updated Successfully",
+        "updated": updated_count,
+    }
 
 
 @router.get("/csat-report/{client_id}", response_model=List[Dict])
