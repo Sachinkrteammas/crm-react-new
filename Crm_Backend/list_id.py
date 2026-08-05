@@ -130,6 +130,7 @@ def get_campaign_list(db: Session = Depends(get_db4)):
             ON lm.client_id = rm.company_id
         WHERE lm.create_date IS NOT NULL
         AND DATE(lm.create_date) > '2023-12-31'
+        ORDER BY lm.id DESC
     """)
 
     result = db.execute(query).fetchall()
@@ -161,6 +162,7 @@ def get_list_master(
             SELECT id, list_id 
             FROM list_master
             WHERE client_id = :client_id
+            ORDER BY 1 DESC
         """)
 
         result = db.execute(query, {
