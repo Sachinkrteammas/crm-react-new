@@ -323,7 +323,7 @@ def list_allocations(ClientId: Optional[int] = None, CampaignId: Optional[int] =
         query += " AND CampaignId = :CampaignId"
         params["CampaignId"] = CampaignId
 
-    query += " ORDER BY CreateDate ASC"
+    query += " ORDER BY CreateDate DESC"
     rows = db.execute(text(query), params).mappings().all()
 
     return [
