@@ -70,18 +70,20 @@ const AllocatePlan = () => {
         start_date: formattedDate,
       });
 
-      alert("Plan allocated successfully!");
+      alert(res.data.message || "Plan allocated successfully!");
       console.log(res.data);
 
-      // Refresh table after allocation
-      const updatedPlans = await api.get("/allocate-plan/list");
-      setPlans(updatedPlans.data);
+      if (res.data.status === "success") {
+        // Refresh table after allocation
+        const updatedPlans = await api.get("/allocate-plan/list");
+        setPlans(updatedPlans.data);
 
-      // Reset form
-      setForm({ selectPlan: "", selectClient: "", startDate: null });
+        // Reset form
+        setForm({ selectPlan: "", selectClient: "", startDate: null });
+      }
     } catch (err) {
       console.error(err);
-      alert("Allocation failed!");
+      alert(err.response?.data?.detail || "Allocation failed!");
     }
   };
 
