@@ -65,7 +65,7 @@ def get_plan_list(db: Session = Depends(get_db4)):
             pm.RentalAmount AS rentalCost,
             bm.Balance AS balance,
             pm.PeriodType AS paymentTerms,
-            pm.IB_Call_Charge AS ibCall,
+            pm.InboundCallCharge AS ibCall,
             pm.InboundCallChargeNight AS ibCallNight,
             pm.OutboundCallCharge AS obCall,
             pm.SMSCharge AS sms,
