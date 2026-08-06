@@ -57,7 +57,7 @@ def get_plan_list(db: Session = Depends(get_db4)):
         SELECT 
             bm.Id AS srn,
             rm.company_name AS client,
-            GROUP_CONCAT(oc.CampaignName SEPARATOR ', ') AS campaign,
+            rm.campaignid as campaign,
             pm.PlanName AS plan,
             bm.start_date,
             bm.end_date,
@@ -79,7 +79,7 @@ def get_plan_list(db: Session = Depends(get_db4)):
         INNER JOIN registration_master rm ON bm.ClientId = rm.company_id
         LEFT JOIN ob_campaign oc ON bm.ClientId = oc.ClientId
         GROUP BY bm.Id
-        ORDER BY bm.Id ASC
+        ORDER BY rm.company_name ASC
     """)).mappings().all()
     return rows
 
@@ -90,20 +90,69 @@ def get_plan_list(db: Session = Depends(get_db4)):
 @router.post("/create")
 def create_allocate_plan(data: dict, db: Session = Depends(get_db4)):
 
-    start_date = data["start_date"]
+    client_id = data["client_id"]
+    plan_id = data["plan_id"]
+    plan_type = data.get("plan_type", "Prepaid")
 
-    # If ISO datetime received → convert
-    if "T" in start_date:
-        start_date = start_date.split("T")[0]
+    # 1. Check if client already has a balance record -> "Plan Already Mapped"
+    existing = db.execute(
+        text("SELECT clientId FROM balance_master WHERE clientId = :client_id LIMIT 1"),
+        {"client_id": client_id}
+    ).fetchone()
 
-    db.execute(text("""
-        INSERT INTO balance_master (PlanId, clientId, start_date)
-        VALUES (:plan_id, :client_id, :start_date)
-    """), {
-        "plan_id": data["plan_id"],
-        "client_id": data["client_id"],
-        "start_date": start_date
+    if existing:
+        return {"status": "error", "message": "Plan Already Mapped"}
+
+    # 2. Fetch plan -> "Plan Not Exists"
+    plan = db.execute(
+        text("SELECT Balance FROM plan_master WHERE Id = :plan_id"),
+        {"plan_id": plan_id}
+    ).mappings().fetchone()
+
+    if not plan:
+        return {"status": "error", "message": "Plan Not Exists"}
+
+    balance_value = plan["Balance"]
+
+    # 3. Insert into balance_master (PHP saves no start_date/end_date here)
+    insert_query = """
+        INSERT INTO balance_master
+        (PlanId, clientId, Balance, MainBalance, PlanType, userid, createdate)
+        VALUES (:plan_id, :client_id, :balance, :balance, :plan_type, 1, NOW())
+    """
+    db.execute(text(insert_query), {
+        "plan_id": plan_id,
+        "client_id": client_id,
+        "balance": balance_value,
+        "plan_type": plan_type,
     })
 
+    # 4. Insert into history_plan_master
+    db.execute(text("""
+        INSERT INTO history_plan_master
+        (planId, clientId, user_id, createdate)
+        VALUES (:plan_id, :client_id, 1, NOW())
+    """), {
+        "plan_id": plan_id,
+        "client_id": client_id,
+    })
+
+    # 5. Seed billing_opening_balance if not already present
+    open_exist = db.execute(
+        text("SELECT clientid FROM billing_opening_balance WHERE clientid = :client_id LIMIT 1"),
+        {"client_id": client_id}
+    ).fetchone()
+
+    if not open_exist:
+        db.execute(text("""
+            INSERT INTO billing_opening_balance
+            (clientid, bill_start_date, bill_end_date, fin_year, fin_month)
+            VALUES (:client_id, CURDATE(), LAST_DAY(CURDATE()), :fin_year, :fin_month)
+        """), {
+            "client_id": client_id,
+            "fin_year": datetime.now().strftime("%Y"),
+            "fin_month": datetime.now().strftime("%b"),
+        })
+
     db.commit()
-    return {"status": "success", "message": "Plan Allocated Successfully"}
+    return {"status": "success", "message": "Plan Allocated To Client"}

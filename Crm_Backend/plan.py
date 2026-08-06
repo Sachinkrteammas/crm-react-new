@@ -214,6 +214,34 @@ def update_plan(plan_id: int, plan: PlanCreateRequest):
         if conn: conn.close()
 
 
+# ✅ TOGGLE APPROVE / REJECT PLAN
+@router.put("/plan/{plan_id}/toggle_approval")
+def toggle_plan_approval(plan_id: int):
+    conn = None
+    cursor = None
+    try:
+        conn = get_engine4().raw_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT approve_status FROM plan_master WHERE id=%s", (plan_id,))
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        new_status = 2 if row[0] == 1 else 1
+        cursor.execute(
+            "UPDATE plan_master SET approval_date=NOW(), approve_status=%s WHERE id=%s",
+            (new_status, plan_id)
+        )
+        conn.commit()
+        action = "approved" if new_status == 1 else "rejected"
+        return {"status": "success", "message": f"Plan {action} successfully!", "approve_status": new_status}
+    except Exception as e:
+        print("❌ DB Error:", str(e))
+        raise HTTPException(status_code=500, detail=f"DB Error: {str(e)}")
+    finally:
+        if cursor: cursor.close()
+        if conn: conn.close()
+
+
 # ✅ DELETE PLAN
 @router.delete("/plan/{plan_id}")
 def delete_plan(plan_id: int):

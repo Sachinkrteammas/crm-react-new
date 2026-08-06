@@ -91,6 +91,8 @@ from sms_service import router as sms_service
 from sms_service import run_abandoned_call_sms
 from recording_sync import sync_recordings
 from shopify import router
+from pd_call_allocation import router as pd_call_allocation_router
+from campaign_sub_type import router as campaign_sub_type_router
 
 
 app = FastAPI(title="CRM Backend")
@@ -177,6 +179,8 @@ app.include_router(sms_service, tags=["SMS Service"], dependencies=[Depends(veri
 app.include_router(dialer_router, prefix="/api")
 app.include_router(cdr_webhook_router)
 app.include_router(router)
+app.include_router(pd_call_allocation_router, tags=["PD Call Allocation"], dependencies=[Depends(verify_token)])
+app.include_router(campaign_sub_type_router, tags=["Campaign Sub Type"], dependencies=[Depends(verify_token)])
 
 
 # ✅ Create a function that runs the API logic automatically

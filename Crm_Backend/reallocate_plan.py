@@ -60,7 +60,7 @@ def save_reallocate_plan(
     # Fetch plan balance
     # --------------------------------------------
     plan = db.execute(
-        text("SELECT Balance FROM plan_master WHERE Id = :plan_id"),
+        text("SELECT Balance, PlanType FROM plan_master WHERE Id = :plan_id"),
         {"plan_id": plan_id}
     ).mappings().fetchone()
 
@@ -68,6 +68,7 @@ def save_reallocate_plan(
         raise HTTPException(status_code=404, detail="Plan not exists")
 
     balance_value = plan["Balance"]
+    plan_type_value = plan["PlanType"]
 
     # --------------------------------------------
     # Check if client already has a balance record
@@ -82,6 +83,7 @@ def save_reallocate_plan(
         update_query = """
             UPDATE balance_master SET
                 PlanId = :plan_id,
+                PlanType = :plan_type,
                 Balance = :balance,
                 MainBalance = :balance,
                 update_date = NOW()
@@ -89,37 +91,39 @@ def save_reallocate_plan(
         """
         db.execute(text(update_query), {
             "plan_id": plan_id,
+            "plan_type": plan_type_value,
             "balance": balance_value,
             "client_id": client_id
+        })
+
+        # --------------------------------------------
+        # Insert into billing_plan_alloc_log (UPDATE path only)
+        # --------------------------------------------
+        db.execute(text("""
+            INSERT INTO billing_plan_alloc_log 
+            (client_id, plan_id, start_date, created_by, alloc_type, created_at)
+            VALUES (:client_id, :plan_id, :start_date, 1, 'Re-Allocate-plan', NOW())
+        """), {
+            "client_id": client_id,
+            "plan_id": plan_id,
+            "start_date": start_date_obj.strftime("%Y-%m-%d")
         })
 
     else:
         # INSERT new record
         insert_query = """
             INSERT INTO balance_master 
-            (PlanId, clientId, Balance, MainBalance, start_date, end_date, userid, createdate)
-            VALUES (:plan_id, :client_id, :balance, :balance, :start_date, :end_date, 1, NOW())
+            (PlanId, PlanType, clientId, Balance, MainBalance, start_date, end_date, userid, createdate)
+            VALUES (:plan_id, :plan_type, :client_id, :balance, :balance, :start_date, :end_date, 1, NOW())
         """
         db.execute(text(insert_query), {
             "plan_id": plan_id,
+            "plan_type": plan_type_value,
             "client_id": client_id,
             "balance": balance_value,
             "start_date": start_date_obj.strftime("%Y-%m-%d"),
             "end_date": end_date_obj.strftime("%Y-%m-%d"),
         })
-
-    # --------------------------------------------
-    # Insert into billing_plan_alloc_log
-    # --------------------------------------------
-    db.execute(text("""
-        INSERT INTO billing_plan_alloc_log 
-        (client_id, plan_id, start_date, created_by, alloc_type, created_at)
-        VALUES (:client_id, :plan_id, :start_date, 1, 'Re-Allocate-plan', NOW())
-    """), {
-        "client_id": client_id,
-        "plan_id": plan_id,
-        "start_date": start_date_obj.strftime("%Y-%m-%d")
-    })
 
     # --------------------------------------------
     # Insert into history_plan_master

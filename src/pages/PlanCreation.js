@@ -486,6 +486,20 @@ export default function PlanManagement() {
   }
 };
 
+  const handleToggleApproval = async (plan) => {
+  const isApproved = plan.approve_status === 1;
+  const action = isApproved ? "reject" : "approve";
+  if (!window.confirm(`Are you sure you want to ${action} the plan "${plan.PlanName}"?`)) return;
+  try {
+    const res = await api.put(`/plan/plan/${plan.Id}/toggle_approval`);
+    toast.success(res.data.message || "Plan status updated successfully!");
+    fetchPlans();
+  } catch (err) {
+    console.error("Error updating plan approval:", err);
+    toast.error("Failed to update plan approval. Try again.");
+  }
+};
+
 
   // Reuse your PlanCreation form rendering here
   const renderInput = (label, name, placeholder, type = "text") => (
@@ -606,12 +620,29 @@ export default function PlanManagement() {
                       ✏ Edit
                     </button>
                     <button
-                      className="btn btn-sm btn-outline-danger mb-1"
+                      className="btn btn-sm btn-outline-danger me-2 mb-1"
                       onClick={() => handleDelete(plan.Id)}
                       title="Delete Plan"
                     >
                       🗑 Delete
                     </button>
+                    {plan.approve_status === 1 ? (
+                      <button
+                        className="btn btn-sm btn-outline-secondary me-2 mb-1"
+                        onClick={() => handleToggleApproval(plan)}
+                        title="Reject Plan"
+                      >
+                        ✕ Reject
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-sm btn-outline-success me-2 mb-1"
+                        onClick={() => handleToggleApproval(plan)}
+                        title="Approve Plan"
+                      >
+                        ✓ Approve
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
