@@ -4245,10 +4245,12 @@ def download_excel_raw_old_audio(
     ab_pulse = 0
     ab_secs = 0
     ab_total = Decimal(0)
+    ab_call_count = 0
 
     ob_pulse = 0
     ob_secs = 0
     ob_total = Decimal(0)
+    ob_call_count = 0
 
     # multilang_call_data = db2.execute(text(f"""
     #     SELECT
@@ -4898,6 +4900,7 @@ def download_excel_raw_old_audio(
         callLength = round(float(raw_len))  # PHP round()
         if callLength <= 0:
             continue
+        ab_call_count += 1
         ab_secs += callLength
 
         # pulse conversion
@@ -4964,6 +4967,7 @@ def download_excel_raw_old_audio(
         call_date = call.get("CallDate")
         if talk_sec <= 0:
             continue
+        ob_call_count += 1
 
         ob_secs += talk_sec
 
@@ -5195,8 +5199,8 @@ def download_excel_raw_old_audio(
         </tr>
         <tr><td>ICB</td><td>{ib_call_count}</td><td>{ib_pulse}</td><td>{ib_pulse_rate} Rs./{ib_pulse_sec} Sec</td><td>{ib_min_rate_total:.2f}</td></tr>
         <tr><td>ICB Night</td><td>{ibn_call_count}</td><td>{ibn_pulse}</td><td>{ibn_pulse_rate} Rs./{ibn_pulse_sec} Sec</td><td>{ibn_min_rate_total:.2f}</td></tr>
-        <tr><td>ABCB</td><td></td><td>{ob_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ob_total:.2f}</td></tr>
-        <tr><td>OCB</td><td></td><td>{ab_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ab_total:.2f}</td></tr>
+        <tr><td>ABCB</td><td>{ob_call_count}</td><td>{ob_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ob_total:.2f}</td></tr>
+        <tr><td>OCB</td><td>{ab_call_count}</td><td>{ab_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ab_total:.2f}</td></tr>
         <tr><td>SMS</td><td></td><td>{sms_pulse}</td><td>{sms_charge} Rs./Min</td><td>{sms_total:.2f}</td></tr>
         <tr><td>Email</td><td></td><td>{email_pulse}</td><td>{email_charge} Rs./Min</td><td>{email_total:.2f}</td></tr>
         <tr><td>IVR</td><td></td><td>{total_pulse7}</td><td>{ivr_charge} Rs./Min</td><td>{amount_rx:.2f}</td></tr>
