@@ -3213,6 +3213,7 @@ WHERE t2.user != 'VDCL'
     sms_charge = Decimal(0)
     sms_flat = 0
     sms_total = Decimal(0)
+    sms_call_count = 0
 
     # Get plan SMS charge
     sms_charge = Decimal(plan_result.get("SMSCharge", 0) or 0)
@@ -3243,6 +3244,7 @@ WHERE t2.user != 'VDCL'
     email_charge = Decimal(0)
     email_flat = 0
     email_total = Decimal(0)
+    email_call_count = 0
 
     # Plan charge for Email
     email_charge = Decimal(plan_result.get("EmailCharge", 0) or 0)
@@ -3311,6 +3313,7 @@ WHERE t2.user != 'VDCL'
 
     total_pulse7 = 0
     total_rate7 = Decimal(0)
+    ivr_call_count = 0
 
     # Step 3: Build HTML for Excel
     html = f"""
@@ -3738,6 +3741,7 @@ WHERE t2.user != 'VDCL'
     for sms in sms_data:
         smsChar = int(sms.get("Duration") or 0)
         sms_unit = int(sms.get("Unit") or 0)
+        sms_call_count += 1
 
         sms_pulse += sms_unit
         sms_secs += smsChar
@@ -3785,6 +3789,7 @@ WHERE t2.user != 'VDCL'
     for email_row in email_data:
         EmailUnit = int(email_row.get("Unit") or 0)
         email_rate = Decimal(EmailUnit) * email_charge
+        email_call_count += 1
 
         email_pulse += EmailUnit
         email_total += email_rate
@@ -3830,6 +3835,7 @@ WHERE t2.user != 'VDCL'
     for row in rx_data:
         pulse = 1
         rate = pulse * ivr_charge
+        ivr_call_count += 1
 
         total_pulse7 += pulse
         total_rate7 += rate
@@ -3857,6 +3863,7 @@ WHERE t2.user != 'VDCL'
     wasms_secs = 0
     wasms_charge = Decimal(0)
     wasms_total = Decimal(0)
+    wasms_call_count = 0
 
     if client_id != 659:
 
@@ -3901,6 +3908,7 @@ WHERE t2.user != 'VDCL'
 
         for row in wasms_data:
             unit = int(row.get("Unit") or 0)
+            wasms_call_count += 1
 
             wasms_pulse += unit
             wasms_total += Decimal(unit) * wasms_charge
@@ -3988,10 +3996,10 @@ WHERE t2.user != 'VDCL'
         <tr><td>ICB Night</td><td>{ibn_call_count}</td><td>{ibn_pulse}</td><td>{ibn_pulse_rate} Rs./{ibn_pulse_sec} Sec</td><td>{ibn_min_rate_total:.2f}</td></tr>
         <tr><td>ABCB</td><td>{ob_call_count}</td><td>{ob_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ob_total:.2f}</td></tr>
         <tr><td>OCB</td><td>{ab_call_count}</td><td>{ab_pulse}</td><td>{ob_pulse_rate}Rs./{ob_pulse_sec} Sec</td><td>{ab_total:.2f}</td></tr>
-        <tr><td>SMS</td><td></td><td>{sms_pulse}</td><td>{sms_charge} Rs./Min</td><td>{sms_total:.2f}</td></tr>
-        <tr><td>Email</td><td></td><td>{email_pulse}</td><td>{email_charge} Rs./Min</td><td>{email_total:.2f}</td></tr>
-        <tr><td>IVR</td><td></td><td>{total_pulse7}</td><td>{ivr_charge} Rs./Min</td><td>{amount_rx:.2f}</td></tr>
-        <tr><td>WHATSAPP ALERT</td><td></td><td>{wasms_pulse}</td><td>{wasms_charge} Rs./Min</td><td>{wasms_total:.2f}</td></tr>
+        <tr><td>SMS</td><td>{sms_call_count}</td><td>{sms_pulse}</td><td>{sms_charge} Rs./Min</td><td>{sms_total:.2f}</td></tr>
+        <tr><td>Email</td><td>{email_call_count}</td><td>{email_pulse}</td><td>{email_charge} Rs./Min</td><td>{email_total:.2f}</td></tr>
+        <tr><td>IVR</td><td>{ivr_call_count}</td><td>{total_pulse7}</td><td>{ivr_charge} Rs./Min</td><td>{amount_rx:.2f}</td></tr>
+        <tr><td>WHATSAPP ALERT</td><td>{wasms_call_count}</td><td>{wasms_pulse}</td><td>{wasms_charge} Rs./Min</td><td>{wasms_total:.2f}</td></tr>
         <tr style='font-weight:bold; background-color:#e0e0e0;'>
             <td colspan='4' align='right'>Grand Total ({from_date}/{to_date})</td>
             <td>{grand_total:.2f}</td>
