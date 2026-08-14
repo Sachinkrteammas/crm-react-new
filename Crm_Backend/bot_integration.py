@@ -1062,7 +1062,7 @@ from sqlalchemy import text
 BASE_URL = "https://internetwale.com/api/v1"
 
 EMAIL = "saurabh.singh@dialdesk.net"
-PASSWORD = "@Nr!2hDT0j$f"
+PASSWORD = "Solu@8957"
 
 
 
