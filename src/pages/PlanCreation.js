@@ -619,13 +619,13 @@ export default function PlanManagement() {
                     >
                       ✏ Edit
                     </button>
-                    <button
+                    {/* <button
                       className="btn btn-sm btn-outline-danger me-2 mb-1"
                       onClick={() => handleDelete(plan.Id)}
                       title="Delete Plan"
                     >
                       🗑 Delete
-                    </button>
+                    </button> */}
                     {plan.approve_status === 1 ? (
                       <button
                         className="btn btn-sm btn-outline-secondary me-2 mb-1"
