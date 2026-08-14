@@ -1,5 +1,6 @@
 from math import floor
-
+import random
+import requests
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -7,7 +8,10 @@ from datetime import datetime, timedelta
 from database import get_db4
 from typing import Dict, Optional, Any, List
 from passlib.context import CryptContext
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
 router = APIRouter()
 
 
@@ -889,6 +893,36 @@ def get_client_right(company_id: int, db: Session = Depends(get_db4)):
     return {"company_id": result[0], "company_name": result[1]}
 
 
+
+
+
+
+def generate_unique_extension(db: Session) -> str:
+    """
+    Generate a unique 5 digit extension.
+    """
+
+    while True:
+        extension = str(random.randint(10000, 99999))
+
+        exists = db.execute(
+            text("""
+                SELECT 1
+                FROM agent_master
+                WHERE phone_login = :phone_login
+                LIMIT 1
+            """),
+            {"phone_login": extension}
+        ).fetchone()
+
+        if not exists:
+            return extension
+
+
+
+
+
+
 @router.post("/save")
 def create_agent(agent: dict, db: Session = Depends(get_db4)):
     try:
@@ -897,30 +931,117 @@ def create_agent(agent: dict, db: Session = Depends(get_db4)):
         # Hash the password before saving
         hashed_password = hash_password(agent.get("password"))
 
+        # -----------------------------------
+        # Generate SIP Extension
+        # -----------------------------------
+
+        extension = generate_unique_extension(db)
+        sip_password = "test"
+        VICIDIAL_API_USER = os.getenv("VICIDIAL_API_USER")
+        VICIDIAL_API_PASS = os.getenv("VICIDIAL_API_PASS")
+
         query = text("""
             INSERT INTO agent_master
             (displayname, username, password, password2, processname, workmode, dob, 
              dateofjoining, agent_type, address, state, city, Gender, Versant, 
-             email, phone_no, LanguagesKnown, ClientRights, createdate, status, employment_type)
+             email, phone_no, phone_login, phone_pass, LanguagesKnown, ClientRights, createdate, status, employment_type)
             VALUES 
             (:displayname, :username, :password, :password2, :processname, :workmode, :dob,
              :dateofjoining, :agent_type, :address, :state, :city, :Gender, :Versant, 
-             :email, :phone_no, :LanguagesKnown, :ClientRights, :createdate, 'A', :employment_type)
+             :email, :phone_no, :phone_login, :phone_pass, :LanguagesKnown, :ClientRights, :createdate, 'A', :employment_type)
         """)
 
         db.execute(query, {
             **agent,
             "password": hashed_password,
             "password2": raw_password,
+            "phone_login": extension,
+            "phone_pass": sip_password,
             "LanguagesKnown": ",".join(agent.get("LanguagesKnown", [])),
             "ClientRights": ",".join(agent.get("ClientRights", [])),
             "createdate": datetime.now()
         })
+
+        # -----------------------------------
+        # Create SIP Phone
+        # -----------------------------------
+
+        url = "http://192.168.10.5/vicidial/non_agent_api.php"
+
+        params = {
+            "source": "test",
+            "function": "add_phone",
+
+            # Production Credentials
+            "user": VICIDIAL_API_USER,
+            "pass": VICIDIAL_API_PASS,
+
+            "extension": extension,
+            "dialplan_number": extension,
+            "voicemail_id": extension,
+            "phone_login": extension,
+            "phone_pass": "test",
+
+            "server_ip": "192.168.10.5",
+            "protocol": "SIP",
+            "registration_password": "test",
+
+            "phone_full_name": agent.get("displayname", ""),
+            "local_gmt": "5.50",
+
+            "outbound_cid": "0000000000",
+
+            "phone_context": "default"
+        }
+
+        response = requests.get(
+            url,
+            params=params,
+            timeout=30
+        )
+
+        response.raise_for_status()
+
+        dialer_response = response.text.strip()
+
+        # -----------------------------------
+        # Dialer Failed
+        # -----------------------------------
+
+        if not dialer_response.upper().startswith("SUCCESS"):
+            db.rollback()
+
+            raise HTTPException(
+                status_code=400,
+                detail=dialer_response
+            )
+
+        # -----------------------------------
+        # Everything Success
+        # -----------------------------------
+
         db.commit()
-        return {"status": "success", "agent": agent}
+
+        return {
+            "status": "success",
+            "extension": extension,
+            "sip_password": "test",
+            "dialer_response": dialer_response
+        }
+
     except Exception as e:
+
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+    #     db.commit()
+    #     return {"status": "success", "agent": agent}
+    # except Exception as e:
+    #     db.rollback()
+    #     raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/list")
@@ -961,7 +1082,7 @@ def update_agent(agent_id: int, agent: dict, db: Session = Depends(get_db4)):
                 state=:state, city=:city, Gender=:Gender, Versant=:Versant,
                 email=:email, phone_no=:phone_no,
                 LanguagesKnown=:LanguagesKnown, ClientRights=:ClientRights,
-                update_date=:update_date,employment_type=:employment_type
+                update_date=:update_date,employment_type=:employment_type,home_location=:home_location
             WHERE id=:id
         """)
 
@@ -979,17 +1100,45 @@ def update_agent(agent_id: int, agent: dict, db: Session = Depends(get_db4)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+
 @router.delete("/{agent_id}")
 def delete_agent(agent_id: int, db: Session = Depends(get_db4)):
     try:
-        query = text("DELETE FROM agent_master WHERE id = :id")
+        query = text("""
+            UPDATE agent_master
+            SET status = 'I'
+            WHERE id = :id
+        """)
+
         result = db.execute(query, {"id": agent_id})
 
         if result.rowcount == 0:
             raise HTTPException(status_code=404, detail="Agent not found")
 
         db.commit()
-        return {"status": "success", "deleted_id": agent_id}
+
+        return {
+            "status": "success",
+            "message": "Agent marked as inactive.",
+            "agent_id": agent_id
+        }
+
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# @router.delete("/{agent_id}")
+# def delete_agent(agent_id: int, db: Session = Depends(get_db4)):
+#     try:
+#         query = text("DELETE FROM agent_master WHERE id = :id")
+#         result = db.execute(query, {"id": agent_id})
+
+#         if result.rowcount == 0:
+#             raise HTTPException(status_code=404, detail="Agent not found")
+
+#         db.commit()
+#         return {"status": "success", "deleted_id": agent_id}
+#     except Exception as e:
+#         db.rollback()
+#         raise HTTPException(status_code=400, detail=str(e))

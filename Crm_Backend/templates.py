@@ -306,11 +306,11 @@ class InternalAlertMechanismCreate(BaseModel):
     alert_on: str
     template_name: str
     template_text: str
-    scenario1: int | None = None
-    scenario2: int | None = None
-    scenario3: int | None = None
-    scenario4: int | None = None
-    scenario5: int | None = None
+    scenario1: Optional[str] = None
+    scenario2: Optional[str] = None
+    scenario3: Optional[str] = None
+    scenario4: Optional[str] = None
+    scenario5: Optional[str] = None
     person_name: str
     phone: str
     email: Optional[str] = None
@@ -325,11 +325,11 @@ class InternalAlertMechanismResponse(BaseModel):
     alert_on: str
     template_name: str
     template_text: str
-    scenario1: Optional[int] = None
-    scenario2: Optional[int] = None
-    scenario3: Optional[int] = None
-    scenario4: Optional[int] = None
-    scenario5: Optional[int] = None
+    scenario1: Optional[str] = None
+    scenario2: Optional[str] = None
+    scenario3: Optional[str] = None
+    scenario4: Optional[str] = None
+    scenario5: Optional[str] = None
     person_name: str
     phone: str
     email: Optional[str] = None
@@ -341,11 +341,11 @@ class InternalAlertMechanismUpdate(BaseModel):
     alert_on: Optional[str]
     template_name: Optional[str]
     template_text: Optional[str]
-    scenario1: Optional[int]
-    scenario2: Optional[int]
-    scenario3: Optional[int]
-    scenario4: Optional[int]
-    scenario5: Optional[int]
+    scenario1: Optional[str]
+    scenario2: Optional[str]
+    scenario3: Optional[str]
+    scenario4: Optional[str]
+    scenario5: Optional[str]
     person_name: Optional[str]
     phone: Optional[str]
     email: Optional[str]
@@ -490,11 +490,11 @@ class EscalationAlertMechanismCreate(BaseModel):
     alert_on: str
     template_name: str
     template_text: str
-    scenario1: int | None = None
-    scenario2: int | None = None
-    scenario3: int | None = None
-    scenario4: int | None = None
-    scenario5: int | None = None
+    scenario1: str | None = None
+    scenario2: str | None = None
+    scenario3: str | None = None
+    scenario4: str | None = None
+    scenario5: str | None = None
     person_name: str
     phone: str
     email: Optional[str] = None
@@ -507,11 +507,11 @@ class EscalationAlertMechanismUpdate(BaseModel):
     alert_on: Optional[str] = None
     template_name: Optional[str] = None
     template_text: Optional[str] = None
-    scenario1: Optional[int] = None
-    scenario2: Optional[int] = None
-    scenario3: Optional[int] = None
-    scenario4: Optional[int] = None
-    scenario5: Optional[int] = None
+    scenario1: Optional[str] = None
+    scenario2: Optional[str] = None
+    scenario3: Optional[str] = None
+    scenario4: Optional[str] = None
+    scenario5: Optional[str] = None
     person_name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None

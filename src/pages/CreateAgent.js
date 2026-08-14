@@ -51,6 +51,7 @@ const CreateAgent = () => {
     LanguagesKnown: [],
     ClientRights: [],
     employment_type: "",
+    home_location: "",
   });
 
   useEffect(() => {
@@ -104,6 +105,7 @@ const CreateAgent = () => {
       LanguagesKnown: [],
       ClientRights: [],
       employment_type: "",
+      home_location: "",
     });
     setEditingAgent(null);
   };
@@ -345,6 +347,9 @@ const CreateAgent = () => {
                             <div className="col-md-4"><strong>Process:</strong> {viewingAgent.processname}</div>
                             <div className="col-md-4"><strong>Work Mode:</strong> {viewingAgent.workmode}</div>
                             <div className="col-md-4"><strong>Employment Type:</strong> {viewingAgent.employment_type}</div>
+                            <div className="col-md-4"><strong>Soft Phone:</strong> {viewingAgent.phone_login}</div>
+                            <div className="col-md-4"><strong>Soft Phone Password:</strong> {viewingAgent.phone_pass}</div>
+                            <div className="col-md-4"><strong>Home Location:</strong> {viewingAgent.home_location}</div>
                           </div>
                         </div>
                       </div>
@@ -539,6 +544,20 @@ const CreateAgent = () => {
                             name="dateofleaving"
                             className="form-control"
                             value={form.dateofleaving}
+                            onChange={handleChange}
+                          />
+                        </div>
+                      )}
+
+                      {/* Home Location — only show when editing */}
+                      {editingAgent && (
+                        <div className="col-md-4">
+                          <label className="form-label">Home Location</label>
+                          <input
+                            name="home_location"
+                            className="form-control"
+                            placeholder="Home Location"
+                            value={form.home_location}
                             onChange={handleChange}
                           />
                         </div>

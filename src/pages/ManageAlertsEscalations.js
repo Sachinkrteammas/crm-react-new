@@ -331,6 +331,14 @@ export default function ManageAlertsEscalations() {
     InternalsetSessionId("");
   };
 
+  const scenarioName = (list, selectedId) => {
+    if (!selectedId) return null;
+    const found = (list || []).find(
+      (c) => String(c.id) === String(selectedId)
+    );
+    return found ? found.ecrName : selectedId;
+  };
+
   const handleInternalAdd = async () => {
     if (!selectedClient) return alert("Please select a client first.");
     if (!internalAlertOn) return alert("Please select Alert On.");
@@ -342,11 +350,11 @@ export default function ManageAlertsEscalations() {
       alert_on: internalAlertOn,
       template_name: selectedTemplate,
       template_text: callerTemplateText,
-      scenario1: selectedLevel1 || null,
-      scenario2: selectedLevel2 || null,
-      scenario3: selectedLevel3 || null,
-      scenario4: selectedLevel4 || null,
-      scenario5: selectedLevel5 || null,
+      scenario1: scenarioName(level1Categories, selectedLevel1),
+      scenario2: scenarioName(level2Categories, selectedLevel2),
+      scenario3: scenarioName(level3Categories, selectedLevel3),
+      scenario4: scenarioName(level4Categories, selectedLevel4),
+      scenario5: scenarioName(level5Categories, selectedLevel5),
       person_name: personName,
       phone: personPhone,
       email: personEmail || null,
@@ -407,44 +415,54 @@ export default function ManageAlertsEscalations() {
     const s4 = alert.scenario4 ? String(alert.scenario4) : "";
     const s5 = alert.scenario5 ? String(alert.scenario5) : "";
 
+    const findId = (list, name) => {
+      if (!name) return "";
+      const found = (list || []).find((c) => String(c.ecrName) === String(name));
+      return found ? String(found.id) : "";
+    };
+
     try {
       // Step 1: Level 1
-      setSelectedLevel1(s1);
+      const l1 = findId(level1Categories, s1);
+      setSelectedLevel1(l1);
 
       // Step 2: Wait for next level categories
-      if (s1) {
+      if (l1) {
         const res2 = await api.get(
-          `/core_api/categories/level2/${s1}?client_id=${selectedClient}`
+          `/core_api/categories/level2/${l1}?client_id=${selectedClient}`
         );
         setLevel2Categories(res2.data || []);
-        setSelectedLevel2(s2);
-      }
+        const l2 = findId(res2.data, s2);
+        setSelectedLevel2(l2);
 
-      // Step 3: Level 3
-      if (s2) {
-        const res3 = await api.get(
-          `/core_api/categories/level3/${s2}?client_id=${selectedClient}`
-        );
-        setLevel3Categories(res3.data || []);
-        setSelectedLevel3(s3);
-      }
+        // Step 3: Level 3
+        if (l2) {
+          const res3 = await api.get(
+            `/core_api/categories/level3/${l2}?client_id=${selectedClient}`
+          );
+          setLevel3Categories(res3.data || []);
+          const l3 = findId(res3.data, s3);
+          setSelectedLevel3(l3);
 
-      // Step 4: Level 4
-      if (s3) {
-        const res4 = await api.get(
-          `/core_api/categories/level4/${s3}?client_id=${selectedClient}`
-        );
-        setLevel4Categories(res4.data || []);
-        setSelectedLevel4(s4);
-      }
+          // Step 4: Level 4
+          if (l3) {
+            const res4 = await api.get(
+              `/core_api/categories/level4/${l3}?client_id=${selectedClient}`
+            );
+            setLevel4Categories(res4.data || []);
+            const l4 = findId(res4.data, s4);
+            setSelectedLevel4(l4);
 
-      // Step 5: Level 5
-      if (s4) {
-        const res5 = await api.get(
-          `/core_api/categories/level5/${s4}?client_id=${selectedClient}`
-        );
-        setLevel5Categories(res5.data || []);
-        setSelectedLevel5(s5);
+            // Step 5: Level 5
+            if (l4) {
+              const res5 = await api.get(
+                `/core_api/categories/level5/${l4}?client_id=${selectedClient}`
+              );
+              setLevel5Categories(res5.data || []);
+              setSelectedLevel5(findId(res5.data, s5));
+            }
+          }
+        }
       }
 
       // Step 6: Template and Person info
@@ -510,11 +528,11 @@ export default function ManageAlertsEscalations() {
       alert_on: escalationAlertOn,
       template_name: selectedTemplate,
       template_text: callerTemplateText,
-      scenario1: selectedLevel1 || null,
-      scenario2: selectedLevel2 || null,
-      scenario3: selectedLevel3 || null,
-      scenario4: selectedLevel4 || null,
-      scenario5: selectedLevel5 || null,
+      scenario1: scenarioName(level1Categories, selectedLevel1),
+      scenario2: scenarioName(level2Categories, selectedLevel2),
+      scenario3: scenarioName(level3Categories, selectedLevel3),
+      scenario4: scenarioName(level4Categories, selectedLevel4),
+      scenario5: scenarioName(level5Categories, selectedLevel5),
       person_name: escalationPersonName,
       phone: escalationPersonPhone,
       email: escalationPersonEmail || null,
@@ -563,44 +581,54 @@ export default function ManageAlertsEscalations() {
     const s4 = alert.scenario4 ? String(alert.scenario4) : "";
     const s5 = alert.scenario5 ? String(alert.scenario5) : "";
 
+    const findId = (list, name) => {
+      if (!name) return "";
+      const found = (list || []).find((c) => String(c.ecrName) === String(name));
+      return found ? String(found.id) : "";
+    };
+
     try {
       // Level 1
-      setSelectedLevel1(s1);
+      const l1 = findId(level1Categories, s1);
+      setSelectedLevel1(l1);
 
       // Level 2
-      if (s1) {
+      if (l1) {
         const res2 = await api.get(
-          `/core_api/categories/level2/${s1}?client_id=${selectedClient}`
+          `/core_api/categories/level2/${l1}?client_id=${selectedClient}`
         );
         setLevel2Categories(res2.data || []);
-        setSelectedLevel2(s2);
-      }
+        const l2 = findId(res2.data, s2);
+        setSelectedLevel2(l2);
 
-      // Level 3
-      if (s2) {
-        const res3 = await api.get(
-          `/core_api/categories/level3/${s2}?client_id=${selectedClient}`
-        );
-        setLevel3Categories(res3.data || []);
-        setSelectedLevel3(s3);
-      }
+        // Level 3
+        if (l2) {
+          const res3 = await api.get(
+            `/core_api/categories/level3/${l2}?client_id=${selectedClient}`
+          );
+          setLevel3Categories(res3.data || []);
+          const l3 = findId(res3.data, s3);
+          setSelectedLevel3(l3);
 
-      // Level 4
-      if (s3) {
-        const res4 = await api.get(
-          `/core_api/categories/level4/${s3}?client_id=${selectedClient}`
-        );
-        setLevel4Categories(res4.data || []);
-        setSelectedLevel4(s4);
-      }
+          // Level 4
+          if (l3) {
+            const res4 = await api.get(
+              `/core_api/categories/level4/${l3}?client_id=${selectedClient}`
+            );
+            setLevel4Categories(res4.data || []);
+            const l4 = findId(res4.data, s4);
+            setSelectedLevel4(l4);
 
-      // Level 5
-      if (s4) {
-        const res5 = await api.get(
-          `/core_api/categories/level5/${s4}?client_id=${selectedClient}`
-        );
-        setLevel5Categories(res5.data || []);
-        setSelectedLevel5(s5);
+            // Level 5
+            if (l4) {
+              const res5 = await api.get(
+                `/core_api/categories/level5/${l4}?client_id=${selectedClient}`
+              );
+              setLevel5Categories(res5.data || []);
+              setSelectedLevel5(findId(res5.data, s5));
+            }
+          }
+        }
       }
 
       // Template + Person fields

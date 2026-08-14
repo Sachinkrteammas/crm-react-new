@@ -4545,3 +4545,313 @@ def get_weebo_information_log(
     rows = [dict(row._mapping) for row in result]
 
     return rows
+
+
+
+
+
+
+
+
+
+
+
+
+
+@router.post("/export-customize-mis")
+def export_customize_mis(
+    client_id: int,
+    start_date: date,
+    end_date: date,
+    db: Session = Depends(get_db4)
+):
+    try:
+        # =========================================================
+        # 1. Get active tabs for client
+        # =========================================================
+
+        tab_query = text("""
+            SELECT
+                id,
+                tab_name,
+                tab_field
+            FROM report_tab_master
+            WHERE client_id = :client_id
+              AND tab_status = 'A'
+            ORDER BY tab_order ASC
+        """)
+
+        tabs = db.execute(
+            tab_query,
+            {
+                "client_id": client_id
+            }
+        ).mappings().all()
+
+        if not tabs:
+            raise HTTPException(
+                status_code=404,
+                detail="No active report tabs found for this client"
+            )
+
+        # =========================================================
+        # 2. Create Excel workbook
+        # =========================================================
+
+        wb = Workbook()
+
+        # Remove default Excel sheet
+        default_sheet = wb.active
+        wb.remove(default_sheet)
+
+        # =========================================================
+        # 3. Process every report tab
+        # =========================================================
+
+        for tab in tabs:
+
+            tab_id = tab["id"]
+            sheet_name = str(tab["tab_name"])
+            tab_field = str(tab["tab_field"])
+
+            # Excel sheet name maximum = 31 characters
+            sheet_name = sheet_name[:31]
+
+            # =====================================================
+            # 4. Get headers and fields
+            #    Same as PHP getheader()
+            # =====================================================
+
+            header_query = text("""
+                SELECT
+                    header_name,
+                    header_field
+                FROM report_header_master
+                WHERE tab_id = :tab_id
+                  AND header_status = 'A'
+                ORDER BY header_order ASC
+            """)
+
+            header_rows = db.execute(
+                header_query,
+                {
+                    "tab_id": tab_id
+                }
+            ).mappings().all()
+
+            headers = [
+                row["header_name"]
+                for row in header_rows
+            ]
+
+            fields = [
+                row["header_field"]
+                for row in header_rows
+            ]
+
+            if not fields:
+                continue
+
+            # =====================================================
+            # 5. Validate dynamic database columns
+            # =====================================================
+
+            columns_query = text("""
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'call_master'
+            """)
+
+            db_columns = {
+                row[0]
+                for row in db.execute(columns_query).all()
+            }
+
+            invalid_fields = [
+                field
+                for field in fields
+                if field not in db_columns
+            ]
+
+            if invalid_fields:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid fields in report configuration: "
+                           f"{invalid_fields}"
+                )
+
+            if tab_field not in db_columns:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid tab field: {tab_field}"
+                )
+
+            # =====================================================
+            # 6. Build SELECT fields
+            # =====================================================
+
+            field_sql = ", ".join(
+                f"`{field}`"
+                for field in fields
+            )
+
+            # =====================================================
+            # 7. Get data from call_master
+            #    Same purpose as PHP getdata()
+            # =====================================================
+
+            data_query = text(f"""
+                SELECT
+                    {field_sql}
+                FROM call_master
+                WHERE DATE(`CallDate`) >= :start_date
+                  AND DATE(`CallDate`) <= :end_date
+                  AND `ClientId` = :client_id
+                  AND `{tab_field}` = :tab_name
+            """)
+
+            records = db.execute(
+                data_query,
+                {
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "client_id": client_id,
+                    "tab_name": sheet_name
+                }
+            ).all()
+
+            # =====================================================
+            # 8. Create Excel sheet
+            # =====================================================
+
+            ws = wb.create_sheet(
+                title=sheet_name
+            )
+
+            # =====================================================
+            # 9. Add header
+            # =====================================================
+
+            ws.append(headers)
+
+            # =====================================================
+            # 10. Add data
+            # =====================================================
+
+            for record in records:
+
+                row = list(record)
+
+                # PHP has special date conversion for ClientId 293
+                if str(client_id) == "293":
+
+                    for index, value in enumerate(row):
+
+                        if isinstance(value, datetime):
+
+                            row[index] = value.strftime(
+                                "%d/%m/%Y %H:%M:%S"
+                            )
+
+                        elif isinstance(value, date):
+
+                            row[index] = value.strftime(
+                                "%d/%m/%Y"
+                            )
+
+                ws.append(row)
+
+            # =====================================================
+            # 11. Format header
+            # =====================================================
+
+            for cell in ws[1]:
+
+                cell.fill = PatternFill(
+                    fill_type="solid",
+                    fgColor="008B8B"
+                )
+
+                cell.font = Font(
+                    name="Verdana",
+                    size=8,
+                    bold=True,
+                    color="FFFFFF"
+                )
+
+            # =====================================================
+            # 12. Wrap text
+            # =====================================================
+
+            for row in ws.iter_rows():
+
+                for cell in row:
+
+                    cell.alignment = Alignment(
+                        wrap_text=True
+                    )
+
+            # =====================================================
+            # 13. Set column width = 20
+            # =====================================================
+
+            for column in ws.columns:
+
+                column_letter = column[0].column_letter
+
+                ws.column_dimensions[
+                    column_letter
+                ].width = 20
+
+        # =========================================================
+        # 14. Make first sheet active
+        # =========================================================
+
+        if wb.sheetnames:
+            wb.active = 0
+
+        # =========================================================
+        # 15. Create Excel file in memory
+        # =========================================================
+
+        output = BytesIO()
+
+        wb.save(output)
+
+        output.seek(0)
+
+        # =========================================================
+        # 16. Filename
+        # =========================================================
+
+        filename = (
+            "customize_in_call_report"
+            f"{datetime.now().strftime('%m-%d-%Y')}.xlsx"
+        )
+
+        # =========================================================
+        # 17. Return Excel file
+        # =========================================================
+
+        return StreamingResponse(
+            output,
+            media_type=(
+                "application/vnd.openxmlformats-"
+                "officedocument.spreadsheetml.sheet"
+            ),
+            headers={
+                "Content-Disposition":
+                    f'attachment; filename="{filename}"'
+            }
+        )
+
+    except HTTPException:
+        raise
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

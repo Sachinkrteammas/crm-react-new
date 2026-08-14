@@ -89,6 +89,7 @@ from cdr_webhook import router as cdr_webhook_router
 from Obd_Managements import router as Obd_Managements
 from sms_service import router as sms_service
 from sms_service import run_abandoned_call_sms
+from alert_schedular import router as alert_schedular_router, scheduled_pending_alerts, scheduled_escalation_checks
 from recording_sync import sync_recordings
 from shopify import router
 from pd_call_allocation import router as pd_call_allocation_router
@@ -175,6 +176,7 @@ app.include_router(bot_integration, tags=["Bot Integration"])
 app.include_router(plan_settings_router, tags=["Plan Settings"], dependencies=[Depends(verify_token)])
 app.include_router(Obd_Managements, tags=["Obd Managements"], dependencies=[Depends(verify_token)])
 app.include_router(sms_service, tags=["SMS Service"], dependencies=[Depends(verify_token)])
+app.include_router(alert_schedular_router, tags=["Alert Scheduler"], dependencies=[Depends(verify_token)])
 
 app.include_router(dialer_router, prefix="/api")
 app.include_router(cdr_webhook_router)
@@ -250,6 +252,55 @@ def scheduled_daily_billing():
         for cid in client_ids:
             print(f"→ Billing client: {cid}")
 
+            # -----------------------------------------
+            # Check balance/plan BEFORE billing
+            # -----------------------------------------
+            bal_q = text("""
+                SELECT PlanId
+                FROM balance_master
+                WHERE clientId = :client_id
+                LIMIT 1
+            """)
+
+            bal_row = db.execute(
+                bal_q,
+                {"client_id": cid}
+            ).mappings().fetchone()
+
+            if not bal_row or not bal_row.get("PlanId"):
+                print(
+                    f"⚠ Skipping client {cid}: "
+                    f"No balance/PlanId found"
+                )
+                continue
+
+            # -----------------------------------------
+            # Check whether plan exists
+            # -----------------------------------------
+            plan_q = text("""
+                SELECT Id
+                FROM plan_master
+                WHERE Id = :plan_id
+                LIMIT 1
+            """)
+
+            plan_row = db.execute(
+                plan_q,
+                {"plan_id": bal_row["PlanId"]}
+            ).mappings().fetchone()
+
+            if not plan_row:
+                print(
+                    f"⚠ Skipping client {cid}: "
+                    f"Plan {bal_row['PlanId']} not found"
+                )
+                continue
+
+            print(
+                f"✓ Client {cid}: "
+                f"Plan {bal_row['PlanId']} found"
+            )
+
             req = BillingDailyRequest(
                 company_id=cid,
                 billing_date=billing_date
@@ -295,8 +346,10 @@ scheduler.add_job(pull_salesforce_leads, "interval", minutes=1)
 # scheduler.add_job(run_push_to_sheet, "interval", minutes=1, max_instances=1)
 #scheduler.add_job(run_sla_push_to_sheet, "interval", minutes=1, max_instances=1)
 scheduler.add_job(run_abandoned_call_sms, "interval", minutes=1)
+# scheduler.add_job(scheduled_pending_alerts, "interval", minutes=1, max_instances=1)
 scheduler.add_job(sync_recordings, "cron", hour=1, minute=30)
 scheduler.add_job(get_call_followups, "interval", minutes=30)
+# scheduler.add_job(scheduled_escalation_checks, "interval", minutes=1, max_instances=1)
 
 
 
