@@ -82,7 +82,7 @@ const CustomizedInCallReport = () => {
       const contentDisposition = response.headers["content-disposition"];
 
       if (contentDisposition) {
-        const match = contentDisposition.match(/filename=(.*)/);
+        const match = contentDisposition.match(/filename="?([^"]+)"?/);
         if (match && match[1]) {
           fileName = match[1];
         }
