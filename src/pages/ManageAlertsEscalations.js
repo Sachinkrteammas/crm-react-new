@@ -57,6 +57,17 @@ export default function ManageAlertsEscalations() {
     useState(null);
   const [loadingEscalations, setLoadingEscalations] = useState(false);
 
+  // Close Loop-specific state (SMS only)
+  const [closeLoopAlerts, setCloseLoopAlerts] = useState([]);
+  const [editingCloseLoopAlertId, setEditingCloseLoopAlertId] = useState(null);
+  const [closeLoopActions, setCloseLoopActions] = useState([]);
+  const [closeLoopActionType, setCloseLoopActionType] = useState("");
+  const [closeLoopCategoryId, setCloseLoopCategoryId] = useState(null);
+  const [closeLoopSubActions, setCloseLoopSubActions] = useState([]);
+  const [closeLoopActionSubType, setCloseLoopActionSubType] = useState("");
+  const [closeLoopTemplateId, setCloseLoopTemplateId] = useState("");
+  const [closeLoopTemplateText, setCloseLoopTemplateText] = useState("");
+
   const [activeSubTab, setActiveSubTab] = useState("caller");
 
   const [activeTab, setActiveTab] = useState("alertMechanism");
@@ -658,6 +669,130 @@ export default function ManageAlertsEscalations() {
     }
   };
 
+  // -------------------- Close Loop Alert Mechanism (SMS only) --------------------
+
+  const fetchCloseLoopAlerts = async () => {
+    if (!selectedClient) return;
+    try {
+      const res = await api.get("/closeloop/alert-mechanism", {
+        params: { client_id: selectedClient },
+      });
+      setCloseLoopAlerts(res.data);
+    } catch (err) {
+      console.error(err);
+      alert("Error fetching close loop alerts.");
+    }
+  };
+
+  const fetchCloseLoopActions = async () => {
+    if (!selectedClient) return;
+    try {
+      const res = await api.get("/call-action-subtype", {
+        params: { client_id: selectedClient },
+      });
+      setCloseLoopActions(res.data?.data || []);
+    } catch (err) {
+      console.error("Error fetching close loop actions:", err);
+    }
+  };
+
+  const fetchCloseLoopSubActions = async (categoryId) => {
+    if (!selectedClient || !categoryId) {
+      setCloseLoopSubActions([]);
+      setCloseLoopActionSubType("");
+      return;
+    }
+    try {
+      const res = await api.get("/call-action-subtype-subloop", {
+        params: { client_id: selectedClient, category_id: categoryId },
+      });
+      setCloseLoopSubActions(res.data?.data || []);
+    } catch (err) {
+      console.error("Error fetching close loop sub actions:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedClient) {
+      fetchCloseLoopAlerts();
+      fetchCloseLoopActions();
+    }
+  }, [selectedClient]);
+
+  const resetCloseLoopForm = () => {
+    setEditingCloseLoopAlertId(null);
+    setCloseLoopActionType("");
+    setCloseLoopCategoryId(null);
+    setCloseLoopActionSubType("");
+    setCloseLoopSubActions([]);
+    setCloseLoopTemplateId("");
+    setCloseLoopTemplateText("");
+  };
+
+  const handleCloseLoopAdd = async () => {
+    if (!selectedClient) return alert("Please select a client first.");
+    if (!closeLoopActionType) return alert("Please select Call Action Type.");
+    if (!closeLoopTemplateText) return alert("Please enter Template Text.");
+
+    const payload = {
+      client_id: selectedClient,
+      alert_category: "closeloop",
+      alert_on: "SMS",
+      template_name: "",
+      template_id: closeLoopTemplateId,
+      template_text: closeLoopTemplateText,
+      close_action_type: closeLoopActionType,
+      close_action_sub_type: closeLoopActionSubType || null,
+    };
+
+    try {
+      if (editingCloseLoopAlertId) {
+        await api.put(
+          `/closeloop/alert-mechanism/${editingCloseLoopAlertId}`,
+          payload
+        );
+        alert("Close loop alert updated successfully!");
+      } else {
+        await api.post("/closeloop/alert-mechanism", payload);
+        alert("Close loop alert saved successfully!");
+      }
+      resetCloseLoopForm();
+      fetchCloseLoopAlerts();
+    } catch (err) {
+      console.error(err);
+      alert("Error saving close loop alert.");
+    }
+  };
+
+  const handleCloseLoopEdit = (alert) => {
+    setEditingCloseLoopAlertId(alert.id);
+    setCloseLoopActionType(alert.close_action_type || "");
+    setCloseLoopActionSubType(alert.close_action_sub_type || "");
+    setCloseLoopTemplateId(alert.template_id || "");
+    setCloseLoopTemplateText(alert.template_text || "");
+    const cat = closeLoopActions.find(
+      (a) => a.name === (alert.close_action_type || "")
+    );
+    setCloseLoopCategoryId(cat?.id || null);
+    if (cat?.id) {
+      fetchCloseLoopSubActions(cat.id);
+    } else {
+      setCloseLoopSubActions([]);
+    }
+  };
+
+  const handleCloseLoopDelete = async (alertId) => {
+    if (!window.confirm("Are you sure you want to delete this alert?")) return;
+    try {
+      await api.delete(`/closeloop/alert-mechanism/${alertId}`);
+      alert("Close loop alert deleted successfully!");
+      fetchCloseLoopAlerts();
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting close loop alert.");
+    }
+  };
+
   // -------------------- Tabs --------------------
 
   const sidebarItemClass = (tab) =>
@@ -730,6 +865,15 @@ export default function ManageAlertsEscalations() {
                   onClick={() => setActiveAlertSection("escalation")}
                 >
                   ESCALATION
+                </button>
+
+                <button
+                  className={`list-group-item list-group-item-action fw-semibold ${
+                    activeAlertSection === "closeloop" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveAlertSection("closeloop")}
+                >
+                  CLOSE LOOPING
                 </button>
               </div>
             </div>
@@ -1598,6 +1742,169 @@ export default function ManageAlertsEscalations() {
                               </tbody>
                             </table>
                           )}
+                        </div>
+                      </div>
+                    )}
+
+                    {activeAlertSection === "closeloop" && (
+                      <div>
+                        {/* === Close Loop form (SMS only) === */}
+                        <form className="row g-4">
+                          <div className="col-md-3">
+                            <label className="form-label fw-semibold">
+                              Call Action Type
+                            </label>
+                            <select
+                              className="form-select shadow-sm rounded-2"
+                              value={closeLoopActionType}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setCloseLoopActionType(val);
+                                setCloseLoopActionSubType("");
+                                setCloseLoopSubActions([]);
+                                const sel = closeLoopActions.find(
+                                  (a) => a.name === val
+                                );
+                                setCloseLoopCategoryId(sel?.id || null);
+                                if (sel?.id) fetchCloseLoopSubActions(sel.id);
+                              }}
+                            >
+                              <option value="">Select Call Action Type</option>
+                              {closeLoopActions.map((action, i) => (
+                                <option key={i} value={action.name}>
+                                  {action.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="col-md-3">
+                            <label className="form-label fw-semibold">
+                              Call Action Sub Type
+                            </label>
+                            <select
+                              className="form-select shadow-sm rounded-2"
+                              value={closeLoopActionSubType}
+                              onChange={(e) =>
+                                setCloseLoopActionSubType(e.target.value)
+                              }
+                            >
+                              <option value="">Select Call Action Sub Type</option>
+                              {closeLoopSubActions.map((sub, i) => (
+                                <option key={i} value={sub.name}>
+                                  {sub.name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="col-md-3">
+                            <label className="form-label fw-semibold">
+                              Template ID
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control shadow-sm rounded-2"
+                              value={closeLoopTemplateId}
+                              onChange={(e) =>
+                                setCloseLoopTemplateId(e.target.value)
+                              }
+                              placeholder="Enter Template ID"
+                            />
+                          </div>
+
+                          <div className="col-md-12">
+                            <label className="form-label fw-semibold">
+                              Template Text
+                            </label>
+                            <textarea
+                              className="form-control shadow-sm rounded-2"
+                              rows="4"
+                              value={closeLoopTemplateText}
+                              onChange={(e) =>
+                                setCloseLoopTemplateText(e.target.value)
+                              }
+                              placeholder="Enter the SMS text for close looping"
+                            ></textarea>
+                          </div>
+
+                          <div className="col-12 d-flex justify-content-center gap-3 mt-4">
+                            <button
+                              type="button"
+                              className="btn btn-primary shadow-sm px-5 py-2 rounded-3"
+                              onClick={handleCloseLoopAdd}
+                            >
+                              {editingCloseLoopAlertId ? "UPDATE" : "ADD"}
+                            </button>
+                            {editingCloseLoopAlertId && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary shadow-sm px-5 py-2 rounded-3"
+                                onClick={resetCloseLoopForm}
+                              >
+                                Cancel Edit
+                              </button>
+                            )}
+                          </div>
+                        </form>
+
+                        {/* === Close Loop Alerts Table === */}
+                        <div
+                          className="table-responsive mt-4"
+                          style={{ maxHeight: 500, overflowY: "auto" }}
+                        >
+                          <h5>Existing Close Loop Alerts</h5>
+                          <table className="table table-hover table-bordered table-striped align-middle shadow-sm">
+                            <thead className="table-primary sticky-top">
+                              <tr>
+                                <th>ID</th>
+                                <th>Alert On</th>
+                                <th>Call Action Type</th>
+                                <th>Call Action Sub Type</th>
+                                <th>Template Name</th>
+                                <th>Template Text</th>
+                                <th>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {closeLoopAlerts.length === 0 && (
+                                <tr>
+                                  <td
+                                    colSpan={7}
+                                    className="text-center text-muted"
+                                  >
+                                    No close loop alerts found.
+                                  </td>
+                                </tr>
+                              )}
+                              {closeLoopAlerts.map((alert) => (
+                                <tr key={alert.id}>
+                                  <td>{alert.id}</td>
+                                  <td>{alert.alert_on}</td>
+                                  <td>{alert.close_action_type}</td>
+                                  <td>{alert.close_action_sub_type || "-"}</td>
+                                  <td>{alert.template_name}</td>
+                                  <td>{alert.template_text}</td>
+                                  <td>
+                                    <button
+                                      className="btn btn-sm btn-warning me-2"
+                                      onClick={() => handleCloseLoopEdit(alert)}
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() =>
+                                        handleCloseLoopDelete(alert.id)
+                                      }
+                                    >
+                                      Delete
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
                       </div>
                     )}

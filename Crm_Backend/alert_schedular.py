@@ -111,8 +111,13 @@ def save_billing(db, alert, ded_type, duration, unit, alert_to):
     call_date = call_datetime.date() if isinstance(call_datetime, datetime) else call_datetime
     call_time = call_datetime.time() if isinstance(call_datetime, datetime) else now.time()
 
-    # DedSubType: 'Alert' for caller/internal, 'Escalation' for escalation
-    ded_sub_type = "Escalation" if alert.alert_category == "escalation" else "Alert"
+    # DedSubType: 'Alert' for caller/internal, 'Escalation' for escalation, 'CloseLoop' for close loop
+    if alert.alert_category == "escalation":
+        ded_sub_type = "Escalation"
+    elif alert.alert_category == "closeloop":
+        ded_sub_type = "CloseLoop"
+    else:
+        ded_sub_type = "Alert"
 
     db.execute(
         text("""
@@ -216,7 +221,7 @@ async def process_client_alerts(db, client_id):
     for mech in mechanisms:
         mechanisms_by_category.setdefault(mech.alert_category, []).append(mech)
 
-    enabled_categories = list(mechanisms_by_category.keys())
+    enabled_categories = [c for c in mechanisms_by_category.keys() if c != "closeloop"]
     print(enabled_categories, "enabled_categories===")
 
     if not enabled_categories:
@@ -227,6 +232,7 @@ async def process_client_alerts(db, client_id):
         }
 
     # Only process scheduler alerts for the integrated categories
+    # (closeloop is handled by the dedicated close-loop scheduler)
     alerts = (
         db.query(AlertScheduler)
         .filter(
@@ -621,4 +627,195 @@ async def send_internal_alerts_on_tag(db, client_id, phone=None, email=None, dat
 async def send_escalation_alerts_on_tag(db, client_id, phone=None, email=None, data_id=None):
     """Enqueue and deliver 'escalation' alerts for a freshly tagged record."""
     return await send_alerts_on_tag(db, client_id, "escalation", phone=phone, email=email, data_id=data_id)
+
+
+# ============================================================
+# Close Loop scheduler (SMS only)
+#
+# alert_scheduler rows for 'closeloop' are created by an external close-loop
+# process. This scheduler only DELIVERS them:
+#   1. It checks a pending 'closeloop' row exists for the client in
+#      alert_scheduler.
+#   2. It verifies the linked call_master ticket matches the close loop status
+#      set on the mechanism (close_action_type / close_action_sub_type) and the
+#      ticket is closed (CloseLoopingDate set).
+#   3. It sends the SMS to the caller (alert.phone = call_master.MSISDN), logs
+#      it in sms_log_history and adds a billing_master row on success.
+# ============================================================
+
+
+async def process_close_loop_alerts(db, client_id=None):
+    """
+    Deliver pending (not-yet-sent) 'closeloop' SMS alerts already present in
+    alert_scheduler.
+
+    For each pending row the linked call_master ticket must match the close
+    loop status set on the client's closeloop mechanism (close_action_type,
+    and close_action_sub_type when configured) and the ticket must be closed
+    (CloseLoopingDate set) before the SMS is sent.
+
+    SMS goes to the caller (alert.phone = call_master.MSISDN), is logged in
+    sms_log_history and billed in billing_master on success.
+    Returns a summary dict.
+    """
+    alerts_query = (
+        db.query(AlertScheduler)
+        .filter(
+            AlertScheduler.alert_category == "closeloop",
+            AlertScheduler.alert_on == "SMS",
+            or_(
+                AlertScheduler.sms_status.is_(None),
+                AlertScheduler.sms_status.is_not(True),
+            ),
+        )
+        .order_by(AlertScheduler.id)
+    )
+    if client_id:
+        alerts_query = alerts_query.filter(AlertScheduler.client_id == client_id)
+    alerts = alerts_query.all()
+
+    sms_list = []
+    skipped = []
+
+    for alert in alerts:
+        # Load the closeloop mechanism for this client (fallback for expected status)
+        mechanisms = (
+            db.query(AlertMechanisms)
+            .filter(
+                AlertMechanisms.client_id == alert.client_id,
+                AlertMechanisms.alert_category == "closeloop",
+            )
+            .all()
+        )
+        mech = next(
+            (m for m in mechanisms if m.template_text == alert.template_text),
+            mechanisms[0] if mechanisms else None,
+        )
+
+        # Expected status comes from the alert_scheduler row itself
+        # (set by the external close-loop process), falling back to the mechanism
+        expected_action = alert.close_action_type or (mech.close_action_type if mech else None)
+        expected_sub_action = alert.close_action_sub_type or (mech.close_action_sub_type if mech else None)
+
+        if not expected_action:
+            skipped.append({"id": alert.id, "reason": "no close_action_type configured on alert row / mechanism"})
+            continue
+
+        # Verify the linked ticket matches the expected close loop status
+        row = db.execute(
+            text("""
+                SELECT CloseLoopCate1, CloseLoopCate2, CloseLoopingDate
+                FROM call_master
+                WHERE Id = :id
+            """),
+            {"id": alert.data_id},
+        ).mappings().first()
+
+        if not row:
+            skipped.append({"id": alert.id, "reason": "call_master row not found"})
+            continue
+
+        if row.get("CloseLoopingDate") is None:
+            skipped.append({"id": alert.id, "reason": "ticket not closed"})
+            continue
+
+        if (row.get("CloseLoopCate1") or "") != expected_action:
+            skipped.append({
+                "id": alert.id,
+                "reason": f"status mismatch (got {row.get('CloseLoopCate1')!r}, want {expected_action!r})",
+            })
+            continue
+
+        if expected_sub_action and (row.get("CloseLoopCate2") or "") != expected_sub_action:
+            skipped.append({
+                "id": alert.id,
+                "reason": f"sub status mismatch (got {row.get('CloseLoopCate2')!r}, want {expected_sub_action!r})",
+            })
+            continue
+
+        template_id = alert.template_id or DEFAULT_TEMPLATE_ID_SMS
+
+        sms_response = send_sms(
+            phone=alert.phone,
+            message=alert.template_text or "No message content",
+            template_id=template_id,
+        )
+
+        status = sms_response.get("status", "")
+
+        if status == "success":
+            alert.sms_status = True
+            sms_log = SmsLogHistory(
+                alert_id=alert.id,
+                client_id=alert.client_id,
+                phone=alert.phone,
+                message=alert.template_text,
+                template_id=template_id,
+                provider_status="success",
+                provider_response=json.dumps(sms_response),
+            )
+            db.add(sms_log)
+
+            message = alert.template_text or ""
+            sms_duration = len(message.split())
+            sms_unit = max(1, math.ceil(sms_duration / 60))
+            save_billing(db, alert, "SMS", sms_duration, sms_unit, alert.phone)
+        else:
+            alert.sms_status = False
+
+        alert.sms_response = json.dumps(sms_response)
+        alert.updated_at = datetime.now()
+        db.add(alert)
+
+        sms_list.append({
+            "id": alert.id,
+            "data_id": alert.data_id,
+            "phone": alert.phone,
+            "message": alert.template_text,
+            "response": sms_response,
+        })
+
+    db.commit()
+
+    return {
+        "status": "success",
+        "total_sms_sent": len(sms_list),
+        "total_skipped": len(skipped),
+        "sms_list": sms_list,
+        "skipped": skipped,
+    }
+
+
+def run_close_loop_alerts(client_id=None):
+    """
+    Sync wrapper: deliver pending close-loop alerts already present in
+    alert_scheduler. Used by the background scheduler. Returns a summary dict.
+    """
+    db = next(get_db())
+    try:
+        return asyncio.run(process_close_loop_alerts(db, client_id=client_id))
+    except Exception as e:
+        db.rollback()
+        return {"status": "error", "error": str(e)}
+    finally:
+        db.close()
+
+
+def scheduled_close_loop_checks():
+    """Sync wrapper so APScheduler (BackgroundScheduler) can run the close loop scheduler."""
+    result = run_close_loop_alerts()
+    if result.get("status") != "success":
+        print(f"CLOSE LOOP SCHEDULER ERROR {result}")
+
+
+@router.get("/alert_scheduler/run_close_loop")
+async def trigger_close_loop_alerts_all(db: Session = Depends(get_db)):
+    """Manually run the close-loop scheduler for every client."""
+    return await process_close_loop_alerts(db)
+
+
+@router.get("/alert_scheduler/run_close_loop/{client_id}")
+async def trigger_close_loop_alerts(client_id: int, db: Session = Depends(get_db)):
+    """Manually run the close-loop scheduler for a single client."""
+    return await process_close_loop_alerts(db, client_id=client_id)
 

@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Query, Form, HTTPException
+from fastapi import APIRouter, Query, Form, HTTPException, Depends
 from datetime import datetime
 from sqlalchemy import create_engine, text
 from database import engine4
 from pydantic import BaseModel
 from typing import Optional, List
 import json
+from sqlalchemy.orm import Session
+
+from database import get_db4
 
 router = APIRouter()
 
@@ -628,3 +631,249 @@ def delete_escalation_alert(alert_id: int):
         return {"message": "Escalation alert deleted successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+# ============================================================
+# Close Loop alert mechanism (SMS only)
+# Uses alert_mechanisms.close_action_type / close_action_sub_type
+# to define which Call Action Type / Call Action Sub Type triggers
+# the SMS to the caller when the ticket is closed.
+# ============================================================
+
+class CloseLoopAlertMechanismCreate(BaseModel):
+    client_id: int
+    alert_category: str
+    alert_on: str = "SMS"
+    template_name: Optional[str] = None
+    template_text: str
+    template_id: Optional[str] = None
+    close_action_type: str
+    close_action_sub_type: Optional[str] = None
+
+
+class CloseLoopAlertMechanismUpdate(BaseModel):
+    alert_on: Optional[str] = None
+    template_name: Optional[str] = None
+    template_text: Optional[str] = None
+    template_id: Optional[str] = None
+    close_action_type: Optional[str] = None
+    close_action_sub_type: Optional[str] = None
+
+
+@router.get("/closeloop/alert-mechanism")
+def get_close_loop_alert_mechanisms(client_id: Optional[int] = None):
+    try:
+        with engine4.begin() as conn:
+            if client_id:
+                query = text("""
+                    SELECT * FROM alert_mechanisms
+                    WHERE alert_category = 'closeloop' AND client_id = :client_id
+                    ORDER BY id DESC
+                """)
+                result = conn.execute(query, {"client_id": client_id})
+            else:
+                query = text("""
+                    SELECT * FROM alert_mechanisms
+                    WHERE alert_category = 'closeloop'
+                    ORDER BY id DESC
+                """)
+                result = conn.execute(query)
+
+            rows = [dict(row._mapping) for row in result]
+            return rows
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@router.post("/closeloop/alert-mechanism")
+def create_close_loop_alert_mechanism(payload: CloseLoopAlertMechanismCreate):
+    if payload.alert_category != "closeloop":
+        raise HTTPException(status_code=400, detail="Invalid alert_category, must be 'closeloop'")
+
+    if not payload.close_action_type:
+        raise HTTPException(status_code=400, detail="Call Action Type is required")
+
+    insert_query = text("""
+        INSERT INTO alert_mechanisms
+        (
+            client_id, alert_category, alert_on, template_name, template_text, template_id,
+            close_action_type, close_action_sub_type, created_at
+        )
+        VALUES
+        (
+            :client_id, :alert_category, 'SMS', :template_name, :template_text, :template_id,
+            :close_action_type, :close_action_sub_type, NOW()
+        )
+    """)
+
+    try:
+        with engine4.begin() as conn:
+            result = conn.execute(insert_query, {
+                "client_id": payload.client_id,
+                "alert_category": payload.alert_category,
+                "template_name": payload.template_name or "",
+                "template_text": payload.template_text,
+                "template_id": payload.template_id,
+                "close_action_type": payload.close_action_type,
+                "close_action_sub_type": payload.close_action_sub_type,
+            })
+
+        return {
+            "message": "Close loop alert mechanism saved successfully",
+            "alert_id": result.lastrowid
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@router.put("/closeloop/alert-mechanism/{alert_id}")
+def update_close_loop_alert_mechanism(alert_id: int, payload: CloseLoopAlertMechanismUpdate):
+    try:
+        update_fields = []
+        params = {"alert_id": alert_id}
+
+        if payload.alert_on is not None:
+            # Close loop only sends SMS
+            update_fields.append("alert_on = 'SMS'")
+        if payload.template_name is not None:
+            update_fields.append("template_name = :template_name")
+            params["template_name"] = payload.template_name
+        if payload.template_text is not None:
+            update_fields.append("template_text = :template_text")
+            params["template_text"] = payload.template_text
+        if payload.template_id is not None:
+            update_fields.append("template_id = :template_id")
+            params["template_id"] = payload.template_id
+        if payload.close_action_type is not None:
+            update_fields.append("close_action_type = :close_action_type")
+            params["close_action_type"] = payload.close_action_type
+        if payload.close_action_sub_type is not None:
+            update_fields.append("close_action_sub_type = :close_action_sub_type")
+            params["close_action_sub_type"] = payload.close_action_sub_type
+
+        if not update_fields:
+            raise HTTPException(status_code=400, detail="No fields provided for update")
+
+        update_query = text(f"""
+            UPDATE alert_mechanisms
+            SET {', '.join(update_fields)}, updated_at = NOW()
+            WHERE id = :alert_id AND alert_category = 'closeloop'
+        """)
+
+        with engine4.begin() as conn:
+            result = conn.execute(update_query, params)
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Close loop alert not found")
+
+        return {"message": "Close loop alert updated successfully"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@router.delete("/closeloop/alert-mechanism/{alert_id}")
+def delete_close_loop_alert_mechanism(alert_id: int):
+    try:
+        delete_query = text("""
+            DELETE FROM alert_mechanisms
+            WHERE id = :alert_id AND alert_category = 'closeloop'
+        """)
+
+        with engine4.begin() as conn:
+            result = conn.execute(delete_query, {"alert_id": alert_id})
+            if result.rowcount == 0:
+                raise HTTPException(status_code=404, detail="Close loop alert not found")
+
+        return {"message": "Close loop alert deleted successfully"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+
+
+@router.get("/call-action-subtype")
+def call_action_subtype(
+    client_id: int = Query(..., description="Client ID"),
+    db: Session = Depends(get_db4)
+):
+    try:
+        query = text("""
+            SELECT
+                id,
+                close_loop_category
+            FROM closeloop_master
+            WHERE close_loop = 'manual'
+              AND client_id = :client_id
+              AND parent_id IS NULL
+        """)
+
+        result = db.execute(
+            query,
+            {
+                "client_id": client_id
+            }
+        ).mappings().all()
+
+        return {
+            "status": True,
+            "data": [
+                {
+                    "id": row["id"],
+                    "name": row["close_loop_category"]
+                }
+                for row in result
+            ]
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+
+@router.get("/call-action-subtype-subloop")
+def call_action_subtype_subloop(
+    client_id: int = Query(..., description="Client ID"),
+    category_id: int = Query(..., description="Close Loop Category ID"),
+    db: Session = Depends(get_db4)
+):
+    try:
+        query = text("""
+            SELECT
+                id,
+                close_loop_sub_category
+            FROM closeloop_master
+            WHERE id = :category_id
+              AND close_loop = 'manual'
+              AND client_id = :client_id
+        """)
+
+        result = db.execute(
+            query,
+            {
+                "category_id": category_id,
+                "client_id": client_id
+            }
+        ).mappings().all()
+
+        return {
+            "status": True,
+            "data": [
+                {
+                    "id": row["id"],
+                    "name": row["close_loop_sub_category"]
+                }
+                for row in result
+            ]
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
