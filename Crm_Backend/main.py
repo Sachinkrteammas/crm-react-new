@@ -338,14 +338,14 @@ def scheduled_daily_billing():
 scheduler = BackgroundScheduler()
 #scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
 scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
-# scheduler.add_job(run_report_scheduler, "interval", minutes=1)
-# scheduler.add_job(pull_salesforce_leads, "interval", minutes=1)
+scheduler.add_job(run_report_scheduler, "interval", minutes=1)
+scheduler.add_job(pull_salesforce_leads, "interval", minutes=1)
 # scheduler.add_job(run_cdr_scheduler, 'cron', hour=13, minute=15)
 # scheduler.add_job(run_agent_apr_scheduler, 'cron', hour=15, minute=52)
 
 # scheduler.add_job(run_push_to_sheet, "interval", minutes=1, max_instances=1)
 #scheduler.add_job(run_sla_push_to_sheet, "interval", minutes=1, max_instances=1)
-# scheduler.add_job(run_abandoned_call_sms, "interval", minutes=1)
+scheduler.add_job(run_abandoned_call_sms, "interval", minutes=1)
 # scheduler.add_job(scheduled_pending_alerts, "interval", minutes=1, max_instances=1)
 scheduler.add_job(sync_recordings, "cron", hour=1, minute=30)
 scheduler.add_job(get_call_followups, "interval", minutes=30)
