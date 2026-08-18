@@ -292,12 +292,23 @@ async def upload_call_master_csv(
 
         update_query = text("""
             UPDATE call_master
-            SET CField1 = :status,
-                CField4 = :remarks,
-                CFieldUpdate = NOW()
+            SET CloseLoopCate1 = :status,
+                closelooping_remarks = :remarks,
+                CloseLoopingDate = NOW(),
+                FollowupDate = NOW(),
+                CloseLoopStatus = 'CLOSE',
+                close_loop = 'bulk'
             WHERE Id = :call_id
               AND ClientId = :row_client_id
         """)
+        # update_query = text("""
+        #     UPDATE call_master
+        #     SET CField1 = :status,
+        #         CField4 = :remarks,
+        #         CFieldUpdate = NOW()
+        #     WHERE Id = :call_id
+        #       AND ClientId = :row_client_id
+        # """)
 
         result = db.execute(update_query, {
             "status": status,
