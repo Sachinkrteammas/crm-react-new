@@ -98,6 +98,27 @@ def create_campaign(
         "multilang_ivrs": to_db_format(multilang_ivrs),
         "agent_skills": to_db_format(agent_skills),
     })
+
+    # -------- MIRROR CAMPAIGNS INTO ingroup_campaign_master --------
+    # One row per campaign (campaignid may be comma-separated)
+
+    insert_ingroup_query = text("""
+        INSERT INTO ingroup_campaign_master
+          (client_id, campaign_name)
+        VALUES
+          (:client_id, :campaign_name)
+    """)
+
+    for campaign in campaignid.split(","):
+        campaign = campaign.strip()
+        if not campaign:
+            continue
+
+        db.execute(insert_ingroup_query, {
+            "client_id": str(company_id),
+            "campaign_name": campaign,
+        })
+
     db.commit()
     return {"message": "Campaign Mapping created successfully."}
 
@@ -136,6 +157,38 @@ def update_campaign(
         "multilang_ivrs": to_db_format(multilang_ivrs),
         "agent_skills": to_db_format(agent_skills),
     })
+
+    # -------- SYNC NEW CAMPAIGNS INTO ingroup_campaign_master --------
+    # Insert only campaigns that don't already exist for this client
+
+    existing_rows = db.execute(
+        text("""
+            SELECT campaign_name
+            FROM ingroup_campaign_master
+            WHERE client_id = :client_id
+        """),
+        {"client_id": str(company_id)}
+    ).fetchall()
+
+    existing_campaigns = {row.campaign_name.strip() for row in existing_rows}
+
+    insert_ingroup_query = text("""
+        INSERT INTO ingroup_campaign_master
+          (client_id, campaign_name)
+        VALUES
+          (:client_id, :campaign_name)
+    """)
+
+    for campaign in campaignid.split(","):
+        campaign = campaign.strip()
+        if not campaign or campaign in existing_campaigns:
+            continue
+
+        db.execute(insert_ingroup_query, {
+            "client_id": str(company_id),
+            "campaign_name": campaign,
+        })
+
     db.commit()
     return {"message": f"Campaign ID {company_id} updated successfully."}
 
