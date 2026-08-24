@@ -116,6 +116,7 @@ def save_lead_to_vicidial(db2: Session, lead):
             SELECT lead_id
             FROM vicidial_list
             WHERE source_id = :source_id
+            AND list_id = '3333333'
             LIMIT 1
         """)
 
