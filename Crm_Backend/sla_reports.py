@@ -782,8 +782,8 @@ def slot_wise_utilization(
 
 
         # for user, events in user_sessions.items():
-            # For client-wise report, count only agents who handled calls
-        active_agents = agents_set if clientID != "All" else user_sessions.keys()
+            # Manpower counts only agents who handled calls for the selected campaigns
+        active_agents = agents_set
 
         for user in active_agents:
             events = user_sessions.get(user, [])
