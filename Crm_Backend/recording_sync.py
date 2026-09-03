@@ -116,7 +116,7 @@ def sync_recordings():
                     'Hariom_IB','HariOM_OB','Hari000',                                                                            
                     'MAANIINBOUND',
                     'Internet001_OB','Internetwale','Inter000',
-                    'SorrySuga_0001'
+                    'SorrySuga_0001','ROADGODS_000','YanshHotel000'
                 )
                 AND v.user <> 'VDCL'
                 AND r.recording_id > :last_id
