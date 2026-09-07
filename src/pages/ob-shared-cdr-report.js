@@ -213,7 +213,7 @@ const OBSharedCDRReport = () => {
           )
         )}
 
-          <DatePicker
+          {/* <DatePicker
             selected={startDate}
             onChange={(date) => setStartDate(date)}
             placeholderText="Start Date"
@@ -226,6 +226,24 @@ const OBSharedCDRReport = () => {
             placeholderText="End Date"
             className="form-control"
             dateFormat="dd-MM-yyyy"
+          /> */}
+          <DatePicker
+            selected={startDate}
+            onChange={(date) => {
+              setStartDate(date);
+              setEndDate(date);
+            }}
+            placeholderText="Start Date"
+            className="form-control"
+            dateFormat="dd-MM-yyyy"
+          />
+
+          <DatePicker
+            selected={endDate}
+            placeholderText="End Date"
+            className="form-control"
+            dateFormat="dd-MM-yyyy"
+            disabled
           />
           <button className="btn btn-primary" onClick={handleExport}>
             EXPORT
