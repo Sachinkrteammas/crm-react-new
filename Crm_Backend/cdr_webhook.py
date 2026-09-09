@@ -514,7 +514,14 @@ def c2p_cdr(
                 agent_username,
                 agent_number,
                 customer_call_setup_time,
-                recording
+                disposition,
+                sub_disposition_1,
+                sub_disposition_2,
+                sub_disposition_3,
+                sub_disposition_4,
+                sub_disposition_5,
+                recording,
+                remark
             FROM cdr_webhook_logs
             WHERE DATE(date_time) BETWEEN :start_date AND :end_date
         """
