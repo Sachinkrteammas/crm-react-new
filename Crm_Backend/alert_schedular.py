@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import asyncio
 import json
 import math
+import re
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -95,6 +96,88 @@ def _get_call_master_billing(db, data_id):
     except Exception as e:
         print(f"CALL_MASTER BILLING FETCH FAILED data_id={data_id} error={e}")
         return {}
+
+
+def _render_template(db, alert):
+    """
+    Replace :Placeholder: tokens in alert.template_text with values from the
+    linked call_master row (via alert.data_id).
+
+    - Any call_master column can be referenced by exact name (:MSISDN:, :Category1:).
+    - Client field labels saved in field_master (e.g. "First Name") are resolved
+      dynamically to their Field{n} column for the client.
+    - Unknown tokens are left as-is.
+    - Tokens with extra spaces (e.g. :Register Mobile Number :) are handled
+      via regex extraction so they still get replaced.
+    """
+    text_content = alert.template_text or ""
+    if not text_content or not alert.data_id:
+        return text_content
+
+    try:
+        row = db.execute(
+            text("SELECT * FROM call_master WHERE Id = :id LIMIT 1"),
+            {"id": alert.data_id},
+        ).mappings().first()
+    except Exception as e:
+        print(f"TEMPLATE RENDER SKIP alert_id={alert.id} error={e}")
+        return text_content
+
+    if not row:
+        return text_content
+
+    mapping = {}
+    for key, val in row.items():
+        if val is None:
+            val = ""
+        mapping[key] = str(val)
+        mapping[key.replace("_", " ")] = str(val)
+
+    # Dynamic client field labels: FieldName -> Field{n} value (from field_master)
+    try:
+        field_rows = db.execute(
+            text("""
+                SELECT fieldNumber, FieldName
+                FROM field_master
+                WHERE ClientId = :client_id
+                AND (FieldStatus IS NULL OR FieldStatus != 'D')
+                ORDER BY fieldNumber
+            """),
+            {"client_id": alert.client_id},
+        ).mappings().all()
+        for f in field_rows:
+            field_name = (f.get("FieldName") or "").strip()
+            column = f"Field{f.get('fieldNumber')}"
+            if field_name and column in mapping:
+                mapping[field_name] = mapping[column]
+    except Exception as e:
+        print(f"FIELD_MASTER FETCH SKIP alert_id={alert.id} error={e}")
+
+    # Friendly display-name overrides (standard columns only, kept as-is)
+    mapping.setdefault("Scenario", mapping.get("Category1") or "")
+    mapping.setdefault("Sub Scenario 1", mapping.get("Category2") or "")
+    mapping.setdefault("Sub Scenario 2", mapping.get("Category3") or "")
+    mapping.setdefault("Sub Scenario 3", mapping.get("Category4") or "")
+    mapping.setdefault("Sub Scenario 4", mapping.get("Category5") or "")
+    mapping.setdefault("Mobile Number", mapping.get("MSISDN") or "")
+    mapping.setdefault("Call Date", mapping.get("CallDate") or "")
+
+    normalized_map = {}
+    for key, value in mapping.items():
+        if key:
+            normalized_map[key.strip().lower()] = str(value).strip()
+
+    def _replace_token(match):
+        full_token = match.group(0)
+        token = match.group(1).strip().lower()
+        value = normalized_map.get(token, "")
+        if value:
+            return full_token + " " + value
+        return full_token
+
+    rendered = re.sub(r":([^:]+):", _replace_token, text_content)
+
+    return rendered
 
 
 def save_billing(db, alert, ded_type, duration, unit, alert_to):
@@ -266,6 +349,9 @@ async def process_client_alerts(db, client_id):
         if not _escalation_is_due(db, alert, mech):
             continue
 
+        # Render template with call_master data (via data_id)
+        rendered_text = _render_template(db, alert)
+
         # Simulate SMS
         if alert.alert_on in ["SMS", "All"] and alert.phone and not alert.sms_status:
             # Use the template ID configured on the mechanism, fallback to default
@@ -273,7 +359,7 @@ async def process_client_alerts(db, client_id):
 
             sms_response = send_sms(
                 phone=alert.phone,
-                message=alert.template_text or "No message content",
+                message=rendered_text or "No message content",
                 template_id=template_id
             )
 
@@ -287,7 +373,7 @@ async def process_client_alerts(db, client_id):
                     alert_id=alert.id,
                     client_id=alert.client_id,
                     phone=alert.phone,
-                    message=alert.template_text,
+                    message=rendered_text,
                     template_id=template_id,
                     provider_status="success",
                     provider_response=json.dumps(sms_response)
@@ -295,7 +381,7 @@ async def process_client_alerts(db, client_id):
                 db.add(sms_log)
 
                 # Billing log (SMS): Duration = word count, Unit = ceil(words / 60), min 1
-                message = alert.template_text or ""
+                message = rendered_text or ""
                 sms_duration = len(message.split())
                 sms_unit = max(1, math.ceil(sms_duration / 60))
                 save_billing(db, alert, "SMS", sms_duration, sms_unit, alert.phone)
@@ -311,7 +397,7 @@ async def process_client_alerts(db, client_id):
             sms_list.append({
                 "id": alert.id,
                 "phone": alert.phone,
-                "message": alert.template_text,
+                "message": rendered_text,
                 "response": sms_response
             })
 
@@ -321,7 +407,7 @@ async def process_client_alerts(db, client_id):
             email_response = send_email(
                 to_email=alert.email,
                 subject=alert.template_name or "Alert Notification",
-                body=alert.template_text or "No message content",
+                body=rendered_text or "No message content",
                 smtp_config=SMTP_CONFIG
             )
 
@@ -338,7 +424,7 @@ async def process_client_alerts(db, client_id):
                     client_id=alert.client_id,
                     email=alert.email,
                     subject=alert.template_name,
-                    body=alert.template_text,
+                    body=rendered_text,
                     provider_status="success",
                     provider_response=json.dumps(email_response)
                 )
@@ -357,7 +443,7 @@ async def process_client_alerts(db, client_id):
                 "id": alert.id,
                 "email": alert.email,
                 "subject": alert.template_name,
-                "body": alert.template_text,
+                "body": rendered_text,
                 "response": email_response
             })
 
@@ -373,7 +459,7 @@ async def process_client_alerts(db, client_id):
                 payload = {
                     "sessionId": mech.WHATSAPP_SESSION_ID,
                     "number": alert.phone if str(alert.phone).startswith("91") else f"9178274643803",
-                    "message": alert.template_text or "No message content"
+                    "message": rendered_text or "No message content"
                 }
                 headers = {
                     "accept": "*/*",
@@ -402,7 +488,7 @@ async def process_client_alerts(db, client_id):
                             alert_id=alert.id,
                             client_id=alert.client_id,
                             phone=alert.phone,
-                            message=alert.template_text,
+                            message=rendered_text,
                             provider_status="success",
                             provider_response=json.dumps(data)
                         )
@@ -414,7 +500,7 @@ async def process_client_alerts(db, client_id):
                         whatsapp_list.append({
                             "id": alert.id,
                             "phone": alert.phone,
-                            "message": alert.template_text,
+                            "message": rendered_text,
                             "response": data
                         })
                     else:
@@ -735,9 +821,12 @@ async def process_close_loop_alerts(db, client_id=None):
 
         template_id = alert.template_id or DEFAULT_TEMPLATE_ID_SMS
 
+        # Render template with call_master data (via data_id)
+        rendered_text = _render_template(db, alert)
+
         sms_response = send_sms(
             phone=alert.phone,
-            message=alert.template_text or "No message content",
+            message=rendered_text or "No message content",
             template_id=template_id,
         )
 
@@ -749,14 +838,14 @@ async def process_close_loop_alerts(db, client_id=None):
                 alert_id=alert.id,
                 client_id=alert.client_id,
                 phone=alert.phone,
-                message=alert.template_text,
+                message=rendered_text,
                 template_id=template_id,
                 provider_status="success",
                 provider_response=json.dumps(sms_response),
             )
             db.add(sms_log)
 
-            message = alert.template_text or ""
+            message = rendered_text or ""
             sms_duration = len(message.split())
             sms_unit = max(1, math.ceil(sms_duration / 60))
             save_billing(db, alert, "SMS", sms_duration, sms_unit, alert.phone)
@@ -771,7 +860,7 @@ async def process_close_loop_alerts(db, client_id=None):
             "id": alert.id,
             "data_id": alert.data_id,
             "phone": alert.phone,
-            "message": alert.template_text,
+            "message": rendered_text,
             "response": sms_response,
         })
 

@@ -31,6 +31,7 @@ def get_fields(client_id: int = Query(..., description="Client ID")):
         SELECT fieldNumber, FieldName
         FROM field_master
         WHERE ClientId = :client_id
+        AND (FieldStatus IS NULL OR FieldStatus != 'D')
         ORDER BY fieldNumber
     """
     return fetch_fields(query, {"client_id": client_id})

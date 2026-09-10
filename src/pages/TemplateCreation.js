@@ -192,6 +192,10 @@ export default function TemplateCreation() {
                           <option value="Scenario">Scenario</option>
                           <option value="Sub Scenario 1">Sub Scenario 1</option>
                           <option value="Sub Scenario 2">Sub Scenario 2</option>
+                          <option value="Sub Scenario 3">Sub Scenario 3</option>
+                          <option value="Sub Scenario 4">Sub Scenario 4</option>
+                          <option value="Mobile Number">Mobile Number</option>
+                          <option value="Call Date">Call Date</option>
                         </select>
                       </div>
 
