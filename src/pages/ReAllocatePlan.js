@@ -40,6 +40,13 @@ const ReAllocatePlan = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const formatDate = (date) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  };
+
   const handleSubmit = async (e) => {
   e.preventDefault();
 
@@ -55,7 +62,7 @@ const ReAllocatePlan = () => {
     const formData = new FormData();
     formData.append("client_id", form.selectClient);
     formData.append("plan_id", form.selectPlan);
-    formData.append("start_date", form.startDate.toISOString().split("T")[0]);
+    formData.append("start_date", formatDate(form.startDate));
 
     const res = await api.post("/reallocate-plan/save", formData, {
       headers: { "Content-Type": "multipart/form-data" },
@@ -86,8 +93,8 @@ const ReAllocatePlan = () => {
           <h6 className="card-header">RE-ALLOCATE PLAN</h6>
           <div className="card-body">
             <form className="row g-3" onSubmit={handleSubmit}>
-              <div className="col-md-4">
-                <label className="form-label">Plan</label>
+              <div className="col-md-3">
+                <label className="form-label d-block">Plan</label>
                 <select
                   name="selectPlan"
                   className="form-select"
@@ -103,8 +110,8 @@ const ReAllocatePlan = () => {
                 </select>
               </div>
 
-              <div className="col-md-4">
-                <label className="form-label">Client</label>
+              <div className="col-md-3">
+                <label className="form-label d-block">Client</label>
                 <select
                   name="selectClient"
                   className="form-select"
@@ -120,12 +127,13 @@ const ReAllocatePlan = () => {
                 </select>
               </div>
 
-              <div className="col-md-4">
+              <div className="col-md-3">
                 <label className="form-label d-block">Start Date</label>
                 <DatePicker
                   selected={form.startDate}
                   onChange={(date) => setForm({ ...form, startDate: date })}
                   className="form-control w-100"
+                  wrapperClassName="w-100"
                   placeholderText="Plan Start Date"
                   dateFormat="dd-MM-yyyy"
                 />

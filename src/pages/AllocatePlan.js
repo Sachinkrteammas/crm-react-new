@@ -61,7 +61,10 @@ const AllocatePlan = () => {
       return;
     }
 
-    const formattedDate = form.startDate.toISOString().split("T")[0]; // YYYY-MM-DD
+    const y = form.startDate.getFullYear();
+    const m = String(form.startDate.getMonth() + 1).padStart(2, "0");
+    const d = String(form.startDate.getDate()).padStart(2, "0");
+    const formattedDate = `${y}-${m}-${d}`;
 
     try {
       const res = await api.post("/allocate-plan/create", {

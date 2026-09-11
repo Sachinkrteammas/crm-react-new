@@ -2908,8 +2908,32 @@ def download_excel_raw_old(
         LIMIT 1
     """), {"client_id": client_id}).mappings().fetchone()
 
+    # ---------------- PLAN EFFECTIVE WINDOW LOOKUP ----------------
+    # If a plan_effective_window row covers the requested date range, use its plan.
+    # Otherwise fall back to the current balance_master flow.
+    window_row = db.execute(text("""
+        SELECT plan_id FROM plan_effective_window
+        WHERE client_id = :client_id
+            AND effective_from <= :to_date
+            AND effective_to >= :from_date
+        ORDER BY effective_from DESC
+        LIMIT 1
+    """), {
+        "client_id": client_id,
+        "from_date": from_date,
+        "to_date": to_date,
+    }).mappings().fetchone()
+
     plan_result = None
-    if balance_result and balance_result.PlanId:
+    if window_row and window_row.get("plan_id"):
+        plan_result = db.execute(text("""
+            SELECT * FROM plan_master
+            WHERE Id = :plan_id
+            LIMIT 1
+        """), {"plan_id": window_row["plan_id"]}).mappings().fetchone()
+    elif balance_result and balance_result.PlanId:
+    # plan_result = None
+    # if balance_result and balance_result.PlanId:
         plan_result = db.execute(text("""
             SELECT * FROM plan_master
             WHERE Id = :plan_id
@@ -4028,8 +4052,32 @@ def download_excel_raw_old_audio(
         LIMIT 1
     """), {"client_id": client_id}).mappings().fetchone()
 
+    # ---------------- PLAN EFFECTIVE WINDOW LOOKUP ----------------
+    # If a plan_effective_window row covers the requested date range, use its plan.
+    # Otherwise fall back to the current balance_master flow.
+    window_row = db.execute(text("""
+        SELECT plan_id FROM plan_effective_window
+        WHERE client_id = :client_id
+            AND effective_from <= :to_date
+            AND effective_to >= :from_date
+        ORDER BY effective_from DESC
+        LIMIT 1
+    """), {
+        "client_id": client_id,
+        "from_date": from_date,
+        "to_date": to_date,
+    }).mappings().fetchone()
+
     plan_result = None
-    if balance_result and balance_result.PlanId:
+    if window_row and window_row.get("plan_id"):
+        plan_result = db.execute(text("""
+            SELECT * FROM plan_master
+            WHERE Id = :plan_id
+            LIMIT 1
+        """), {"plan_id": window_row["plan_id"]}).mappings().fetchone()
+    elif balance_result and balance_result.PlanId:
+    # plan_result = None
+    # if balance_result and balance_result.PlanId:
         plan_result = db.execute(text("""
             SELECT * FROM plan_master
             WHERE Id = :plan_id

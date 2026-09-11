@@ -144,11 +144,44 @@ def compute_ib_consumption(
     # 2) fetch balance_master and plan_master
     bal_q = text("SELECT * FROM balance_master WHERE clientId = :client_id LIMIT 1")
     bal_row = db.execute(bal_q, {"client_id": request.company_id}).mappings().fetchone()
-    if not bal_row or not bal_row.get("PlanId"):
-        raise HTTPException(status_code=404, detail="No balance/plan found for this client")
+    # ---- ORIGINAL PLAN LOOKUP (commented for reference, not removed) ----
+    # if not bal_row or not bal_row.get("PlanId"):
+    #     raise HTTPException(status_code=404, detail="No balance/plan found for this client")
+    #
+    # plan_q = text("SELECT * FROM plan_master WHERE Id = :plan_id LIMIT 1")
+    # plan_row = db.execute(plan_q, {"plan_id": bal_row["PlanId"]}).mappings().fetchone()
+    # if not plan_row:
+    #     raise HTTPException(status_code=404, detail="Plan master entry not found")
 
-    plan_q = text("SELECT * FROM plan_master WHERE Id = :plan_id LIMIT 1")
-    plan_row = db.execute(plan_q, {"plan_id": bal_row["PlanId"]}).mappings().fetchone()
+    # ---------------- NEW: PLAN EFFECTIVE WINDOW LOOKUP ----------------
+    # If a plan_effective_window row covers the requested date, use its plan.
+    # Otherwise fall back to the current balance_master flow.
+    window_row = db.execute(text("""
+        SELECT plan_id FROM plan_effective_window
+        WHERE client_id = :client_id
+            AND effective_from <= :billing_date
+            AND effective_to >= :billing_date
+        ORDER BY effective_from DESC
+        LIMIT 1
+    """), {
+        "client_id": request.company_id,
+        "billing_date": request.billing_date,
+    }).mappings().fetchone()
+
+    plan_row = None
+    if window_row and window_row.get("plan_id"):
+        plan_row = db.execute(text("""
+            SELECT * FROM plan_master
+            WHERE Id = :plan_id
+            LIMIT 1
+        """), {"plan_id": window_row["plan_id"]}).mappings().fetchone()
+    elif bal_row and bal_row.get("PlanId"):
+        plan_row = db.execute(text("""
+            SELECT * FROM plan_master
+            WHERE Id = :plan_id
+            LIMIT 1
+        """), {"plan_id": bal_row["PlanId"]}).mappings().fetchone()
+
     if not plan_row:
         raise HTTPException(status_code=404, detail="Plan master entry not found")
 
@@ -712,7 +745,7 @@ def compute_ib_consumption(
         "whatsapp_sms_flat": wasms_flat,
         "whatsapp_sms_total": float(wasms_total),
 
-        "plan_id": bal_row["PlanId"]
+        "plan_id": plan_row["Id"]  # window-effective plan id (was bal_row["PlanId"])
     }
 
     # insert into DB (no explicit db.begin())
@@ -744,7 +777,7 @@ def compute_ib_consumption(
         "sms_flat": sms_flat,
         "sms_total": sms_total,
         "cm_total": cm_total,
-        "inserted_plan_id": bal_row["PlanId"]
+        "inserted_plan_id": plan_row["Id"]  # window-effective plan id (was bal_row["PlanId"])
     }
 
 

@@ -74,9 +74,55 @@ def save_reallocate_plan(
     # Check if client already has a balance record
     # --------------------------------------------
     balance_master = db.execute(
-        text("SELECT Id FROM balance_master WHERE clientId = :client_id"),
+        text("SELECT Id, PlanId, activation_date FROM balance_master WHERE clientId = :client_id"),
         {"client_id": client_id}
-    ).fetchone()
+    ).mappings().fetchone()
+
+    # --------------------------------------------
+    # Close old plan's effective window automatically
+    # --------------------------------------------
+    if balance_master and balance_master.get("PlanId"):
+        old_plan_id = balance_master["PlanId"]
+        old_activation = balance_master.get("activation_date")
+        old_window_end = start_date_obj - timedelta(days=1)
+
+        if old_activation:
+            old_from = old_activation.strftime("%Y-%m-%d") if isinstance(old_activation, datetime) else str(old_activation)
+        else:
+            plan_created = db.execute(
+                text("SELECT DATE(createdate) AS createdate FROM plan_master WHERE Id = :plan_id"),
+                {"plan_id": old_plan_id}
+            ).mappings().fetchone()
+            old_from = str(plan_created["createdate"]) if plan_created and plan_created.get("createdate") else datetime.now().strftime("%Y-%m-%d")
+
+        existing_old_window = db.execute(
+            text("""
+                SELECT id FROM plan_effective_window
+                WHERE client_id = :client_id AND plan_id = :plan_id
+            """),
+            {"client_id": client_id, "plan_id": old_plan_id}
+        ).mappings().fetchone()
+
+        if existing_old_window:
+            db.execute(text("""
+                UPDATE plan_effective_window
+                SET effective_to = :effective_to
+                WHERE id = :id
+            """), {
+                "effective_to": old_window_end.strftime("%Y-%m-%d"),
+                "id": existing_old_window["id"],
+            })
+        else:
+            db.execute(text("""
+                INSERT INTO plan_effective_window
+                (client_id, plan_id, effective_from, effective_to)
+                VALUES (:client_id, :plan_id, :effective_from, :effective_to)
+            """), {
+                "client_id": client_id,
+                "plan_id": old_plan_id,
+                "effective_from": old_from,
+                "effective_to": old_window_end.strftime("%Y-%m-%d"),
+            })
 
     if balance_master:
         # UPDATE existing record

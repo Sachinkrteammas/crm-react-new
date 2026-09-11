@@ -92,6 +92,7 @@ def create_allocate_plan(data: dict, db: Session = Depends(get_db4)):
 
     client_id = data["client_id"]
     plan_id = data["plan_id"]
+    start_date = data.get("start_date")
     plan_type = data.get("plan_type", "Prepaid")
 
     # 1. Check if client already has a balance record -> "Plan Already Mapped"
@@ -117,14 +118,15 @@ def create_allocate_plan(data: dict, db: Session = Depends(get_db4)):
     # 3. Insert into balance_master (PHP saves no start_date/end_date here)
     insert_query = """
         INSERT INTO balance_master
-        (PlanId, clientId, Balance, MainBalance, PlanType, userid, createdate)
-        VALUES (:plan_id, :client_id, :balance, :balance, :plan_type, 1, NOW())
+        (PlanId, clientId, Balance, MainBalance, PlanType, userid, createdate, activation_date)
+        VALUES (:plan_id, :client_id, :balance, :balance, :plan_type, 1, NOW(), :start_date)
     """
     db.execute(text(insert_query), {
         "plan_id": plan_id,
         "client_id": client_id,
         "balance": balance_value,
         "plan_type": plan_type,
+        "start_date": start_date,
     })
 
     # 4. Insert into history_plan_master
