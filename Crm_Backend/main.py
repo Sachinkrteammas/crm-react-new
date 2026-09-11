@@ -399,12 +399,12 @@ scheduler.add_job(pull_salesforce_leads, "interval", minutes=5)
 # scheduler.add_job(run_push_to_sheet, "interval", minutes=1, max_instances=1)
 #scheduler.add_job(run_sla_push_to_sheet, "interval", minutes=1, max_instances=1)
 scheduler.add_job(run_abandoned_call_sms, "interval", minutes=1)
-scheduler.add_job(scheduled_pending_alerts, "interval", minutes=1, max_instances=1)
+scheduler.add_job(scheduled_pending_alerts, "interval", minutes=3, max_instances=1)
 scheduler.add_job(sync_recordings, "cron", hour=1, minute=30)
 # scheduler.add_job(scheduled_monthly_usage_alerts, "cron", hour=11, minute=56, max_instances=1)  # monthly usage alerts (once per month per client)
 scheduler.add_job(get_call_followups, "interval", minutes=30)
-scheduler.add_job(scheduled_escalation_checks, "interval", minutes=1, max_instances=1)
-scheduler.add_job(scheduled_close_loop_checks, "interval", minutes=1, max_instances=1)  # close-loop SMS alerts
+scheduler.add_job(scheduled_escalation_checks, "interval", minutes=10, max_instances=1)
+scheduler.add_job(scheduled_close_loop_checks, "interval", minutes=16, max_instances=1)  # close-loop SMS alerts
 
 
 
