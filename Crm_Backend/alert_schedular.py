@@ -7,6 +7,7 @@ import json
 import math
 import re
 import smtplib
+from html import escape as _html_escape
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import httpx
@@ -46,7 +47,7 @@ SMTP_CONFIG = {
 }
 
 
-def send_email(to_email, subject, body, smtp_config=None):
+def send_email(to_email, subject, body, smtp_config=None, html_body=False):
     config = smtp_config or SMTP_CONFIG
 
     try:
@@ -54,7 +55,7 @@ def send_email(to_email, subject, body, smtp_config=None):
         msg["From"] = config["username"]
         msg["To"] = to_email
         msg["Subject"] = subject
-        msg.attach(MIMEText(body, "html"))
+        msg.attach(MIMEText(body, "html" if html_body else "plain"))
 
         host = config.get("host") or config.get("smtp_server")
         port = config.get("port") or config.get("smtp_port")
@@ -98,7 +99,7 @@ def _get_call_master_billing(db, data_id):
         return {}
 
 
-def _render_template(db, alert):
+def _render_template(db, alert, align=False, html=False):
     """
     Replace :Placeholder: tokens in alert.template_text with values from the
     linked call_master row (via alert.data_id).
@@ -109,6 +110,11 @@ def _render_template(db, alert):
     - Unknown tokens are left as-is.
     - Tokens with extra spaces (e.g. :Register Mobile Number :) are handled
       via regex extraction so they still get replaced.
+
+    When align=True (email bodies) labels are padded so every value starts at
+    the same column. The template text is left untouched otherwise (any bold /
+    HTML the user set stays intact). html=True uses non-breaking spaces so the
+    padding is not collapsed by HTML mail clients.
     """
     text_content = alert.template_text or ""
     if not text_content or not alert.data_id:
@@ -167,6 +173,72 @@ def _render_template(db, alert):
         if key:
             normalized_map[key.strip().lower()] = str(value).strip()
 
+    token_re = re.compile(r":([^:]+):")
+
+    if align:
+        # Helper: char-count padding with &nbsp; (html) or space (plain)
+        def _pad_seg(segment):
+            local = [(m.start(), m.end(), m.group(1).strip()) for m in token_re.finditer(segment)]
+            if not local:
+                return segment
+            ml = max((len(l) for _, _, l in local if normalized_map.get(l.lower(), "")), default=0)
+            if not ml:
+                return segment
+            pad = "&nbsp;" if html else " "
+            out, last = [], 0
+            for s, e, label in local:
+                value = normalized_map.get(label.lower(), "")
+                out.append(segment[last:s])
+                out.append((f"{label}{pad * (ml - len(label))}{pad * 6}{value}") if value else segment[s:e])
+                last = e
+            out.append(segment[last:])
+            return "".join(out)
+
+        if html:
+            FIELD_LINE = re.compile(r"(?is)<p(?:\s[^>]*)?>(.*?)</p>")
+            TABLE_OPEN = '<table style="border-collapse:collapse;margin:2px 0;" cellpadding="0" cellspacing="0" width="100%">'
+            TABLE_CLOSE = "</table>"
+            out, rows, last = [], [], 0
+
+            for m in FIELD_LINE.finditer(text_content):
+                inner = m.group(1)
+                tokens = list(token_re.finditer(inner))
+                if len(tokens) == 1:
+                    t = tokens[0]
+                    label = t.group(1).strip()
+                    value = normalized_map.get(label.lower(), "")
+                    if value:
+                        pre = text_content[last:m.start()]
+                        if pre.strip():
+                            if rows:
+                                out.extend([TABLE_OPEN, *rows, TABLE_CLOSE])
+                                rows = []
+                            out.append(_pad_seg(pre))
+                        label_html = inner[:t.start()] + _html_escape(label) + inner[t.end():]
+                        rows.append(
+                            '<tr>'
+                            f'<td style="white-space:nowrap;padding-right:10px;vertical-align:top;">{label_html}</td>'
+                            f'<td style="white-space:nowrap;vertical-align:top;">{_html_escape(value)}</td>'
+                            '</tr>'
+                        )
+                        last = m.end()
+                        continue
+                if rows:
+                    out.extend([_pad_seg(text_content[last:m.start()]), TABLE_OPEN, *rows, TABLE_CLOSE])
+                    rows = []
+                out.append(_pad_seg(text_content[last:m.start()]))
+                out.append(text_content[m.start():m.end()])
+                last = m.end()
+
+            if rows:
+                out.extend([_pad_seg(text_content[last:]), TABLE_OPEN, *rows, TABLE_CLOSE])
+            else:
+                out.append(_pad_seg(text_content[last:]))
+            return "".join(out)
+
+        return _pad_seg(text_content)
+
+    # Default path (SMS / WhatsApp): single-space separator, no alignment
     def _replace_token(match):
         full_token = match.group(0)
         token = match.group(1).strip().lower()
@@ -175,9 +247,7 @@ def _render_template(db, alert):
             return full_token + " " + value
         return full_token
 
-    rendered = re.sub(r":([^:]+):", _replace_token, text_content)
-
-    return rendered
+    return token_re.sub(_replace_token, text_content)
 
 
 def save_billing(db, alert, ded_type, duration, unit, alert_to):
@@ -404,11 +474,16 @@ async def process_client_alerts(db, client_id):
             alert_responses["sms"] = sms_response
 
         if alert.alert_on in ["Email", "All"] and alert.email and not alert.email_status:
+            # Align label/data columns; keep any HTML/bold the user set in the template
+            html_body = "<" in (alert.template_text or "")
+            email_body = _render_template(db, alert, align=True, html=html_body)
+
             email_response = send_email(
                 to_email=alert.email,
                 subject=alert.template_name or "Alert Notification",
-                body=rendered_text or "No message content",
-                smtp_config=SMTP_CONFIG
+                body=email_body or "No message content",
+                smtp_config=SMTP_CONFIG,
+                html_body=html_body
             )
 
             # Prevent KeyError – safely read status
@@ -424,7 +499,7 @@ async def process_client_alerts(db, client_id):
                     client_id=alert.client_id,
                     email=alert.email,
                     subject=alert.template_name,
-                    body=rendered_text,
+                    body=email_body,
                     provider_status="success",
                     provider_response=json.dumps(email_response)
                 )
@@ -443,7 +518,7 @@ async def process_client_alerts(db, client_id):
                 "id": alert.id,
                 "email": alert.email,
                 "subject": alert.template_name,
-                "body": rendered_text,
+                "body": email_body,
                 "response": email_response
             })
 
