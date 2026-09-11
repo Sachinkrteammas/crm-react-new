@@ -478,9 +478,12 @@ async def process_client_alerts(db, client_id):
             html_body = "<" in (alert.template_text or "")
             email_body = _render_template(db, alert, align=True, html=html_body)
 
+            # Include data_id in the subject so each call's email becomes its own thread
+            email_subject = f"{alert.template_name or 'Alert Notification'} - Call ID: {alert.data_id}"
+
             email_response = send_email(
                 to_email=alert.email,
-                subject=alert.template_name or "Alert Notification",
+                subject=email_subject,
                 body=email_body or "No message content",
                 smtp_config=SMTP_CONFIG,
                 html_body=html_body
@@ -498,7 +501,7 @@ async def process_client_alerts(db, client_id):
                     alert_id=alert.id,
                     client_id=alert.client_id,
                     email=alert.email,
-                    subject=alert.template_name,
+                    subject=email_subject,
                     body=email_body,
                     provider_status="success",
                     provider_response=json.dumps(email_response)
@@ -517,7 +520,7 @@ async def process_client_alerts(db, client_id):
             email_list.append({
                 "id": alert.id,
                 "email": alert.email,
-                "subject": alert.template_name,
+                "subject": email_subject,
                 "body": email_body,
                 "response": email_response
             })
