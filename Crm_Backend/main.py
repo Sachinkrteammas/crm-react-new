@@ -95,6 +95,7 @@ from recording_sync import sync_recordings
 from shopify import router
 from pd_call_allocation import router as pd_call_allocation_router
 from campaign_sub_type import router as campaign_sub_type_router
+from invoice_tool import router as invoice_tool_router
 
 
 app = FastAPI(title="CRM Backend")
@@ -157,6 +158,7 @@ app.include_router(forgot_password_router, tags=["Forgot Password"])
 app.include_router(usage_summary_router, tags=["Usage Summary"], dependencies=[Depends(verify_token)])
 app.include_router(statement_summary_router, tags=["Statement Summary"], dependencies=[Depends(verify_token)])
 app.include_router(invoice_router, tags=["Invoice"], dependencies=[Depends(verify_token)])
+app.include_router(invoice_tool_router, prefix="/invoice-tool", tags=["Invoice Tool"], dependencies=[Depends(verify_token)])  # 👈 NEW
 app.include_router(new_outbound_dashboard, tags=["New Outbound Dashboard"], dependencies=[Depends(verify_token)])
 app.include_router(customer_date_wise_density_of_calls_router, tags=["Customere Date wise density"], dependencies=[Depends(verify_token)])
 app.include_router(SLA_client_wise_router, tags=["SLA Client Wise"], dependencies=[Depends(verify_token)])

@@ -195,7 +195,7 @@ import Obd_Managements_addlist from "./pages/Obd_Managements_addlist";
 import OrderStatus from "./pages/OrderStatus";
 import WeeboInformation from "./pages/weebo_information";
 import CustomizedInCallReport from "./pages/customized_in_call_report";
-
+import InvoiceDashboard from "./pages/InvoiceDashboard";
 
 
 function App() {
@@ -502,6 +502,7 @@ function App() {
               <Route path="/OrderStatus" element={<OrderStatus />} />
               <Route path="/WeeboInformation" element={<WeeboInformation />} />
               <Route path="/CustomizedMisReports" element={<CustomizedInCallReport />} />
+              <Route path="/InvoiceDashboard" element ={<InvoiceDashboard/>}/>
               <></>
           </Route>
       </Route>
