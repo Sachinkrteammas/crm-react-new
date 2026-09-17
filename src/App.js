@@ -196,6 +196,8 @@ import OrderStatus from "./pages/OrderStatus";
 import WeeboInformation from "./pages/weebo_information";
 import CustomizedInCallReport from "./pages/customized_in_call_report";
 import InvoiceDashboard from "./pages/InvoiceDashboard";
+import AllocationVicidialList from "./pages/allocation_vicidiallist";
+
 
 
 function App() {
@@ -292,6 +294,7 @@ function App() {
         "/mappings" : "Did Client And Campaigns Mapping | DialDesk",
         "/allocation_plan" : "Allocation Plan| DialDesk",
         "/DashboardAnest" : "Dashboard Anest Wata | DialDesk",
+        "/allocation-vicidiallist" : "Allocation Vicidial List Sync | DialDesk",
     };
 
     const location = useLocation();
@@ -503,6 +506,7 @@ function App() {
               <Route path="/WeeboInformation" element={<WeeboInformation />} />
               <Route path="/CustomizedMisReports" element={<CustomizedInCallReport />} />
               <Route path="/InvoiceDashboard" element ={<InvoiceDashboard/>}/>
+              <Route path="/allocation-vicidiallist" element={<AllocationVicidialList />} />
               <></>
           </Route>
       </Route>

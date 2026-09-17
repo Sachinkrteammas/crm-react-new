@@ -96,6 +96,7 @@ from shopify import router
 from pd_call_allocation import router as pd_call_allocation_router
 from campaign_sub_type import router as campaign_sub_type_router
 from invoice_tool import router as invoice_tool_router
+from ob_campaign_sync import router as ob_campaign_sync_router
 
 
 app = FastAPI(title="CRM Backend")
@@ -187,6 +188,7 @@ app.include_router(cdr_webhook_router)
 app.include_router(router)
 app.include_router(pd_call_allocation_router, tags=["PD Call Allocation"], dependencies=[Depends(verify_token)])
 app.include_router(campaign_sub_type_router, tags=["Campaign Sub Type"], dependencies=[Depends(verify_token)])
+app.include_router(ob_campaign_sync_router, tags=["OB Campaign Sync"])
 
 
 # ✅ Create a function that runs the API logic automatically
