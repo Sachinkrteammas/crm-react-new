@@ -42,9 +42,26 @@ const AllocationVicidialList = () => {
     alt_phone: "Alt Phone",
     security_phrase: "Security Phrase",
     comments: "Comments",
+    extra_col_1: "Extra Column1",
+    extra_col_2: "Extra Column2",
+    extra_col_3: "Extra Column3",
+    extra_col_4: "Extra Column4",
+    extra_col_5: "Extra Column5",
+    extra_col_6: "Extra Column6",
   };
 
   const vicidialColumns = Object.keys(vicidialFieldMap);
+
+  // Extra columns (not saved to vicidial_list) pinned to Field20..Field25
+  const EXTRA_FIELD_START = 20;
+  const EXTRA_COLUMNS = [
+    "extra_col_1",
+    "extra_col_2",
+    "extra_col_3",
+    "extra_col_4",
+    "extra_col_5",
+    "extra_col_6",
+  ];
 
   // selected vicidial columns (phone_number always first)
   const [selectedColumns, setSelectedColumns] = useState([]);
@@ -227,11 +244,18 @@ const AllocationVicidialList = () => {
       fieldNum = 2;
     }
 
-    // remaining columns get Field2, Field3...
+    // remaining regular columns get Field2, Field3... (max Field19)
     selectedColumns.forEach((col) => {
-      if (col === "phone_number") return;
+      if (col === "phone_number" || EXTRA_COLUMNS.includes(col)) return;
       mapping[`Field${fieldNum}`] = col;
       fieldNum++;
+    });
+
+    // extra columns are pinned to Field20..Field25 (not saved in vicidial_list)
+    EXTRA_COLUMNS.forEach((col, index) => {
+      if (selectedColumns.includes(col)) {
+        mapping[`Field${EXTRA_FIELD_START + index}`] = col;
+      }
     });
 
     return mapping;
@@ -466,11 +490,13 @@ const AllocationVicidialList = () => {
                 <ul className="list-group">
                   {selectedColumns.map((colKey) => {
                     const others = selectedColumns.filter(
-                      (c) => c !== "phone_number"
+                      (c) => c !== "phone_number" && !EXTRA_COLUMNS.includes(c)
                     );
                     const fieldNum =
                       colKey === "phone_number"
                         ? 1
+                        : EXTRA_COLUMNS.includes(colKey)
+                        ? EXTRA_FIELD_START + EXTRA_COLUMNS.indexOf(colKey)
                         : others.indexOf(colKey) + 2;
                     return (
                       <li

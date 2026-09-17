@@ -370,8 +370,8 @@ async def sync_webhook(
     # 2️⃣ Insert into ob_campaign_data + vicidial_list
     for record in records:
         try:
-            # Build Field1..Field20 values from the incoming record keys
-            field_values = {f"Field{i}": None for i in range(1, 21)}
+            # Build Field1..Field25 values from the incoming record keys
+            field_values = {f"Field{i}": None for i in range(1, 26)}
             for key, value in record.items():
                 field_key = reverse_mapping.get(key)
                 if field_key:
@@ -390,12 +390,14 @@ async def sync_webhook(
                  Field1, Field2, Field3, Field4, Field5,
                  Field6, Field7, Field8, Field9, Field10,
                  Field11, Field12, Field13, Field14, Field15,
-                 Field16, Field17, Field18, Field19, Field20)
+                 Field16, Field17, Field18, Field19, Field20,
+                 Field21, Field22, Field23, Field24, Field25)
                 VALUES (:AllocationId, :CreationDate,
                         :Field1, :Field2, :Field3, :Field4, :Field5,
                         :Field6, :Field7, :Field8, :Field9, :Field10,
                         :Field11, :Field12, :Field13, :Field14, :Field15,
-                        :Field16, :Field17, :Field18, :Field19, :Field20)
+                        :Field16, :Field17, :Field18, :Field19, :Field20,
+                        :Field21, :Field22, :Field23, :Field24, :Field25)
             """), {
                 "AllocationId": allocation_id,
                 "CreationDate": create_date,
@@ -414,7 +416,9 @@ async def sync_webhook(
             }
 
             for field_key, vicidial_col in column_mapping.items():
-                if vicidial_col:
+                # Extra columns (extra_col_*) are stored only in ob_campaign_data,
+                # never written into vicidial_list
+                if vicidial_col and not str(vicidial_col).startswith("extra_col_"):
                     vicidial_data[vicidial_col] = field_values.get(field_key) or ""
 
             # Insert into vicidial_list (db2)
