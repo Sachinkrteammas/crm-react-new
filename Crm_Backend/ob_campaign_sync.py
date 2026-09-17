@@ -243,6 +243,38 @@ def delete_config(config_id: int, db: Session = Depends(get_db4)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# -------------------- 4b. List IDs mapped to a campaign --------------------
+@router.get("/campaign-list-ids")
+def campaign_list_ids(
+    client_id: int = Query(...),
+    campaign_id: Optional[int] = Query(None),
+    db: Session = Depends(get_db4)
+):
+    try:
+        query = """
+            SELECT id, list_id
+            FROM list_master
+            WHERE client_id = :client_id
+        """
+        params = {"client_id": client_id}
+
+        if campaign_id:
+            query += " AND campaign_id = :campaign_id"
+            params["campaign_id"] = campaign_id
+
+        query += " ORDER BY id DESC"
+
+        rows = db.execute(text(query), params).mappings().all()
+
+        return [
+            {"id": row["id"], "list_id": str(row["list_id"])}
+            for row in rows
+        ]
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # -------------------- 5. Webhook: Create Allocation + ob_campaign_data + vicidial_list --------------------
 @router.post("/webhook")
 async def sync_webhook(

@@ -106,17 +106,20 @@ const AllocationVicidialList = () => {
     fetchCampaigns();
   }, [activeClientId]);
 
-  // -------------------- Fetch List IDs --------------------
+  // -------------------- Fetch List IDs (for selected campaign) --------------------
   useEffect(() => {
-    if (!activeClientId) {
+    if (!activeClientId || !form.campaignId) {
       setListIds([]);
       return;
     }
 
     const fetchListIds = async () => {
       try {
-        const res = await api.get("/list-master", {
-          params: { client_id: activeClientId },
+        const res = await api.get("/ob-sync/campaign-list-ids", {
+          params: {
+            client_id: activeClientId,
+            campaign_id: form.campaignId,
+          },
         });
         setListIds(res.data || []);
       } catch (err) {
@@ -125,7 +128,7 @@ const AllocationVicidialList = () => {
     };
 
     fetchListIds();
-  }, [activeClientId]);
+  }, [activeClientId, form.campaignId]);
 
   // -------------------- Fetch Configs --------------------
   useEffect(() => {
