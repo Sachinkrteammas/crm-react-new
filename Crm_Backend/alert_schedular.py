@@ -206,23 +206,22 @@ def _render_template(db, alert, align=False, html=False):
                 if len(tokens) == 1:
                     t = tokens[0]
                     label = t.group(1).strip()
-                    value = normalized_map.get(label.lower(), "")
-                    if value:
-                        pre = text_content[last:m.start()]
-                        if pre.strip():
-                            if rows:
-                                out.extend([TABLE_OPEN, *rows, TABLE_CLOSE])
-                                rows = []
-                            out.append(_pad_seg(pre))
-                        label_html = inner[:t.start()] + _html_escape(label) + inner[t.end():]
-                        rows.append(
-                            '<tr>'
-                            f'<td style="white-space:nowrap;padding-right:10px;vertical-align:top;">{label_html}</td>'
-                            f'<td style="white-space:nowrap;vertical-align:top;">{_html_escape(value)}</td>'
-                            '</tr>'
-                        )
-                        last = m.end()
-                        continue
+                    value = normalized_map.get(label.lower(), "") or "—"
+                    pre = text_content[last:m.start()]
+                    if pre.strip():
+                        if rows:
+                            out.extend([TABLE_OPEN, *rows, TABLE_CLOSE])
+                            rows = []
+                        out.append(_pad_seg(pre))
+                    label_html = inner[:t.start()] + _html_escape(label) + inner[t.end():]
+                    rows.append(
+                        '<tr>'
+                        f'<td style="white-space:nowrap;padding-right:10px;vertical-align:top;">{label_html}</td>'
+                        f'<td style="white-space:nowrap;vertical-align:top;">{_html_escape(value)}</td>'
+                        '</tr>'
+                    )
+                    last = m.end()
+                    continue
                 if rows:
                     out.extend([_pad_seg(text_content[last:m.start()]), TABLE_OPEN, *rows, TABLE_CLOSE])
                     rows = []
@@ -474,8 +473,9 @@ async def process_client_alerts(db, client_id):
             alert_responses["sms"] = sms_response
 
         if alert.alert_on in ["Email", "All"] and alert.email and not alert.email_status:
-            # Align label/data columns; keep any HTML/bold the user set in the template
-            html_body = "<" in (alert.template_text or "")
+            # Always send HTML so empty fields stay inside the two-column table
+            # instead of breaking the layout with stray text / padding.
+            html_body = True
             email_body = _render_template(db, alert, align=True, html=html_body)
 
             # Include data_id in the subject so each call's email becomes its own thread
