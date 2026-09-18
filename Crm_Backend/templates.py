@@ -309,6 +309,7 @@ class InternalAlertMechanismCreate(BaseModel):
     alert_on: str
     template_name: str
     template_text: str
+    template_id: Optional[str] = None
     scenario1: Optional[str] = None
     scenario2: Optional[str] = None
     scenario3: Optional[str] = None
@@ -328,6 +329,7 @@ class InternalAlertMechanismResponse(BaseModel):
     alert_on: str
     template_name: str
     template_text: str
+    template_id: Optional[str] = None
     scenario1: Optional[str] = None
     scenario2: Optional[str] = None
     scenario3: Optional[str] = None
@@ -344,6 +346,7 @@ class InternalAlertMechanismUpdate(BaseModel):
     alert_on: Optional[str]
     template_name: Optional[str]
     template_text: Optional[str]
+    template_id: Optional[str] = None
     scenario1: Optional[str]
     scenario2: Optional[str]
     scenario3: Optional[str]
@@ -393,13 +396,13 @@ def create_internal_alert_mechanism(payload: InternalAlertMechanismCreate):
     insert_query = text("""
         INSERT INTO alert_mechanisms
         (
-            client_id, alert_category, alert_on, template_name, template_text,
+            client_id, alert_category, alert_on, template_name, template_text, template_id,
             scenario1, scenario2, scenario3, scenario4, scenario5,
             person_name, phone, email, WHATSAPP_API_KEY, WHATSAPP_SESSION_ID, created_at
         )
         VALUES
         (
-            :client_id, :alert_category, :alert_on, :template_name, :template_text,
+            :client_id, :alert_category, :alert_on, :template_name, :template_text, :template_id,
             :scenario1, :scenario2, :scenario3, :scenario4, :scenario5,
             :person_name, :phone, :email, :WHATSAPP_API_KEY, :WHATSAPP_SESSION_ID, NOW()
         )
@@ -413,6 +416,7 @@ def create_internal_alert_mechanism(payload: InternalAlertMechanismCreate):
                 "alert_on": payload.alert_on,
                 "template_name": payload.template_name,
                 "template_text": payload.template_text,
+                "template_id": payload.template_id,
                 "scenario1": payload.scenario1,
                 "scenario2": payload.scenario2,
                 "scenario3": payload.scenario3,
@@ -493,6 +497,7 @@ class EscalationAlertMechanismCreate(BaseModel):
     alert_on: str
     template_name: str
     template_text: str
+    template_id: Optional[str] = None
     scenario1: str | None = None
     scenario2: str | None = None
     scenario3: str | None = None
@@ -510,6 +515,7 @@ class EscalationAlertMechanismUpdate(BaseModel):
     alert_on: Optional[str] = None
     template_name: Optional[str] = None
     template_text: Optional[str] = None
+    template_id: Optional[str] = None
     scenario1: Optional[str] = None
     scenario2: Optional[str] = None
     scenario3: Optional[str] = None
@@ -532,13 +538,13 @@ def create_escalation_alert_mechanism(payload: EscalationAlertMechanismCreate):
     insert_query = text("""
         INSERT INTO alert_mechanisms
         (
-            client_id, alert_category, alert_on, template_name, template_text,
+            client_id, alert_category, alert_on, template_name, template_text, template_id,
             scenario1, scenario2, scenario3, scenario4, scenario5,
             person_name, phone, email, tat, WHATSAPP_API_KEY, WHATSAPP_SESSION_ID, created_at
         )
         VALUES
         (
-            :client_id, :alert_category, :alert_on, :template_name, :template_text,
+            :client_id, :alert_category, :alert_on, :template_name, :template_text, :template_id,
             :scenario1, :scenario2, :scenario3, :scenario4, :scenario5,
             :person_name, :phone, :email, :tat, :WHATSAPP_API_KEY, :WHATSAPP_SESSION_ID, NOW()
         )
@@ -552,6 +558,7 @@ def create_escalation_alert_mechanism(payload: EscalationAlertMechanismCreate):
                 "alert_on": payload.alert_on,
                 "template_name": payload.template_name,
                 "template_text": payload.template_text,
+                "template_id": payload.template_id,
                 "scenario1": payload.scenario1,
                 "scenario2": payload.scenario2,
                 "scenario3": payload.scenario3,

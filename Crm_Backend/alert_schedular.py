@@ -25,7 +25,7 @@ from sms_service import send_sms, clean_html
 router = APIRouter()
 
 # Default SMS template ID used only when a mechanism has no template_id set
-DEFAULT_TEMPLATE_ID_SMS = "1707176439618550283"
+DEFAULT_TEMPLATE_ID_SMS = "1707178211044395154"
 
 # Local WhatsApp API endpoint (update to your actual URL)
 WHATSAPP_API_URL = "http://192.168.10.33:3001/api/send-text"
@@ -443,9 +443,12 @@ async def process_client_alerts(db, client_id):
             # Use the template ID configured on the mechanism, fallback to default
             template_id = (mech.template_id if mech and mech.template_id else DEFAULT_TEMPLATE_ID_SMS)
 
+            # SMS body must be cleaned to plain text so the gateway matches it
+            # against template_id (strip HTML, unescape entities, unwrap links).
+            sms_message = clean_html(alert.template_text) or ""
             sms_response = send_sms(
                 phone=alert.phone,
-                message=rendered_text or "No message content",
+                message=sms_message or "No message content",
                 template_id=template_id
             )
 
@@ -459,7 +462,7 @@ async def process_client_alerts(db, client_id):
                     alert_id=alert.id,
                     client_id=alert.client_id,
                     phone=alert.phone,
-                    message=rendered_text,
+                    message=sms_message,
                     template_id=template_id,
                     provider_status="success",
                     provider_response=json.dumps(sms_response)
@@ -467,8 +470,7 @@ async def process_client_alerts(db, client_id):
                 db.add(sms_log)
 
                 # Billing log (SMS): Duration = word count, Unit = ceil(words / 60), min 1
-                message = rendered_text or ""
-                sms_duration = len(message.split())
+                sms_duration = len(sms_message.split())
                 sms_unit = max(1, math.ceil(sms_duration / 60))
                 save_billing(db, alert, "SMS", sms_duration, sms_unit, alert.phone)
 
@@ -483,7 +485,7 @@ async def process_client_alerts(db, client_id):
             sms_list.append({
                 "id": alert.id,
                 "phone": alert.phone,
-                "message": rendered_text,
+                "message": sms_message,
                 "response": sms_response
             })
 
@@ -919,12 +921,13 @@ async def process_close_loop_alerts(db, client_id=None):
 
         template_id = alert.template_id or DEFAULT_TEMPLATE_ID_SMS
 
-        # Render template with call_master data (via data_id)
-        rendered_text = _render_template(db, alert)
+        # SMS body must be cleaned to plain text so the gateway matches it
+        # against template_id (strip HTML, unescape entities, unwrap links).
+        sms_message = clean_html(alert.template_text) or ""
 
         sms_response = send_sms(
             phone=alert.phone,
-            message=rendered_text or "No message content",
+            message=sms_message or "No message content",
             template_id=template_id,
         )
 
@@ -936,15 +939,14 @@ async def process_close_loop_alerts(db, client_id=None):
                 alert_id=alert.id,
                 client_id=alert.client_id,
                 phone=alert.phone,
-                message=rendered_text,
+                message=sms_message,
                 template_id=template_id,
                 provider_status="success",
                 provider_response=json.dumps(sms_response),
             )
             db.add(sms_log)
 
-            message = rendered_text or ""
-            sms_duration = len(message.split())
+            sms_duration = len(sms_message.split())
             sms_unit = max(1, math.ceil(sms_duration / 60))
             save_billing(db, alert, "SMS", sms_duration, sms_unit, alert.phone)
         else:
@@ -958,7 +960,7 @@ async def process_close_loop_alerts(db, client_id=None):
             "id": alert.id,
             "data_id": alert.data_id,
             "phone": alert.phone,
-            "message": rendered_text,
+            "message": sms_message,
             "response": sms_response,
         })
 

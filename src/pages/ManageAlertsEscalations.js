@@ -39,6 +39,7 @@ export default function ManageAlertsEscalations() {
   const [personEmail, setPersonEmail] = useState("");
   const [InternalWhatsappkey, InternalsetWhatsappkey] = useState("");
   const [InternalSessionId, InternalsetSessionId] = useState("");
+  const [InternalTemplateId, InternalsetTemplateId] = useState("");
 
   const [isEditing, setIsEditing] = useState(false);
 
@@ -50,6 +51,7 @@ export default function ManageAlertsEscalations() {
   const [escalationPersonEmail, setEscalationPersonEmail] = useState("");
   const [escalationWhatsappkey, escalationsetWhatsappkey] = useState("");
   const [escalationSessionId, escalationsetSessionId] = useState("");
+  const [escalationTemplateId, escalationsetTemplateId] = useState("");
   const [editingInternalAlertId, setEditingInternalAlertId] = useState(null);
 
   const [escalationAlerts, setEscalationAlerts] = useState([]);
@@ -67,6 +69,14 @@ export default function ManageAlertsEscalations() {
   const [closeLoopActionSubType, setCloseLoopActionSubType] = useState("");
   const [closeLoopTemplateId, setCloseLoopTemplateId] = useState("");
   const [closeLoopTemplateText, setCloseLoopTemplateText] = useState("");
+
+  // Client Alert-specific state
+  const [clientAlerts, setClientAlerts] = useState([]);
+  const [editingClientAlertId, setEditingClientAlertId] = useState(null);
+  const [clientAlertType, setClientAlertType] = useState("");
+  const [clientAlertPercent, setClientAlertPercent] = useState("");
+  const [clientAlertEmailTo, setClientAlertEmailTo] = useState("");
+  const [clientAlertEmailCc, setClientAlertEmailCc] = useState("");
 
   const [activeSubTab, setActiveSubTab] = useState("caller");
 
@@ -340,6 +350,7 @@ export default function ManageAlertsEscalations() {
     setPersonEmail("");
     InternalsetWhatsappkey("");
     InternalsetSessionId("");
+    InternalsetTemplateId("");
   };
 
   const scenarioName = (list, selectedId) => {
@@ -361,6 +372,7 @@ export default function ManageAlertsEscalations() {
       alert_on: internalAlertOn,
       template_name: selectedTemplate,
       template_text: callerTemplateText,
+      template_id: InternalTemplateId,
       scenario1: scenarioName(level1Categories, selectedLevel1),
       scenario2: scenarioName(level2Categories, selectedLevel2),
       scenario3: scenarioName(level3Categories, selectedLevel3),
@@ -418,6 +430,7 @@ export default function ManageAlertsEscalations() {
     setInternalAlertOn(alert.alert_on);
     InternalsetWhatsappkey(alert.WHATSAPP_API_KEY  || "");
     InternalsetSessionId(alert.WHATSAPP_SESSION_ID  || "");
+    InternalsetTemplateId(alert.template_id || "");
 
 
     const s1 = alert.scenario1 ? String(alert.scenario1) : "";
@@ -526,6 +539,7 @@ export default function ManageAlertsEscalations() {
     setEscalationPersonEmail("");
     escalationsetWhatsappkey("");
     escalationsetSessionId("");
+    escalationsetTemplateId("");
   };
 
   const handleEscalationAdd = async () => {
@@ -539,6 +553,7 @@ export default function ManageAlertsEscalations() {
       alert_on: escalationAlertOn,
       template_name: selectedTemplate,
       template_text: callerTemplateText,
+      template_id: escalationTemplateId,
       scenario1: scenarioName(level1Categories, selectedLevel1),
       scenario2: scenarioName(level2Categories, selectedLevel2),
       scenario3: scenarioName(level3Categories, selectedLevel3),
@@ -584,6 +599,7 @@ export default function ManageAlertsEscalations() {
     setEscalationAlertOn(alert.alert_on);
     escalationsetWhatsappkey(alert.WHATSAPP_API_KEY  || "");
     escalationsetSessionId(alert.WHATSAPP_SESSION_ID  || "");
+    escalationsetTemplateId(alert.template_id || "");
 
 
     const s1 = alert.scenario1 ? String(alert.scenario1) : "";
@@ -793,6 +809,85 @@ export default function ManageAlertsEscalations() {
     }
   };
 
+  // -------------------- Client Alert --------------------
+
+  const fetchClientAlerts = async () => {
+    if (!selectedClient) return;
+    try {
+      const res = await api.get("/client-alert/alert-mechanism", {
+        params: { client_id: selectedClient },
+      });
+      setClientAlerts(res.data);
+    } catch (err) {
+      console.error(err);
+      alert("Error fetching client alerts.");
+    }
+  };
+
+  useEffect(() => {
+    if (selectedClient) fetchClientAlerts();
+  }, [selectedClient]);
+
+  const resetClientAlertForm = () => {
+    setEditingClientAlertId(null);
+    setClientAlertType("");
+    setClientAlertPercent("");
+    setClientAlertEmailTo("");
+    setClientAlertEmailCc("");
+    fetchClientAlerts();
+  };
+
+  const handleClientAlertAdd = async () => {
+    if (!selectedClient) return alert("Please select a client first.");
+    if (!clientAlertType) return alert("Please select Alert Type.");
+
+    const payload = {
+      client_id: selectedClient,
+      alert_type: clientAlertType,
+      percent: clientAlertPercent !== "" ? Number(clientAlertPercent) : null,
+      email_to: clientAlertEmailTo || null,
+      email_cc: clientAlertEmailCc || null,
+    };
+
+    try {
+      if (editingClientAlertId) {
+        await api.put(
+          `/client-alert/alert-mechanism/${editingClientAlertId}`,
+          payload
+        );
+        alert("Client alert updated successfully!");
+      } else {
+        await api.post("/client-alert/alert-mechanism", payload);
+        alert("Client alert added successfully!");
+      }
+      resetClientAlertForm();
+    } catch (err) {
+      console.error(err);
+      alert("Error saving client alert.");
+    }
+  };
+
+  const handleClientAlertEdit = (alert) => {
+    setEditingClientAlertId(alert.id);
+    setClientAlertType(alert.alert_type || "");
+    setClientAlertPercent(alert.percent ?? "");
+    setClientAlertEmailTo(alert.email_to || "");
+    setClientAlertEmailCc(alert.email_cc || "");
+  };
+
+  const handleClientAlertDelete = async (alertId) => {
+    if (!window.confirm("Are you sure you want to delete this alert?")) return;
+    try {
+      await api.delete(`/client-alert/alert-mechanism/${alertId}`);
+      alert("Client alert deleted successfully!");
+      fetchClientAlerts();
+      if (editingClientAlertId === alertId) resetClientAlertForm();
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting client alert.");
+    }
+  };
+
   // -------------------- Tabs --------------------
 
   const sidebarItemClass = (tab) =>
@@ -875,6 +970,15 @@ export default function ManageAlertsEscalations() {
                 >
                   CLOSE LOOPING
                 </button>
+
+                {/* <button
+                  className={`list-group-item list-group-item-action fw-semibold ${
+                    activeAlertSection === "clientalert" ? "active" : ""
+                  }`}
+                  onClick={() => setActiveAlertSection("clientalert")}
+                >
+                  CLIENT ALERT
+                </button> */}
               </div>
             </div>
 
@@ -1248,6 +1352,7 @@ export default function ManageAlertsEscalations() {
                                 setCallerTemplateText(
                                   found?.template_text || ""
                                 );
+                                InternalsetTemplateId(found?.template_id || "");
                               }}
                             >
                               <option value="">Select Template</option>
@@ -1258,6 +1363,23 @@ export default function ManageAlertsEscalations() {
                               ))}
                             </select>
                           </div>
+
+                          {internalAlertOn === "SMS" || internalAlertOn === "All" ? (
+                            <div className="col-md-3">
+                              <label className="form-label fw-semibold">
+                                Template ID
+                              </label>
+                              <input
+                                type="text"
+                                className="form-control shadow-sm rounded-2"
+                                value={InternalTemplateId}
+                                onChange={(e) =>
+                                  InternalsetTemplateId(e.target.value)
+                                }
+                                placeholder="Enter Template ID"
+                              />
+                            </div>
+                          ) : null}
 
                           {/* Template Text (Readonly) */}
                           <div className="col-md-6">
@@ -1566,6 +1688,7 @@ export default function ManageAlertsEscalations() {
                                 setCallerTemplateText(
                                   found?.template_text || ""
                                 );
+                                escalationsetTemplateId(found?.template_id || "");
                               }}
                             >
                               <option value="">Select Template</option>
@@ -1576,6 +1699,23 @@ export default function ManageAlertsEscalations() {
                               ))}
                             </select>
                           </div>
+
+                          {escalationAlertOn === "SMS" || escalationAlertOn === "All" ? (
+                            <div className="col-md-3">
+                              <label className="form-label fw-semibold">
+                                Template ID
+                              </label>
+                              <input
+                                type="text"
+                                className="form-control shadow-sm rounded-2"
+                                value={escalationTemplateId}
+                                onChange={(e) =>
+                                  escalationsetTemplateId(e.target.value)
+                                }
+                                placeholder="Enter Template ID"
+                              />
+                            </div>
+                          ) : null}
 
                           {/* Template Text (Readonly) */}
                           <div className="col-md-6">
@@ -1896,6 +2036,152 @@ export default function ManageAlertsEscalations() {
                                       className="btn btn-sm btn-danger"
                                       onClick={() =>
                                         handleCloseLoopDelete(alert.id)
+                                      }
+                                    >
+                                      Delete
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeAlertSection === "clientalert" && (
+                      <div>
+                        {/* === Client Alert form === */}
+                        <form className="row g-4">
+                          <div className="col-md-4">
+                            <label className="form-label fw-semibold">
+                              Alert Type
+                            </label>
+                            <select
+                              className="form-select shadow-sm rounded-2"
+                              value={clientAlertType}
+                              onChange={(e) =>
+                                setClientAlertType(e.target.value)
+                              }
+                            >
+                              <option value="">Select Alert Type</option>
+                              <option value="Exposure">Exposure</option>
+                            </select>
+                          </div>
+
+                          <div className="col-md-2">
+                            <label className="form-label fw-semibold">
+                              Percent (%)
+                            </label>
+                            <input
+                              type="number"
+                              className="form-control shadow-sm rounded-2"
+                              value={clientAlertPercent}
+                              onChange={(e) =>
+                                setClientAlertPercent(e.target.value)
+                              }
+                              min="0"
+                              max="100"
+                              placeholder="0 to 100"
+                            />
+                          </div>
+
+                          <div className="col-md-3">
+                            <label className="form-label fw-semibold">
+                              Email To
+                            </label>
+                            <input
+                              type="email"
+                              className="form-control shadow-sm rounded-2"
+                              value={clientAlertEmailTo}
+                              onChange={(e) =>
+                                setClientAlertEmailTo(e.target.value)
+                              }
+                              placeholder="To Email"
+                            />
+                          </div>
+
+                          <div className="col-md-3">
+                            <label className="form-label fw-semibold">
+                              Email CC
+                            </label>
+                            <input
+                              type="email"
+                              className="form-control shadow-sm rounded-2"
+                              value={clientAlertEmailCc}
+                              onChange={(e) =>
+                                setClientAlertEmailCc(e.target.value)
+                              }
+                              placeholder="CC Email"
+                            />
+                          </div>
+
+                          <div className="col-12 d-flex justify-content-center gap-3 mt-4">
+                            <button
+                              type="button"
+                              className="btn btn-primary shadow-sm px-5 py-2 rounded-3"
+                              onClick={handleClientAlertAdd}
+                            >
+                              {editingClientAlertId ? "UPDATE" : "ADD"}
+                            </button>
+                            {editingClientAlertId && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary shadow-sm px-5 py-2 rounded-3"
+                                onClick={resetClientAlertForm}
+                              >
+                                Cancel Edit
+                              </button>
+                            )}
+                          </div>
+                        </form>
+
+                        {/* === Client Alerts Table === */}
+                        <div
+                          className="table-responsive mt-4"
+                          style={{ maxHeight: 500, overflowY: "auto" }}
+                        >
+                          <h5>Existing Client Alerts</h5>
+                          <table className="table table-hover table-bordered table-striped align-middle shadow-sm">
+                            <thead className="table-primary sticky-top">
+                              <tr>
+                                <th>ID</th>
+                                <th>Alert Type</th>
+                                <th>Percent (%)</th>
+                                <th>Email To</th>
+                                <th>Email CC</th>
+                                <th>Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {clientAlerts.length === 0 && (
+                                <tr>
+                                  <td
+                                    colSpan={6}
+                                    className="text-center text-muted"
+                                  >
+                                    No client alerts found.
+                                  </td>
+                                </tr>
+                              )}
+                              {clientAlerts.map((alert) => (
+                                <tr key={alert.id}>
+                                  <td>{alert.id}</td>
+                                  <td>{alert.alert_type}</td>
+                                  <td>{alert.percent}</td>
+                                  <td>{alert.email_to.replace(/,/g, ", ")}</td>
+                                  <td>{alert.email_cc.replace(/,/g, ", ")}</td>
+                                  <td>
+                                    <button
+                                      className="btn btn-sm btn-warning me-2"
+                                      onClick={() => handleClientAlertEdit(alert)}
+                                    >
+                                      Edit
+                                    </button>
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() =>
+                                        handleClientAlertDelete(alert.id)
                                       }
                                     >
                                       Delete
