@@ -20,7 +20,7 @@ from models import (
     EmailLogHistory,
     WhatsAppLogHistory,
 )
-from sms_service import send_sms
+from sms_service import send_sms, clean_html
 
 router = APIRouter()
 
@@ -28,7 +28,24 @@ router = APIRouter()
 DEFAULT_TEMPLATE_ID_SMS = "1707176439618550283"
 
 # Local WhatsApp API endpoint (update to your actual URL)
-WHATSAPP_API_URL = "http://localhost:3000/api/send"
+WHATSAPP_API_URL = "http://192.168.10.33:3001/api/send-text"
+
+# Fallback WhatsApp credentials when a mechanism has none set from the UI
+DEFAULT_WHATSAPP_API_KEY = "3b844348ae08e59525509cb8cef2aabfd0a8a19182adee99"
+DEFAULT_WHATSAPP_SESSION_ID = "DialDesk"
+
+
+def _whatsapp_message(text):
+    """Strip HTML tags but keep paragraph line breaks for WhatsApp."""
+    if not text:
+        return "No message content"
+    text = re.sub(r"<br\s*/?>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"</p>", "\n", text, flags=re.IGNORECASE)
+    text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n\s*\n+", "\n", text)
+    text = text.strip()
+    return text or "No message content"
 
 # SMTP config (no .env - fill in your values here)
 # SMTP_CONFIG = {
@@ -534,14 +551,17 @@ async def process_client_alerts(db, client_id):
                 alert_responses["whatsapp"] = alert.whatsapp_response
                 updated = True
             elif not alert.whatsapp_status:
+                session_id = mech.WHATSAPP_SESSION_ID or DEFAULT_WHATSAPP_SESSION_ID
+                api_key = mech.WHATSAPP_API_KEY or DEFAULT_WHATSAPP_API_KEY
+
                 payload = {
-                    "sessionId": mech.WHATSAPP_SESSION_ID,
-                    "number": alert.phone if str(alert.phone).startswith("91") else f"9178274643803",
-                    "message": rendered_text or "No message content"
+                    "sessionId": session_id,
+                    "number": "91" + str(alert.phone) if not str(alert.phone).startswith("91") else str(alert.phone),
+                    "message": _whatsapp_message(rendered_text),
                 }
                 headers = {
                     "accept": "*/*",
-                    "x-api-key": mech.WHATSAPP_API_KEY,
+                    "x-api-key": api_key,
                     "Content-Type": "application/json"
                 }
 
