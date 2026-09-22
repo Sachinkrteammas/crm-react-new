@@ -97,6 +97,8 @@ from pd_call_allocation import router as pd_call_allocation_router
 from campaign_sub_type import router as campaign_sub_type_router
 from invoice_tool import router as invoice_tool_router
 from ob_campaign_sync import router as ob_campaign_sync_router
+from whatsapp_reports_api import router as whatsapp_reports_router
+from whatsapp_report_engine import run_report, REPORT_HANDLERS
 
 
 app = FastAPI(title="CRM Backend")
@@ -189,7 +191,7 @@ app.include_router(router)
 app.include_router(pd_call_allocation_router, tags=["PD Call Allocation"], dependencies=[Depends(verify_token)])
 app.include_router(campaign_sub_type_router, tags=["Campaign Sub Type"], dependencies=[Depends(verify_token)])
 app.include_router(ob_campaign_sync_router, tags=["OB Campaign Sync"])
-
+app.include_router(whatsapp_reports_router, prefix="/whatsapp-reports", tags=["WhatsApp Reports"], dependencies=[Depends(verify_token)])
 
 # ✅ Create a function that runs the API logic automatically
 def scheduled_call_summary():
@@ -391,6 +393,150 @@ def scheduled_daily_billing():
 
 
 
+
+def auto_run_whatsapp_reports():
+    from whatsapp_database import get_wa_session, WhatsAppReportConfig, WhatsAppReportLog
+
+    db = get_wa_session()
+    try:
+        active_reports = db.query(WhatsAppReportConfig).filter_by(is_active=True).all()
+        if not active_reports:
+            return
+
+        now = datetime.utcnow()
+        for cfg in active_reports:
+            engine_cfg = REPORT_HANDLERS.get(cfg.report_key, {})
+            if engine_cfg.get("is_cron"):
+                continue
+
+            last = cfg.last_run
+            schedule_hours = cfg.schedule_hours or 2
+
+            if last:
+                next_run = last + timedelta(hours=schedule_hours)
+                if now < next_run:
+                    continue
+
+            try:
+                logger.info(f"Auto-running: {cfg.report_key}")
+                run_report(cfg.report_key, group_id=cfg.group_id)
+                cfg.last_run = datetime.utcnow()
+                db.add(WhatsAppReportLog(
+                    report_key=cfg.report_key, status="SUCCESS",
+                    message=f"Auto-run every {schedule_hours}h"
+                ))
+                db.commit()
+            except Exception as e:
+                logger.error(f"Auto-run failed ({cfg.report_key}): {e}", exc_info=True)
+                db.add(WhatsAppReportLog(
+                    report_key=cfg.report_key, status="FAILED",
+                    message=str(e)[:490]
+                ))
+                db.commit()
+    finally:
+        db.close()
+
+
+# ============================================================
+# 4. ROAM PRIME DAILY — Cron 9:00 PM
+# ============================================================
+def run_roam_prime_daily_9pm():
+    from whatsapp_database import get_wa_session, WhatsAppReportConfig, WhatsAppReportLog
+
+    db = get_wa_session()
+    try:
+        cfg = db.query(WhatsAppReportConfig).filter_by(report_key="roam_prime_daily").first()
+        if not cfg or not cfg.is_active:
+            logger.info("roam_prime_daily is inactive or missing — skipping")
+            return
+
+        try:
+            logger.info("Auto-running Roam Prime Daily (9 PM)")
+            run_report("roam_prime_daily", group_id=cfg.group_id)
+            cfg.last_run = datetime.utcnow()
+            db.add(WhatsAppReportLog(
+                report_key="roam_prime_daily", status="SUCCESS",
+                message="Daily 9 PM run"
+            ))
+            db.commit()
+        except Exception as e:
+            logger.error(f"Roam Prime Daily failed: {e}", exc_info=True)
+            db.add(WhatsAppReportLog(
+                report_key="roam_prime_daily", status="FAILED",
+                message=str(e)[:490]
+            ))
+            db.commit()
+    finally:
+        db.close()
+
+
+# ============================================================
+# 5. CRYSTAL SLOT WISE — Cron 9:00 PM
+# ============================================================
+def run_crystal_slot_wise_9pm():
+    from whatsapp_database import get_wa_session, WhatsAppReportConfig, WhatsAppReportLog
+
+    db = get_wa_session()
+    try:
+        cfg = db.query(WhatsAppReportConfig).filter_by(report_key="crystal_slot_wise").first()
+        if not cfg or not cfg.is_active:
+            logger.info("crystal_slot_wise is inactive or missing — skipping")
+            return
+
+        try:
+            logger.info("Auto-running Crystal Slot Wise (9 PM)")
+            run_report("crystal_slot_wise", group_id=cfg.group_id)
+            cfg.last_run = datetime.utcnow()
+            db.add(WhatsAppReportLog(
+                report_key="crystal_slot_wise", status="SUCCESS",
+                message="Daily 9 PM run"
+            ))
+            db.commit()
+        except Exception as e:
+            logger.error(f"Crystal Slot Wise failed: {e}", exc_info=True)
+            db.add(WhatsAppReportLog(
+                report_key="crystal_slot_wise", status="FAILED",
+                message=str(e)[:490]
+            ))
+            db.commit()
+    finally:
+        db.close()
+
+
+# ============================================================
+# 6. CRYSTAL EOD — Cron 9:30 PM
+# ============================================================
+def run_crystal_eod_930pm():
+    from whatsapp_database import get_wa_session, WhatsAppReportConfig, WhatsAppReportLog
+
+    db = get_wa_session()
+    try:
+        cfg = db.query(WhatsAppReportConfig).filter_by(report_key="crystal_eod").first()
+        if not cfg or not cfg.is_active:
+            logger.info("crystal_eod is inactive or missing — skipping")
+            return
+
+        try:
+            logger.info("Auto-running Crystal EOD (9:30 PM)")
+            run_report("crystal_eod", group_id=cfg.group_id)
+            cfg.last_run = datetime.utcnow()
+            db.add(WhatsAppReportLog(
+                report_key="crystal_eod", status="SUCCESS",
+                message="Daily 9:30 PM run"
+            ))
+            db.commit()
+        except Exception as e:
+            logger.error(f"Crystal EOD failed: {e}", exc_info=True)
+            db.add(WhatsAppReportLog(
+                report_key="crystal_eod", status="FAILED",
+                message=str(e)[:490]
+            ))
+            db.commit()
+    finally:
+        db.close()
+
+
+
 # ✅ Create scheduler
 scheduler = BackgroundScheduler()
 #scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
@@ -410,6 +556,14 @@ scheduler.add_job(get_call_followups, "interval", minutes=30)
 scheduler.add_job(scheduled_escalation_checks, "interval", minutes=10, max_instances=1)
 scheduler.add_job(scheduled_close_loop_checks, "interval", minutes=16, max_instances=1)  # close-loop SMS alerts
 
+
+# WhatsApp reports — interval-based (5 min tick)
+scheduler.add_job(auto_run_whatsapp_reports, "interval", minutes=5, max_instances=1)
+
+# Cron-based WhatsApp reports
+scheduler.add_job(run_roam_prime_daily_9pm, "cron", hour=21, minute=0)
+scheduler.add_job(run_crystal_slot_wise_9pm, "cron", hour=21, minute=0)
+scheduler.add_job(run_crystal_eod_930pm, "cron", hour=21, minute=30)
 
 
 
