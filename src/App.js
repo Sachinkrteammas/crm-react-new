@@ -198,6 +198,8 @@ import CustomizedInCallReport from "./pages/customized_in_call_report";
 import InvoiceDashboard from "./pages/InvoiceDashboard";
 import AllocationVicidialList from "./pages/allocation_vicidiallist";
 
+import WhatsAppReports from "./pages/WhatsAppReports";
+
 
 
 function App() {
@@ -507,6 +509,7 @@ function App() {
               <Route path="/CustomizedMisReports" element={<CustomizedInCallReport />} />
               <Route path="/InvoiceDashboard" element ={<InvoiceDashboard/>}/>
               <Route path="/allocation-vicidiallist" element={<AllocationVicidialList />} />
+              <Route path="/whatsapp-reports" element={<WhatsAppReports />} />
               <></>
           </Route>
       </Route>
