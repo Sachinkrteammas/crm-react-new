@@ -6,7 +6,7 @@ from datetime import datetime
 
 load_dotenv
 
-WHATSAPP_DB_URL = os.getenv("WHATSAPP_DB_URL")
+WHATSAPP_DB_URL = os.getenv("SQL_DB_URL")
 
 if not WHATSAPP_DB_URL:
     raise Exception(" WHATSAPP_DB_URL not found in .env file")
