@@ -17,11 +17,22 @@ const FALLBACK_TEMPLATES = [
     email_template: "Dear {{client_name}},\n\nPlease find attached the Excess Usage invoice {{invoice_number}} for the period {{period}}.\n\nInvoice Amount: {{amount}}\nDue Date: {{due_date}}\n\n{{remarks}}\n\nRegards,\nTeam DialDesk" },
 ];
 
+const FALLBACK_ALERTS = [
+  { id: 1, alert_key: "payment_reminder", alert_name: "Payment Reminder",
+    subject_template: "Payment Reminder – Invoice {{invoice_number}}",
+    email_template: "Dear {{client_name}},\n\nThis is a gentle reminder that payment for Invoice {{invoice_number}} (Amount: {{amount}}) is still pending.\n\nDue Date: {{due_date}}\nDays Overdue: {{days_overdue}}\n\nKindly process the payment at the earliest.\n\nRegards,\nTeam DialDesk" },
+  { id: 2, alert_key: "final_notice", alert_name: "Final Notice",
+    subject_template: "FINAL NOTICE – Invoice {{invoice_number}}",
+    email_template: "Dear {{client_name}},\n\nThis is a FINAL NOTICE for the pending payment of Invoice {{invoice_number}} (Amount: {{amount}}).\n\nDue Date: {{due_date}}\nDays Overdue: {{days_overdue}}\n\nPlease clear the dues immediately.\n\nRegards,\nTeam DialDesk" },
+];
+
 const InvoiceDashboard = () => {
   const [activeTab, setActiveTab] = useState("send");
   const [clients, setClients] = useState([]);
   const [configured, setConfigured] = useState([]);
   const [templates, setTemplates] = useState(FALLBACK_TEMPLATES);
+  const [alertTemplates, setAlertTemplates] = useState(FALLBACK_ALERTS);
+  const [alerts, setAlerts] = useState([]);
   const [logs, setLogs] = useState([]);
   const [clientsLoading, setClientsLoading] = useState(true);
   const [smtpConfigured, setSmtpConfigured] = useState(false);
@@ -38,7 +49,8 @@ const InvoiceDashboard = () => {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    await Promise.all([loadClients(), loadConfigured(), loadSmtp(), loadTemplates(), loadLogs()]);
+    await Promise.all([loadClients(), loadConfigured(), loadSmtp(),
+      loadTemplates(), loadAlertTemplates(), loadAlerts(), loadLogs()]);
   };
 
   const loadClients = async () => {
@@ -70,9 +82,21 @@ const InvoiceDashboard = () => {
       setTemplates(list.length > 0 ? list : FALLBACK_TEMPLATES);
     } catch { setTemplates(FALLBACK_TEMPLATES); }
   };
+  const loadAlertTemplates = async () => {
+    try {
+      const res = await api.get("/invoice-tool/alert-templates");
+      const list = res.data?.data || [];
+      setAlertTemplates(list.length > 0 ? list : FALLBACK_ALERTS);
+    } catch { setAlertTemplates(FALLBACK_ALERTS); }
+  };
+  const loadAlerts = async () => {
+    try { setAlerts((await api.get("/invoice-tool/alerts")).data.data || []); } catch (e) {}
+  };
   const loadLogs = async () => {
     try { setLogs((await api.get("/invoice-tool/logs?limit=50")).data.data || []); } catch (e) {}
   };
+
+  const pendingAlerts = alerts.filter((a) => a.status === "PENDING").length;
 
   return (
     <div style={S.page}>
@@ -84,13 +108,13 @@ const InvoiceDashboard = () => {
 
       <div style={S.header}>
         <h1 style={S.h1}>📄 Invoice Tool</h1>
-        <p style={S.headerSub}>Send invoices, manage templates, and configure SMTP.</p>
+        <p style={S.headerSub}>Send invoices, manage templates, alerts, and configure SMTP.</p>
       </div>
 
       <div style={S.statsGrid}>
         <StatCard icon="👥" label="CRM Clients" value={clientsLoading ? "..." : clients.length} color="#3182ce" />
         <StatCard icon="📧" label="Templates" value={templates.length} color="#dd6b20" />
-        <StatCard icon="⚙️" label="Configured" value={configured.length} color="#38a169" />
+        <StatCard icon="🔔" label="Pending Alerts" value={pendingAlerts} color="#e53e3e" />
         <StatCard icon="📤" label="Sent (recent)" value={logs.filter((l) => l.status === "SENT").length} color="#805ad5" />
         <StatCard icon="🔌" label="SMTP" value={smtpConfigured ? "Active" : "Inactive"} color={smtpConfigured ? "#38a169" : "#e53e3e"} />
       </div>
@@ -98,6 +122,8 @@ const InvoiceDashboard = () => {
       <div style={S.tabs}>
         <TabBtn active={activeTab === "send"} onClick={() => setActiveTab("send")}>📤 Send Invoice</TabBtn>
         <TabBtn active={activeTab === "templates"} onClick={() => setActiveTab("templates")}>📧 Templates</TabBtn>
+        <TabBtn active={activeTab === "alertTemplates"} onClick={() => setActiveTab("alertTemplates")}>📢 Alert Templates</TabBtn>
+        <TabBtn active={activeTab === "alerts"} onClick={() => setActiveTab("alerts")}>🔔 Alerts</TabBtn>
         <TabBtn active={activeTab === "config"} onClick={() => setActiveTab("config")}>⚙️ Client Config</TabBtn>
         <TabBtn active={activeTab === "smtp"} onClick={() => setActiveTab("smtp")}>🔌 SMTP Settings</TabBtn>
         <TabBtn active={activeTab === "logs"} onClick={() => setActiveTab("logs")}>📜 Send Logs</TabBtn>
@@ -106,11 +132,18 @@ const InvoiceDashboard = () => {
       <div style={S.tabContent}>
         {activeTab === "send" && (
           <SendTab clients={clients} clientsLoading={clientsLoading} smtpConfigured={smtpConfigured}
-            templates={templates} configured={configured} showToast={showToast}
-            onSent={loadLogs} userType={userType} companyId={companyId} />
+            templates={templates} alertTemplates={alertTemplates} configured={configured}
+            showToast={showToast} onSent={loadLogs} userType={userType} companyId={companyId} />
         )}
         {activeTab === "templates" && (
           <TemplatesTab templates={templates} showToast={showToast} reload={loadTemplates} />
+        )}
+        {activeTab === "alertTemplates" && (
+          <AlertTemplatesTab alertTemplates={alertTemplates} showToast={showToast} reload={loadAlertTemplates} />
+        )}
+        {activeTab === "alerts" && (
+          <AlertsTab alerts={alerts} clients={clients} configured={configured}
+            alertTemplates={alertTemplates} showToast={showToast} reload={loadAlerts} />
         )}
         {activeTab === "config" && (
           <ConfigTab crmClients={clients} configured={configured} templates={templates}
@@ -143,173 +176,9 @@ const TabBtn = ({ active, onClick, children }) => (
   }}>{children}</button>
 );
 
-/* ============ 📧 TEMPLATES TAB ============ */
-const TemplatesTab = ({ templates, showToast, reload }) => {
-  const [form, setForm] = useState(emptyForm());
-  const [editMode, setEditMode] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  function emptyForm() {
-    return {
-      template_key: "", template_name: "", invoice_category: "",
-      subject_template: "Invoice {{invoice_number}} – ",
-      email_template: "Dear {{client_name}},\n\nPlease find attached the {{invoice_category}} invoice {{invoice_number}} for the period {{period}}.\n\nInvoice Amount: {{amount}}\nDue Date: {{due_date}}\n\n{{remarks}}\n\nRegards,\nTeam DialDesk",
-    };
-  }
-
-  const handleNameChange = (name) => {
-    const key = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
-    setForm({ ...form, template_name: name, template_key: editMode ? form.template_key : key });
-  };
-
-  const handleCategoryChange = (cat) => {
-    setForm({ ...form, invoice_category: cat, subject_template: `Invoice {{invoice_number}} – ${cat}` });
-  };
-
-  const handleEdit = (t) => {
-    setForm({
-      template_key: t.template_key, template_name: t.template_name,
-      invoice_category: t.invoice_category,
-      subject_template: t.subject_template, email_template: t.email_template,
-    });
-    setEditMode(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const handleSave = async () => {
-    if (!form.template_key || !form.template_name || !form.invoice_category)
-      return showToast("Fill Template Name and Category", "error");
-    if (!form.subject_template || !form.email_template)
-      return showToast("Subject and Email Body required", "error");
-
-    setSaving(true);
-    try {
-      await api.post("/invoice-tool/template", form);
-      showToast(editMode ? "Template updated ✅" : "Template created ✅");
-      setForm(emptyForm()); setEditMode(false);
-      reload();
-    } catch (e) { showToast(e.response?.data?.detail || "Save failed", "error"); }
-    finally { setSaving(false); }
-  };
-
-  const handleDelete = async (key) => {
-    if (!window.confirm("Delete this template?")) return;
-    try { await api.delete(`/invoice-tool/template/${key}`); showToast("Deleted"); reload(); }
-    catch { showToast("Delete failed", "error"); }
-  };
-
-  const handleCancel = () => { setForm(emptyForm()); setEditMode(false); };
-
-  return (
-    <div style={S.twoCol}>
-      <div style={S.card}>
-        <h2 style={S.cardTitle}>{editMode ? "✏️ Edit Template" : "➕ Create New Template"}</h2>
-
-        <label style={S.label}>Template Name *</label>
-        <input style={S.input} placeholder="e.g. Retainer Invoice"
-          value={form.template_name} onChange={(e) => handleNameChange(e.target.value)} />
-        {form.template_key && (
-          <div style={{ fontSize: "11px", color: "#718096", marginTop: "4px" }}>
-            Key: <code>{form.template_key}</code>
-          </div>
-        )}
-
-        <label style={S.label}>Invoice Category *</label>
-        <select style={S.input} value={form.invoice_category}
-          onChange={(e) => handleCategoryChange(e.target.value)}>
-          <option value="">-- Choose Category --</option>
-          <option value="Retainer">Retainer</option>
-          <option value="Subscription">Subscription</option>
-          <option value="Dedicated Seat">Dedicated Seat</option>
-          <option value="Excess Usage">Excess Usage</option>
-          <option value="Custom">Custom</option>
-        </select>
-
-        <label style={S.label}>Subject Template *</label>
-        <input style={S.input} value={form.subject_template}
-          onChange={(e) => setForm({ ...form, subject_template: e.target.value })} />
-        <div style={{ fontSize: "11px", color: "#718096", marginTop: "4px" }}>
-          Placeholders: <code>{"{{invoice_number}}"}</code>, <code>{"{{invoice_category}}"}</code>
-        </div>
-
-        <label style={S.label}>Email Body Template *</label>
-        <textarea style={{ ...S.input, height: "220px", fontFamily: "monospace", fontSize: "13px" }}
-          value={form.email_template}
-          onChange={(e) => setForm({ ...form, email_template: e.target.value })} />
-        <div style={{ fontSize: "11px", color: "#718096", marginTop: "4px" }}>
-          <code>{"{{client_name}}"}</code>, <code>{"{{invoice_number}}"}</code>, <code>{"{{invoice_category}}"}</code>,{" "}
-          <code>{"{{invoice_type}}"}</code>, <code>{"{{period}}"}</code>, <code>{"{{amount}}"}</code>,{" "}
-          <code>{"{{due_date}}"}</code>, <code>{"{{remarks}}"}</code>
-        </div>
-
-        {(form.subject_template || form.email_template) && (
-          <div style={{ ...S.preview, marginTop: "16px" }}>
-            <div style={{ fontSize: "11px", color: "#718096", marginBottom: "6px" }}>
-              📧 <b>Live Preview (sample data)</b>
-            </div>
-            <div style={{ fontSize: "12px", marginBottom: "8px" }}>
-              <b>Subject:</b>{" "}
-              {form.subject_template
-                .replace(/\{\{invoice_number\}\}/g, "09-302")
-                .replace(/\{\{invoice_category\}\}/g, form.invoice_category || "Subscription")}
-            </div>
-            <pre style={{ margin: 0, fontFamily: "inherit", fontSize: "12px", whiteSpace: "pre-wrap",
-              background: "#fff", padding: "10px", borderRadius: "4px", border: "1px solid #bee3f8" }}>
-              {form.email_template
-                .replace(/\{\{client_name\}\}/g, "Akai India")
-                .replace(/\{\{invoice_number\}\}/g, "09-302")
-                .replace(/\{\{invoice_category\}\}/g, form.invoice_category || "Subscription")
-                .replace(/\{\{invoice_type\}\}/g, "Monthly")
-                .replace(/\{\{period\}\}/g, "Jan 2025")
-                .replace(/\{\{amount\}\}/g, "₹ 12,000")
-                .replace(/\{\{due_date\}\}/g, "2025-02-10")
-                .replace(/\{\{remarks\}\}/g, "Please pay on time.")}
-            </pre>
-          </div>
-        )}
-
-        <div style={S.row}>
-          <button style={{ ...S.primaryBtn, flex: 1 }} onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : editMode ? "💾 Update" : "➕ Create"}
-          </button>
-          {editMode && <button style={{ ...S.secondaryBtn, flex: 1 }} onClick={handleCancel}>Cancel</button>}
-        </div>
-      </div>
-
-      <div style={S.card}>
-        <h2 style={S.cardTitle}>Global Templates ({templates.length})</h2>
-        {templates.length === 0 ? (
-          <p style={{ color: "#718096", fontSize: "13px" }}>No templates. Create one.</p>
-        ) : (
-          <div style={{ maxHeight: "640px", overflowY: "auto" }}>
-            {templates.map((t) => (
-              <div key={t.template_key} style={S.templateRow}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: "14px", fontWeight: "700", color: "#1a202c" }}>{t.template_name}</div>
-                  <div style={{ fontSize: "11px", color: "#718096", marginTop: "2px" }}>
-                    Category: <b>{t.invoice_category}</b> · <code>{t.template_key}</code>
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#2d3748", marginTop: "6px" }}>
-                    <b>Subject:</b> {t.subject_template}
-                  </div>
-                </div>
-                <div>
-                  <button style={S.smallBtn} onClick={() => handleEdit(t)}>Edit</button>
-                  <button style={{ ...S.smallBtn, background: "#e53e3e" }}
-                    onClick={() => handleDelete(t.template_key)}>Del</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-/* ============ SEND TAB ============ */
+/* ============ 📤 SEND TAB ============ */
 const SendTab = ({
-  clients, clientsLoading, smtpConfigured, templates, configured,
+  clients, clientsLoading, smtpConfigured, templates, alertTemplates, configured,
   showToast, onSent, userType, companyId,
 }) => {
   const [selected, setSelected] = useState("");
@@ -327,6 +196,13 @@ const SendTab = ({
   const [invoices, setInvoices] = useState([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [invoicesLoading, setInvoicesLoading] = useState(false);
+
+  const [extracting, setExtracting] = useState(false);
+  const [extractedData, setExtractedData] = useState(null);
+
+  const [alertEnabled, setAlertEnabled] = useState(false);
+  const [alertTemplateKey, setAlertTemplateKey] = useState("payment_reminder");
+  const [alertAfterDays, setAlertAfterDays] = useState(25);
 
   useEffect(() => {
     if (userType !== "Super-Admin" && userType !== "Admin" && companyId) setSelected(companyId);
@@ -372,6 +248,51 @@ const SendTab = ({
     }
   }, [templateKey, templates]);
 
+  const handleFileChange = async (e) => {
+    const f = e.target.files[0];
+    setFile(f);
+    setExtractedData(null);
+    if (f && f.name.toLowerCase().endsWith(".pdf")) {
+      await autoExtract(f);
+    }
+  };
+
+  const autoExtract = async (uploadedFile) => {
+    setExtracting(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", uploadedFile);
+      const res = await api.post("/invoice-tool/extract-from-pdf", fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const d = res.data?.data || {};
+      setExtractedData(d);
+
+      if (d.invoice_number) setInvoiceNumber(d.invoice_number);
+      if (d.amount) setAmount(d.amount);
+      if (d.period) setPeriod(d.period);
+      if (d.due_date) setDueDate(d.due_date);
+
+      if (d.invoice_category) {
+        const map = { Retainer: "retainer", Subscription: "subscription",
+          "Dedicated Seat": "dedicated_seat", "Excess Usage": "excess_usage" };
+        const key = map[d.invoice_category];
+        if (key) setTemplateKey(key);
+        setInvoiceCategory(d.invoice_category);
+      }
+
+      const found = [d.invoice_number, d.amount, d.invoice_category, d.period, d.due_date, d.client_name]
+        .filter(Boolean).length;
+
+      if (found === 0) showToast("Could not extract. Please fill manually.", "error");
+      else showToast(`✅ Auto-extracted ${found} field(s)`);
+    } catch (e) {
+      showToast(e.response?.data?.detail || "PDF extraction failed", "error");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const selectedTemplate = templates.find((x) => x.template_key === templateKey);
   const selectedClient = clients.find((c) => String(c.client_id) === String(selected));
   const selectedConfig = configured.find((c) => String(c.client_id) === String(selected));
@@ -392,7 +313,7 @@ const SendTab = ({
 
   const validate = () => {
     if (!selected) return "Select a client";
-    if (!selectedConfig) return "Client not configured. Please configure first.";
+    if (!selectedConfig) return "Client not configured. Configure first.";
     if (!templateKey) return "Select a template";
     if (!invoiceNumber) return "Enter invoice number";
     if (!file) return "Upload an invoice file";
@@ -407,11 +328,19 @@ const SendTab = ({
 
   const handleConfirmSend = async () => {
     const fd = new FormData();
-    fd.append("client_id", selected); fd.append("template_key", templateKey);
-    fd.append("invoice_number", invoiceNumber); fd.append("invoice_category", invoiceCategory);
-    fd.append("invoice_type", invoiceType); fd.append("period", period);
-    fd.append("amount", amount); fd.append("due_date", dueDate);
-    fd.append("remarks", remarks); fd.append("file", file);
+    fd.append("client_id", selected);
+    fd.append("template_key", templateKey);
+    fd.append("invoice_number", invoiceNumber);
+    fd.append("invoice_category", invoiceCategory);
+    fd.append("invoice_type", invoiceType);
+    fd.append("period", period);
+    fd.append("amount", amount);
+    fd.append("due_date", dueDate);
+    fd.append("remarks", remarks);
+    fd.append("alert_enabled", alertEnabled ? 1 : 0);
+    fd.append("alert_template_key", alertTemplateKey);
+    fd.append("alert_after_days", alertAfterDays);
+    fd.append("file", file);
 
     setLoading(true);
     try {
@@ -419,7 +348,9 @@ const SendTab = ({
         headers: { "Content-Type": "multipart/form-data" },
       });
       showToast(res.data.message || "Invoice sent!");
-      setShowPreview(false); setFile(null); setRemarks(""); setInvoiceNumber(""); setSelectedInvoiceId("");
+      setShowPreview(false); setFile(null); setRemarks(""); setInvoiceNumber("");
+      setSelectedInvoiceId(""); setExtractedData(null); setAmount("");
+      setAlertEnabled(false);
       const i = document.getElementById("invFile"); if (i) i.value = "";
       onSent();
     } catch (e) { showToast(e.response?.data?.detail || "Send failed", "error"); }
@@ -431,11 +362,11 @@ const SendTab = ({
       <h2 style={S.cardTitle}>Send Invoice to Client</h2>
 
       {!smtpConfigured && (
-        <div style={S.warn}>⚠️ SMTP not configured. Please go to <b>SMTP Settings</b> tab first.</div>
+        <div style={S.warn}>⚠️ SMTP not configured. Go to <b>SMTP Settings</b> tab first.</div>
       )}
 
       {selected && !selectedConfig && (
-        <div style={S.warn}>⚠️ This client is <b>not configured</b>. Go to <b>Client Config</b> tab first.</div>
+        <div style={S.warn}>⚠️ Client not configured. Go to <b>Client Config</b> tab first.</div>
       )}
 
       {isAdmin ? (
@@ -444,7 +375,7 @@ const SendTab = ({
           <select style={S.input} value={selected}
             onChange={(e) => { setSelected(e.target.value); setSelectedInvoiceId(""); }}
             disabled={clientsLoading}>
-            <option value="">{clientsLoading ? "-- Loading... --" : "-- Choose Client --"}</option>
+            <option value="">{clientsLoading ? "-- Loading clients... --" : "-- Choose Client --"}</option>
             {clients.map((c) => (
               <option key={c.client_id} value={c.client_id}>
                 {c.client_name} {c.email ? `(${c.email})` : ""}
@@ -466,7 +397,7 @@ const SendTab = ({
         <option value="">
           {!selected ? "-- Select a client first --"
             : invoicesLoading ? "-- Loading invoices... --"
-            : invoices.length === 0 ? "-- No invoices — type manually below --"
+            : invoices.length === 0 ? "-- No invoices found — type manually --"
             : "-- Choose Invoice --"}
         </option>
         {invoices.map((inv) => (
@@ -487,7 +418,7 @@ const SendTab = ({
       <div style={S.row}>
         <div style={{ flex: 1 }}>
           <label style={S.label}>Invoice Number *</label>
-          <input style={S.input} placeholder="Auto-filled or type"
+          <input style={S.input} placeholder="Auto-filled or type manually"
             value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
         </div>
         <div style={{ flex: 1 }}>
@@ -499,11 +430,12 @@ const SendTab = ({
       <div style={S.row}>
         <div style={{ flex: 1 }}>
           <label style={S.label}>Period</label>
-          <input style={S.input} value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="Jan 2025" />
+          <input style={S.input} value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="e.g. Jan 2025" />
         </div>
         <div style={{ flex: 1 }}>
           <label style={S.label}>Amount</label>
-          <input style={S.input} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="₹ 12,000" />
+          <input style={S.input} value={amount} onChange={(e) => setAmount(e.target.value)}
+            placeholder="Auto-fills from PDF" />
         </div>
         <div style={{ flex: 1 }}>
           <label style={S.label}>Due Date</label>
@@ -524,10 +456,62 @@ const SendTab = ({
           </select>
         </div>
         <div style={{ flex: 1 }}>
-          <label style={S.label}>4️⃣ Upload File (PDF) *</label>
+          <label style={S.label}>
+            4️⃣ Upload File (PDF) * {extracting && <span style={{ color: "#3182ce" }}> 🔍 Extracting...</span>}
+          </label>
           <input id="invFile" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx"
-            style={S.input} onChange={(e) => setFile(e.target.files[0])} />
+            style={S.input} onChange={handleFileChange} />
         </div>
+      </div>
+
+      {extractedData && (
+        <div style={{
+          marginTop: "12px", padding: "14px",
+          background: "#f0fff4", border: "1px solid #9ae6b4",
+          borderRadius: "8px", fontSize: "13px",
+        }}>
+          <div style={{ fontWeight: "700", color: "#22543d", marginBottom: "8px" }}>
+            ✅ Auto-Extracted from PDF
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            <div><b>Invoice #:</b> {extractedData.invoice_number || "—"}</div>
+            <div><b>Amount:</b> {extractedData.amount || "—"}</div>
+            <div><b>Category:</b> {extractedData.invoice_category || "—"}</div>
+            <div><b>Period:</b> {extractedData.period || "—"}</div>
+            <div><b>Due Date:</b> {extractedData.due_date || "—"}</div>
+            <div><b>Client:</b> {extractedData.client_name || "—"}</div>
+          </div>
+        </div>
+      )}
+
+      <div style={{
+        marginTop: "16px", padding: "14px",
+        background: "#fffaf0", border: "1px solid #f6ad55", borderRadius: "8px",
+      }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer", flexWrap: "wrap" }}>
+          <input type="checkbox" checked={alertEnabled}
+            onChange={(e) => setAlertEnabled(e.target.checked)} />
+          <span style={{ fontWeight: "700", color: "#c05621" }}>
+            🔔 Send alert if payment not received in
+          </span>
+          <input type="number" min="1" max="180"
+            style={{ width: "70px", padding: "6px", border: "1px solid #cbd5e0", borderRadius: "4px" }}
+            value={alertAfterDays}
+            onChange={(e) => setAlertAfterDays(parseInt(e.target.value) || 25)} />
+          <span style={{ fontWeight: "700", color: "#c05621" }}>days</span>
+        </label>
+
+        {alertEnabled && (
+          <div style={{ marginTop: "10px" }}>
+            <label style={S.label}>Alert Template</label>
+            <select style={S.input} value={alertTemplateKey}
+              onChange={(e) => setAlertTemplateKey(e.target.value)}>
+              {alertTemplates.map((t) => (
+                <option key={t.alert_key} value={t.alert_key}>{t.alert_name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <label style={S.label}>Remarks (optional)</label>
@@ -608,32 +592,471 @@ const PreviewModal = ({ onClose, onConfirm, loading, fromEmail, toEmail, subject
   );
 };
 
-/* CONFIG TAB */
+/* ============ 📧 TEMPLATES TAB ============ */
+const TemplatesTab = ({ templates, showToast, reload }) => {
+  const [form, setForm] = useState({
+    template_key: "", template_name: "", invoice_category: "",
+    subject_template: "Invoice {{invoice_number}} – ",
+    email_template: "Dear {{client_name}},\n\nPlease find attached the {{invoice_category}} invoice {{invoice_number}} for the period {{period}}.\n\nInvoice Amount: {{amount}}\nDue Date: {{due_date}}\n\n{{remarks}}\n\nRegards,\nTeam DialDesk",
+  });
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleNameChange = (name) => {
+    const key = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    setForm({ ...form, template_name: name, template_key: editMode ? form.template_key : key });
+  };
+
+  const handleCategoryChange = (cat) => {
+    setForm({ ...form, invoice_category: cat, subject_template: `Invoice {{invoice_number}} – ${cat}` });
+  };
+
+  const handleEdit = (t) => {
+    setForm({ template_key: t.template_key, template_name: t.template_name,
+      invoice_category: t.invoice_category, subject_template: t.subject_template,
+      email_template: t.email_template });
+    setEditMode(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSave = async () => {
+    if (!form.template_key || !form.template_name || !form.invoice_category)
+      return showToast("Fill Template Name and Category", "error");
+    if (!form.subject_template || !form.email_template)
+      return showToast("Subject and Body required", "error");
+    setSaving(true);
+    try {
+      await api.post("/invoice-tool/template", form);
+      showToast(editMode ? "Template updated" : "Template created");
+      setForm({ template_key: "", template_name: "", invoice_category: "",
+        subject_template: "Invoice {{invoice_number}} – ", email_template: form.email_template });
+      setEditMode(false); reload();
+    } catch (e) { showToast(e.response?.data?.detail || "Save failed", "error"); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (key) => {
+    if (!window.confirm("Delete this template?")) return;
+    try { await api.delete(`/invoice-tool/template/${key}`); showToast("Deleted"); reload(); }
+    catch { showToast("Delete failed", "error"); }
+  };
+
+  return (
+    <div style={S.twoCol}>
+      <div style={S.card}>
+        <h2 style={S.cardTitle}>{editMode ? "✏️ Edit Template" : "➕ Create New Template"}</h2>
+
+        <label style={S.label}>Template Name *</label>
+        <input style={S.input} placeholder="e.g. Retainer Invoice"
+          value={form.template_name} onChange={(e) => handleNameChange(e.target.value)} />
+        {form.template_key && (
+          <div style={{ fontSize: "11px", color: "#718096", marginTop: "4px" }}>
+            Key: <code>{form.template_key}</code>
+          </div>
+        )}
+
+        <label style={S.label}>Invoice Category *</label>
+        <select style={S.input} value={form.invoice_category}
+          onChange={(e) => handleCategoryChange(e.target.value)}>
+          <option value="">-- Choose Category --</option>
+          <option value="Retainer">Retainer</option>
+          <option value="Subscription">Subscription</option>
+          <option value="Dedicated Seat">Dedicated Seat</option>
+          <option value="Excess Usage">Excess Usage</option>
+          <option value="Custom">Custom</option>
+        </select>
+
+        <label style={S.label}>Subject Template *</label>
+        <input style={S.input} value={form.subject_template}
+          onChange={(e) => setForm({ ...form, subject_template: e.target.value })} />
+
+        <label style={S.label}>Email Body Template *</label>
+        <textarea style={{ ...S.input, height: "220px", fontFamily: "monospace", fontSize: "13px" }}
+          value={form.email_template}
+          onChange={(e) => setForm({ ...form, email_template: e.target.value })} />
+
+        <div style={{ fontSize: "11px", color: "#718096", marginTop: "4px" }}>
+          Placeholders: <code>{"{{client_name}}"}</code>, <code>{"{{invoice_number}}"}</code>,{" "}
+          <code>{"{{invoice_category}}"}</code>, <code>{"{{period}}"}</code>, <code>{"{{amount}}"}</code>,{" "}
+          <code>{"{{due_date}}"}</code>, <code>{"{{remarks}}"}</code>
+        </div>
+
+        <div style={S.row}>
+          <button style={{ ...S.primaryBtn, flex: 1 }} onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : editMode ? "💾 Update" : "➕ Create"}
+          </button>
+          {editMode && <button style={{ ...S.secondaryBtn, flex: 1 }}
+            onClick={() => { setForm({ template_key: "", template_name: "", invoice_category: "",
+              subject_template: "", email_template: "" }); setEditMode(false); }}>Cancel</button>}
+        </div>
+      </div>
+
+      <div style={S.card}>
+        <h2 style={S.cardTitle}>Global Templates ({templates.length})</h2>
+        <div style={{ maxHeight: "640px", overflowY: "auto" }}>
+          {templates.map((t) => (
+            <div key={t.template_key} style={S.templateRow}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "14px", fontWeight: "700" }}>{t.template_name}</div>
+                <div style={{ fontSize: "11px", color: "#718096" }}>
+                  Category: <b>{t.invoice_category}</b> · <code>{t.template_key}</code>
+                </div>
+                <div style={{ fontSize: "12px", color: "#2d3748", marginTop: "6px" }}>
+                  <b>Subject:</b> {t.subject_template}
+                </div>
+              </div>
+              <div>
+                <button style={S.smallBtn} onClick={() => handleEdit(t)}>Edit</button>
+                <button style={{ ...S.smallBtn, background: "#e53e3e" }}
+                  onClick={() => handleDelete(t.template_key)}>Del</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ============ 📢 ALERT TEMPLATES TAB ============ */
+const AlertTemplatesTab = ({ alertTemplates, showToast, reload }) => {
+  const [form, setForm] = useState({
+    alert_key: "", alert_name: "",
+    subject_template: "Payment Reminder – Invoice {{invoice_number}}",
+    email_template: "Dear {{client_name}},\n\nThis is a gentle reminder that payment for Invoice {{invoice_number}} (Amount: {{amount}}) is still pending.\n\nDue Date: {{due_date}}\nDays Overdue: {{days_overdue}}\n\nKindly process the payment.\n\nRegards,\nTeam DialDesk",
+  });
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleNameChange = (name) => {
+    const key = name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    setForm({ ...form, alert_name: name, alert_key: editMode ? form.alert_key : key });
+  };
+
+  const handleEdit = (t) => {
+    setForm({ alert_key: t.alert_key, alert_name: t.alert_name,
+      subject_template: t.subject_template, email_template: t.email_template });
+    setEditMode(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSave = async () => {
+    if (!form.alert_key || !form.alert_name || !form.subject_template || !form.email_template)
+      return showToast("Fill all fields", "error");
+    setSaving(true);
+    try {
+      await api.post("/invoice-tool/alert-template", form);
+      showToast(editMode ? "Alert template updated" : "Alert template created");
+      setForm({ alert_key: "", alert_name: "",
+        subject_template: "Payment Reminder – Invoice {{invoice_number}}",
+        email_template: form.email_template });
+      setEditMode(false); reload();
+    } catch (e) { showToast(e.response?.data?.detail || "Save failed", "error"); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (key) => {
+    if (!window.confirm("Delete this alert template?")) return;
+    try { await api.delete(`/invoice-tool/alert-template/${key}`); showToast("Deleted"); reload(); }
+    catch { showToast("Delete failed", "error"); }
+  };
+
+  return (
+    <div style={S.twoCol}>
+      <div style={S.card}>
+        <h2 style={S.cardTitle}>{editMode ? "✏️ Edit Alert Template" : "➕ Create Alert Template"}</h2>
+
+        <label style={S.label}>Alert Name *</label>
+        <input style={S.input} placeholder="e.g. Payment Reminder"
+          value={form.alert_name} onChange={(e) => handleNameChange(e.target.value)} />
+        {form.alert_key && (
+          <div style={{ fontSize: "11px", color: "#718096", marginTop: "4px" }}>
+            Key: <code>{form.alert_key}</code>
+          </div>
+        )}
+
+        <label style={S.label}>Subject *</label>
+        <input style={S.input} value={form.subject_template}
+          onChange={(e) => setForm({ ...form, subject_template: e.target.value })} />
+
+        <label style={S.label}>Email Body *</label>
+        <textarea style={{ ...S.input, height: "220px", fontFamily: "monospace", fontSize: "13px" }}
+          value={form.email_template}
+          onChange={(e) => setForm({ ...form, email_template: e.target.value })} />
+        <div style={{ fontSize: "11px", color: "#718096", marginTop: "4px" }}>
+          Placeholders: <code>{"{{client_name}}"}</code>, <code>{"{{invoice_number}}"}</code>,{" "}
+          <code>{"{{invoice_category}}"}</code>, <code>{"{{amount}}"}</code>,{" "}
+          <code>{"{{due_date}}"}</code>, <code>{"{{days_overdue}}"}</code>
+        </div>
+
+        <div style={S.row}>
+          <button style={{ ...S.primaryBtn, flex: 1 }} onClick={handleSave} disabled={saving}>
+            {saving ? "Saving..." : editMode ? "💾 Update" : "➕ Create"}
+          </button>
+          {editMode && (
+            <button style={{ ...S.secondaryBtn, flex: 1 }}
+              onClick={() => { setForm({ alert_key: "", alert_name: "",
+                subject_template: "", email_template: "" }); setEditMode(false); }}>
+              Cancel
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div style={S.card}>
+        <h2 style={S.cardTitle}>Alert Templates ({alertTemplates.length})</h2>
+        <div style={{ maxHeight: "640px", overflowY: "auto" }}>
+          {alertTemplates.map((t) => (
+            <div key={t.alert_key} style={S.templateRow}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "14px", fontWeight: "700" }}>{t.alert_name}</div>
+                <div style={{ fontSize: "11px", color: "#718096" }}><code>{t.alert_key}</code></div>
+                <div style={{ fontSize: "12px", color: "#2d3748", marginTop: "6px" }}>
+                  <b>Subject:</b> {t.subject_template}
+                </div>
+              </div>
+              <div>
+                <button style={S.smallBtn} onClick={() => handleEdit(t)}>Edit</button>
+                <button style={{ ...S.smallBtn, background: "#e53e3e" }}
+                  onClick={() => handleDelete(t.alert_key)}>Del</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ============ 🔔 ALERTS TAB ============ */
+const AlertsTab = ({ alerts, clients, configured, alertTemplates, showToast, reload }) => {
+  const [form, setForm] = useState({
+    client_id: "", invoice_number: "", invoice_category: "",
+    amount: "", due_date: "", template_key: "payment_reminder",
+    days_overdue: 0,
+  });
+  const [sending, setSending] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("ALL");
+
+  // Merge ALL CRM clients + configured status
+  const mergedClients = clients.map((c) => {
+    const cfg = configured.find((x) => String(x.client_id) === String(c.client_id));
+    return {
+      ...c,
+      is_configured: !!cfg,
+      template_key: cfg?.template_key,
+    };
+  });
+
+  const handleClientChange = (cid) => {
+    setForm((f) => ({ ...f, client_id: cid }));
+    const lastAlert = alerts
+      .filter((a) => String(a.client_id) === String(cid))
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    if (lastAlert) {
+      setForm((f) => ({
+        ...f, client_id: cid,
+        amount: lastAlert.amount || "",
+        invoice_number: lastAlert.invoice_number || "",
+        invoice_category: lastAlert.invoice_category || "",
+        due_date: lastAlert.due_date ? String(lastAlert.due_date).slice(0, 10) : "",
+      }));
+    }
+  };
+
+  const handleSendNow = async () => {
+    if (!form.client_id || !form.invoice_number || !form.amount)
+      return showToast("Fill client, invoice #, and amount", "error");
+    setSending(true);
+    try {
+      const fd = new FormData();
+      Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+      const res = await api.post("/invoice-tool/alert/send-now", fd);
+      showToast(res.data.message || "Alert sent!");
+      reload();
+    } catch (e) { showToast(e.response?.data?.detail || "Send failed", "error"); }
+    finally { setSending(false); }
+  };
+
+  const handleRunDue = async () => {
+    try {
+      const res = await api.post("/invoice-tool/alerts/run");
+      showToast(`Fired: ${res.data.fired} · Failed: ${res.data.failed}`);
+      reload();
+    } catch (e) { showToast("Run failed", "error"); }
+  };
+
+  const handleMarkPaid = async (id) => {
+    try { await api.post(`/invoice-tool/alert/mark-paid/${id}`); showToast("Marked as paid"); reload(); }
+    catch { showToast("Failed", "error"); }
+  };
+
+  const filtered = statusFilter === "ALL"
+    ? alerts
+    : alerts.filter((a) => a.status === statusFilter);
+
+  const getClientName = (cid) =>
+    clients.find((c) => String(c.client_id) === String(cid))?.client_name || `Client #${cid}`;
+
+  return (
+    <div>
+      <div style={S.card}>
+        <h2 style={S.cardTitle}>🚀 Send Alert Now</h2>
+        <div style={S.warn}>
+          💡 Client's last invoice amount will auto-fill. Select a client and the amount populates automatically.
+        </div>
+
+        <div style={S.row}>
+          <div style={{ flex: 2 }}>
+            <label style={S.label}>Client *</label>
+            <select style={S.input} value={form.client_id}
+              onChange={(e) => handleClientChange(e.target.value)}>
+              <option value="">
+                {mergedClients.length === 0 ? "-- Loading clients... --" : "-- Choose Client --"}
+              </option>
+              {mergedClients.map((c) => (
+                <option key={c.client_id} value={c.client_id}>
+                  {c.client_name} {c.is_configured ? "✅" : "⚠️ not configured"} {c.email ? `(${c.email})` : ""}
+                </option>
+              ))}
+            </select>
+            {form.client_id && !mergedClients.find((c) => String(c.client_id) === String(form.client_id))?.is_configured && (
+              <div style={{ fontSize: "11px", color: "#c05621", marginTop: "4px" }}>
+                ⚠️ This client is not configured in Client Config. Configure first to send alerts.
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 2 }}>
+            <label style={S.label}>Alert Template *</label>
+            <select style={S.input} value={form.template_key}
+              onChange={(e) => setForm({ ...form, template_key: e.target.value })}>
+              {alertTemplates.map((t) => (
+                <option key={t.alert_key} value={t.alert_key}>{t.alert_name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div style={S.row}>
+          <div style={{ flex: 2 }}>
+            <label style={S.label}>Invoice Number *</label>
+            <input style={S.input} value={form.invoice_number}
+              onChange={(e) => setForm({ ...form, invoice_number: e.target.value })}
+              placeholder="e.g. 09-64/26-27" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Amount *</label>
+            <input style={S.input} value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })}
+              placeholder="Auto-filled" />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Due Date</label>
+            <input style={S.input} type="date" value={form.due_date}
+              onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Days Overdue</label>
+            <input style={S.input} type="number" value={form.days_overdue}
+              onChange={(e) => setForm({ ...form, days_overdue: parseInt(e.target.value) || 0 })} />
+          </div>
+        </div>
+
+        <button style={{ ...S.primaryBtn, background: "#dd6b20" }}
+          onClick={handleSendNow} disabled={sending}>
+          {sending ? "Sending..." : "📤 Send Alert Now"}
+        </button>
+      </div>
+
+      <div style={{ ...S.card, marginTop: "20px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "15px", flexWrap: "wrap", gap: "10px" }}>
+          <h2 style={S.cardTitle}>Alert Schedule ({alerts.length})</h2>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <select style={{ ...S.input, width: "150px" }} value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}>
+              <option value="ALL">All</option>
+              <option value="PENDING">Pending</option>
+              <option value="SENT">Sent</option>
+              <option value="PAID">Paid</option>
+              <option value="FAILED">Failed</option>
+            </select>
+            <button style={{ ...S.smallBtn, background: "#38a169" }} onClick={handleRunDue}>
+              ▶️ Run Due Alerts
+            </button>
+            <button style={S.smallBtn} onClick={reload}>🔄 Refresh</button>
+          </div>
+        </div>
+
+        {filtered.length === 0 ? (
+          <p style={{ color: "#718096", fontSize: "13px" }}>No alerts found.</p>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={S.table}>
+              <thead><tr>
+                <th style={S.th}>Client</th>
+                <th style={S.th}>Invoice #</th>
+                <th style={S.th}>Amount</th>
+                <th style={S.th}>Scheduled</th>
+                <th style={S.th}>Status</th>
+                <th style={S.th}>Action</th>
+              </tr></thead>
+              <tbody>
+                {filtered.map((a) => (
+                  <tr key={a.id}>
+                    <td style={S.td}>{getClientName(a.client_id)}</td>
+                    <td style={S.td}>{a.invoice_number}</td>
+                    <td style={S.td}>{a.amount || "—"}</td>
+                    <td style={S.td}><small>{new Date(a.scheduled_date).toLocaleDateString()}</small></td>
+                    <td style={S.td}>
+                      <span style={{
+                        padding: "3px 8px", borderRadius: "4px", fontSize: "11px", fontWeight: "700",
+                        background: a.status === "SENT" ? "#c6f6d5" :
+                                    a.status === "PENDING" ? "#fefcbf" :
+                                    a.status === "PAID" ? "#bee3f8" : "#fed7d7",
+                        color: a.status === "SENT" ? "#22543d" :
+                               a.status === "PENDING" ? "#744210" :
+                               a.status === "PAID" ? "#2c5282" : "#742a2a",
+                      }}>{a.status}</span>
+                    </td>
+                    <td style={S.td}>
+                      {a.status === "PENDING" && (
+                        <button style={{ ...S.smallBtn, background: "#38a169" }}
+                          onClick={() => handleMarkPaid(a.id)}>Mark Paid</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ============ CONFIG TAB ============ */
 const ConfigTab = ({ crmClients, configured, templates, clientsLoading, showToast, reload }) => {
-  const [form, setForm] = useState(emptyForm());
+  const [form, setForm] = useState({
+    client_id: "", client_name: "", to_email: "", cc_email: "",
+    template_key: templates[0]?.template_key || "subscription",
+    subject: "Invoice from DialDesk", email_template: "", invoice_type: "Monthly",
+  });
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  function emptyForm() {
-    return {
-      client_id: "", client_name: "", to_email: "", cc_email: "",
-      template_key: templates[0]?.template_key || "subscription",
-      subject: "Invoice from DialDesk", email_template: "", invoice_type: "Monthly",
-    };
-  }
-
   const handleSelect = (id) => {
     const c = crmClients.find((x) => String(x.client_id) === String(id));
-    if (!c) return setForm(emptyForm());
+    if (!c) return setForm({ ...form, client_id: "", client_name: "", to_email: "" });
     const existing = configured.find((x) => String(x.client_id) === String(id));
     if (existing) {
       api.get(`/invoice-tool/client/${id}`).then((res) => {
-        setForm({ ...emptyForm(), ...res.data.data,
+        setForm({ ...form, ...res.data.data,
           template_key: res.data.data.template_key || templates[0]?.template_key || "subscription" });
         setEditMode(true);
       });
     } else {
-      setForm({ ...emptyForm(), client_id: c.client_id, client_name: c.client_name, to_email: c.email || "" });
+      setForm({ ...form, client_id: c.client_id, client_name: c.client_name, to_email: c.email || "" });
       setEditMode(false);
     }
   };
@@ -647,7 +1070,10 @@ const ConfigTab = ({ crmClients, configured, templates, clientsLoading, showToas
     try {
       await api.post("/invoice-tool/client", form);
       showToast("Client config saved");
-      setForm(emptyForm()); setEditMode(false); reload();
+      setForm({ client_id: "", client_name: "", to_email: "", cc_email: "",
+        template_key: templates[0]?.template_key || "subscription",
+        subject: "Invoice from DialDesk", email_template: "", invoice_type: "Monthly" });
+      setEditMode(false); reload();
     } catch (e) { showToast(e.response?.data?.detail || "Save failed", "error"); }
     finally { setLoading(false); }
   };
@@ -659,7 +1085,6 @@ const ConfigTab = ({ crmClients, configured, templates, clientsLoading, showToas
   };
 
   const getTemplateName = (key) => templates.find((t) => t.template_key === key)?.template_name || key || "—";
-  const selectedTemplate = templates.find((t) => t.template_key === form.template_key);
 
   return (
     <div style={S.twoCol}>
@@ -670,7 +1095,7 @@ const ConfigTab = ({ crmClients, configured, templates, clientsLoading, showToas
         <select style={S.input} value={form.client_id}
           onChange={(e) => handleSelect(e.target.value)}
           disabled={clientsLoading || editMode}>
-          <option value="">{clientsLoading ? "-- Loading... --" : "-- Choose Client --"}</option>
+          <option value="">{clientsLoading ? "-- Loading clients... --" : "-- Choose Client --"}</option>
           {crmClients.map((c) => (
             <option key={c.client_id} value={c.client_id}>{c.client_name}</option>
           ))}
@@ -688,7 +1113,7 @@ const ConfigTab = ({ crmClients, configured, templates, clientsLoading, showToas
         <input style={S.input} value={form.cc_email}
           onChange={(e) => setForm({ ...form, cc_email: e.target.value })} />
 
-        <label style={S.label}>Invoice Template * (which template to use by default)</label>
+        <label style={S.label}>Invoice Template *</label>
         <select style={S.input} value={form.template_key}
           onChange={(e) => setForm({ ...form, template_key: e.target.value })}>
           <option value="">-- Choose Template --</option>
@@ -696,15 +1121,6 @@ const ConfigTab = ({ crmClients, configured, templates, clientsLoading, showToas
             <option key={t.template_key} value={t.template_key}>{t.template_name}</option>
           ))}
         </select>
-
-        {selectedTemplate && (
-          <div style={S.preview}>
-            <div style={{ fontSize: "11px", color: "#718096", marginBottom: "4px" }}>Subject will look like:</div>
-            <b>{selectedTemplate.subject_template
-              .replace("{{invoice_number}}", "<invoice#>")
-              .replace("{{invoice_category}}", selectedTemplate.invoice_category || "")}</b>
-          </div>
-        )}
 
         <label style={S.label}>Default Invoice Type</label>
         <select style={S.input} value={form.invoice_type}
@@ -719,7 +1135,12 @@ const ConfigTab = ({ crmClients, configured, templates, clientsLoading, showToas
           </button>
           {editMode && (
             <button style={{ ...S.secondaryBtn, flex: 1 }}
-              onClick={() => { setForm(emptyForm()); setEditMode(false); }}>Cancel</button>
+              onClick={() => {
+                setForm({ client_id: "", client_name: "", to_email: "", cc_email: "",
+                  template_key: templates[0]?.template_key || "subscription",
+                  subject: "", email_template: "", invoice_type: "Monthly" });
+                setEditMode(false);
+              }}>Cancel</button>
           )}
         </div>
       </div>
@@ -734,9 +1155,8 @@ const ConfigTab = ({ crmClients, configured, templates, clientsLoading, showToas
               <div key={c.id} style={S.clientRow}>
                 <div style={{ flex: 1 }}>
                   <b>{c.client_name}</b> <small>#{c.client_id}</small><br />
-                  <small style={{ color: "#718096" }}>
-                    To: {c.to_email}{c.cc_email ? ` | CC: ${c.cc_email}` : ""}
-                  </small><br />
+                  <small style={{ color: "#718096" }}>To: {c.to_email}
+                    {c.cc_email ? ` | CC: ${c.cc_email}` : ""}</small><br />
                   <span style={S.templateBadge}>📧 {getTemplateName(c.template_key)}</span>
                 </div>
                 <div>
@@ -759,7 +1179,6 @@ const SmtpTab = ({ smtpConfigured, showToast, onSaved }) => {
   const [hasExistingPassword, setHasExistingPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [loadError, setLoadError] = useState(null);
 
   useEffect(() => {
     (async () => {
@@ -774,7 +1193,7 @@ const SmtpTab = ({ smtpConfigured, showToast, onSaved }) => {
           });
           setHasExistingPassword(true);
         }
-      } catch (e) { setLoadError(e.response?.data?.detail || e.message); }
+      } catch (e) {}
     })();
   }, []);
 
@@ -787,26 +1206,23 @@ const SmtpTab = ({ smtpConfigured, showToast, onSaved }) => {
     setLoading(true);
     try {
       const res = await api.post("/invoice-tool/smtp-settings", payload);
-      showToast(res.data.message || "SMTP settings saved ✅");
+      showToast(res.data.message || "SMTP saved");
       setHasExistingPassword(true); setForm((f) => ({ ...f, password: "" })); onSaved();
     } catch (e) {
-      const detail = e.response?.data?.detail ||
-        (Array.isArray(e.response?.data) && e.response.data[0]?.msg) || e.message || "Save failed";
-      showToast(`Save failed: ${detail}`, "error");
+      showToast(e.response?.data?.detail || "Save failed", "error");
     } finally { setLoading(false); }
   };
 
   const handleTest = async () => {
     setTesting(true);
     try { await api.post("/invoice-tool/smtp-settings/test", {}); showToast("SMTP connection OK ✅"); }
-    catch (e) { showToast(`Test failed: ${e.response?.data?.detail || e.message}`, "error"); }
+    catch (e) { showToast(`Failed: ${e.response?.data?.detail || e.message}`, "error"); }
     finally { setTesting(false); }
   };
 
   return (
     <div style={{ ...S.card, maxWidth: "700px" }}>
       <h2 style={S.cardTitle}>SMTP Configuration</h2>
-      {loadError && <div style={S.warn}>⚠️ {loadError}</div>}
 
       <label style={S.label}>SMTP Host *</label>
       <input style={S.input} placeholder="smtp.gmail.com" value={form.host}
@@ -836,7 +1252,7 @@ const SmtpTab = ({ smtpConfigured, showToast, onSaved }) => {
 
       <label style={{ ...S.label, marginTop: "15px" }}>
         <input type="checkbox" checked={form.use_tls}
-          onChange={(e) => setForm({ ...form, use_tls: e.target.checked })} /> Use TLS
+          onChange={(e) => setForm({ ...form, use_tls: e.target.checked })} /> Use TLS (recommended)
       </label>
 
       <div style={S.row}>
@@ -849,7 +1265,7 @@ const SmtpTab = ({ smtpConfigured, showToast, onSaved }) => {
         </button>
       </div>
 
-      <div style={S.infoBox}>
+      <div style={S.warn}>
         💡 <b>Gmail:</b> Use an{" "}
         <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer"
           style={{ color: "#3182ce" }}>App Password</a>. Port 587 + TLS.
@@ -862,7 +1278,7 @@ const SmtpTab = ({ smtpConfigured, showToast, onSaved }) => {
 const LogsTab = ({ logs, reload }) => (
   <div style={S.card}>
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <h2 style={S.cardTitle}>Send Logs (Recent 50)</h2>
+      <h2 style={S.cardTitle}>Send Logs ({logs.length})</h2>
       <button style={S.smallBtn} onClick={reload}>🔄 Refresh</button>
     </div>
     {logs.length === 0 ? (
@@ -873,7 +1289,8 @@ const LogsTab = ({ logs, reload }) => (
           <thead><tr>
             <th style={S.th}>Client</th><th style={S.th}>Invoice #</th>
             <th style={S.th}>Category</th><th style={S.th}>Subject</th>
-            <th style={S.th}>To</th><th style={S.th}>Status</th><th style={S.th}>Sent At</th>
+            <th style={S.th}>Alert</th><th style={S.th}>Status</th>
+            <th style={S.th}>Sent At</th>
           </tr></thead>
           <tbody>
             {logs.map((l) => (
@@ -882,7 +1299,9 @@ const LogsTab = ({ logs, reload }) => (
                 <td style={S.td}>{l.invoice_number || "-"}</td>
                 <td style={S.td}>{l.invoice_category || "-"}</td>
                 <td style={S.td}><small>{l.subject_used || "-"}</small></td>
-                <td style={S.td}>{l.to_email}</td>
+                <td style={S.td}>
+                  {l.alert_enabled ? `🔔 ${l.alert_after_days}d` : "—"}
+                </td>
                 <td style={S.td}>
                   <span style={{
                     padding: "3px 8px", borderRadius: "4px", fontSize: "11px",
@@ -903,14 +1322,14 @@ const LogsTab = ({ logs, reload }) => (
 /* STYLES */
 const S = {
   page: { padding: "30px", background: "#f4f6f9", minHeight: "100vh", fontFamily: "system-ui, -apple-system, sans-serif" },
-  header: { maxWidth: "1300px", margin: "0 auto 20px" },
+  header: { maxWidth: "1400px", margin: "0 auto 20px" },
   h1: { margin: 0, color: "#1a202c", fontSize: "26px" },
   headerSub: { margin: "4px 0 0", color: "#718096", fontSize: "14px" },
-  statsGrid: { maxWidth: "1300px", margin: "0 auto 20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "15px" },
+  statsGrid: { maxWidth: "1400px", margin: "0 auto 20px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "15px" },
   statCard: { background: "#fff", padding: "18px", borderRadius: "10px", boxShadow: "0 2px 8px rgba(0,0,0,0.05)", textAlign: "center" },
-  tabs: { maxWidth: "1300px", margin: "0 auto 20px", display: "flex", gap: "8px", flexWrap: "wrap" },
+  tabs: { maxWidth: "1400px", margin: "0 auto 20px", display: "flex", gap: "8px", flexWrap: "wrap" },
   tabBtn: { padding: "10px 18px", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", transition: "all 0.15s" },
-  tabContent: { maxWidth: "1300px", margin: "0 auto" },
+  tabContent: { maxWidth: "1400px", margin: "0 auto" },
   card: { background: "#fff", padding: "25px", borderRadius: "10px", boxShadow: "0 2px 10px rgba(0,0,0,0.06)" },
   cardTitle: { margin: "0 0 15px", color: "#1a202c", fontSize: "18px" },
   twoCol: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" },
@@ -920,8 +1339,7 @@ const S = {
   primaryBtn: { marginTop: "20px", width: "100%", padding: "12px", background: "#3182ce", color: "#fff", border: "none", borderRadius: "6px", fontSize: "14px", fontWeight: "700", cursor: "pointer" },
   secondaryBtn: { marginTop: "20px", padding: "12px", background: "#fff", color: "#2d3748", border: "1px solid #cbd5e0", borderRadius: "6px", fontSize: "14px", fontWeight: "600", cursor: "pointer" },
   smallBtn: { padding: "5px 10px", background: "#3182ce", color: "#fff", border: "none", borderRadius: "4px", fontSize: "12px", marginRight: "5px", cursor: "pointer" },
-  warn: { background: "#fffaf0", border: "1px solid #f6ad55", color: "#c05621", padding: "12px", borderRadius: "6px", marginBottom: "10px", fontSize: "13px" },
-  infoBox: { marginTop: "20px", fontSize: "13px", color: "#4a5568", background: "#f7fafc", padding: "12px", borderRadius: "6px" },
+  warn: { background: "#fffaf0", border: "1px solid #f6ad55", color: "#c05621", padding: "12px", borderRadius: "6px", marginBottom: "10px", fontSize: "13px", marginTop: "15px" },
   preview: { marginTop: "12px", padding: "10px 12px", background: "#ebf8ff", border: "1px solid #90cdf4", borderRadius: "6px", fontSize: "13px", color: "#2c5282" },
   clientRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: "1px solid #edf2f7", fontSize: "13px" },
   templateRow: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "14px 0", borderBottom: "1px solid #edf2f7" },
