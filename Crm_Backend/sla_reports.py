@@ -615,7 +615,7 @@ def slot_wise_utilization(
         sd_str = " AND is_shared='0'"
 
     # ------------------ CLIENT / CAMPAIGN ------------------
-    if clientID == "All":
+    if clientID.lower() == "all":
         db1.execute(text("SET SESSION group_concat_max_len = 20000"))
 
         camp_sql = text(f"""
