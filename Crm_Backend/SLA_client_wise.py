@@ -297,10 +297,9 @@ def sla_clientwise_report_excel(req: SLAClientwiseReq, db2: Session = Depends(ge
                     talk_sec,
                     pause_sec,
                     wait_sec,
-                    t1.length_in_sec
+                    t2.length_in_sec
                 FROM asterisk.vicidial_closer_log t2
                 LEFT JOIN asterisk.vicidial_users vu ON t2.user = vu.user
-                LEFT JOIN asterisk.call_log t1 ON t1.uniqueid = t2.uniqueid
                 LEFT JOIN asterisk.vicidial_agent_log t3 ON t2.uniqueid = t3.uniqueid AND t2.user = t3.user
                 WHERE DATE(t2.call_date) BETWEEN :from_date AND :to_date
                   AND t2.term_reason <> 'AFTERHOURS'
