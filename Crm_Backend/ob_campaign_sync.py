@@ -384,7 +384,7 @@ async def sync_webhook(
                 continue
 
             # Insert into ob_campaign_data (db4)
-            db.execute(text("""
+            ob_result = db.execute(text("""
                 INSERT INTO ob_campaign_data
                 (AllocationId, CreationDate,
                  Field1, Field2, Field3, Field4, Field5,
@@ -403,6 +403,7 @@ async def sync_webhook(
                 "CreationDate": create_date,
                 **field_values
             })
+            source_id = ob_result.lastrowid
 
             # Build vicidial_list values
             vicidial_data = {
@@ -411,7 +412,7 @@ async def sync_webhook(
                 "called_since_last_reset": "N",
                 "phone_code": "1",
                 "gmt_offset_now": "5.50",
-                # "source_id": str(allocation_id),
+                "source_id": str(source_id),
                 "entry_date": create_date
             }
 
