@@ -884,3 +884,156 @@ def call_action_subtype_subloop(
             status_code=500,
             detail=str(e)
         )
+    
+
+
+
+
+
+
+
+
+
+# ============================================================
+# Bulk create – "All" scenarios (Internal & Escalation)
+# Creates one alert_mechanisms row per Level-1 scenario
+# with the same payload (scenario2..5 = NULL).
+# ============================================================
+
+class InternalAlertBulkCreate(BaseModel):
+    client_id: int
+    alert_on: str
+    template_name: str
+    template_text: str
+    template_id: Optional[str] = None
+    person_name: str
+    phone: str
+    email: Optional[str] = None
+    WHATSAPP_API_KEY: Optional[str] = None
+    WHATSAPP_SESSION_ID: Optional[str] = None
+
+
+class EscalationAlertBulkCreate(BaseModel):
+    client_id: int
+    alert_on: str
+    template_name: str
+    template_text: str
+    template_id: Optional[str] = None
+    person_name: str
+    phone: str
+    email: Optional[str] = None
+    tat: int
+    WHATSAPP_API_KEY: Optional[str] = None
+    WHATSAPP_SESSION_ID: Optional[str] = None
+
+
+def _fetch_level1_scenario_names(client_id: int) -> list[str]:
+    query = text("""
+        SELECT ecrName
+        FROM ecr_master
+        WHERE Client = :client_id
+          AND parent_id IS NULL
+        ORDER BY id
+    """)
+    with engine4.connect() as conn:
+        rows = conn.execute(query, {"client_id": client_id}).mappings().all()
+    return [row["ecrName"] for row in rows]
+
+
+@router.post("/internal/alert-mechanism/all")
+def create_internal_alert_all_scenarios(payload: InternalAlertBulkCreate):
+    scenario_names = _fetch_level1_scenario_names(payload.client_id)
+    if not scenario_names:
+        raise HTTPException(status_code=400, detail="No scenarios found for this client")
+
+    insert_query = text("""
+        INSERT INTO alert_mechanisms
+        (
+            client_id, alert_category, alert_on, template_name, template_text, template_id,
+            scenario1, scenario2, scenario3, scenario4, scenario5,
+            person_name, phone, email, WHATSAPP_API_KEY, WHATSAPP_SESSION_ID, created_at
+        )
+        VALUES
+        (
+            :client_id, 'internal', :alert_on, :template_name, :template_text, :template_id,
+            :scenario1, NULL, NULL, NULL, NULL,
+            :person_name, :phone, :email, :WHATSAPP_API_KEY, :WHATSAPP_SESSION_ID, NOW()
+        )
+    """)
+
+    try:
+        created_ids = []
+        with engine4.begin() as conn:
+            for name in scenario_names:
+                result = conn.execute(insert_query, {
+                    "client_id": payload.client_id,
+                    "alert_on": payload.alert_on,
+                    "template_name": payload.template_name,
+                    "template_text": payload.template_text,
+                    "template_id": payload.template_id,
+                    "scenario1": name,
+                    "person_name": payload.person_name,
+                    "phone": payload.phone,
+                    "email": payload.email,
+                    "WHATSAPP_API_KEY": payload.WHATSAPP_API_KEY,
+                    "WHATSAPP_SESSION_ID": payload.WHATSAPP_SESSION_ID,
+                })
+                created_ids.append(result.lastrowid)
+
+        return {
+            "message": f"Internal alerts created for {len(created_ids)} scenarios",
+            "alert_ids": created_ids,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@router.post("/escalation/alert-mechanism/all")
+def create_escalation_alert_all_scenarios(payload: EscalationAlertBulkCreate):
+    scenario_names = _fetch_level1_scenario_names(payload.client_id)
+    if not scenario_names:
+        raise HTTPException(status_code=400, detail="No scenarios found for this client")
+
+    insert_query = text("""
+        INSERT INTO alert_mechanisms
+        (
+            client_id, alert_category, alert_on, template_name, template_text, template_id,
+            scenario1, scenario2, scenario3, scenario4, scenario5,
+            person_name, phone, email, tat, WHATSAPP_API_KEY, WHATSAPP_SESSION_ID, created_at
+        )
+        VALUES
+        (
+            :client_id, 'escalation', :alert_on, :template_name, :template_text, :template_id,
+            :scenario1, NULL, NULL, NULL, NULL,
+            :person_name, :phone, :email, :tat, :WHATSAPP_API_KEY, :WHATSAPP_SESSION_ID, NOW()
+        )
+    """)
+
+    try:
+        created_ids = []
+        with engine4.begin() as conn:
+            for name in scenario_names:
+                result = conn.execute(insert_query, {
+                    "client_id": payload.client_id,
+                    "alert_on": payload.alert_on,
+                    "template_name": payload.template_name,
+                    "template_text": payload.template_text,
+                    "template_id": payload.template_id,
+                    "scenario1": name,
+                    "person_name": payload.person_name,
+                    "phone": payload.phone,
+                    "email": payload.email,
+                    "tat": payload.tat,
+                    "WHATSAPP_API_KEY": payload.WHATSAPP_API_KEY,
+                    "WHATSAPP_SESSION_ID": payload.WHATSAPP_SESSION_ID,
+                })
+                created_ids.append(result.lastrowid)
+
+        return {
+            "message": f"Escalation alerts created for {len(created_ids)} scenarios",
+            "alert_ids": created_ids,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")

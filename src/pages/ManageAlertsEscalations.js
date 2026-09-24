@@ -152,7 +152,8 @@ export default function ManageAlertsEscalations() {
   }, [selectedClient]);
 
   useEffect(() => {
-    if (!selectedLevel1) return setLevel2Categories([]);
+    if (!selectedLevel1 || selectedLevel1 === "__all__")
+      return setLevel2Categories([]);
     const fetchLevel2 = async () => {
       try {
         const res = await api.get(
@@ -366,6 +367,37 @@ export default function ManageAlertsEscalations() {
     if (!internalAlertOn) return alert("Please select Alert On.");
     if (!selectedTemplate) return alert("Please select a template.");
 
+    // === Bulk mode: create one alert per Level-1 scenario ===
+    if (String(selectedLevel1) === "__all__") {
+      if (editingInternalAlertId)
+        return alert("Cannot use 'All' while editing. Cancel edit first.");
+
+      const bulkPayload = {
+        client_id: selectedClient,
+        alert_category: "internal",
+        alert_on: internalAlertOn,
+        template_name: selectedTemplate,
+        template_text: callerTemplateText,
+        template_id: InternalTemplateId,
+        person_name: personName,
+        phone: personPhone,
+        email: personEmail || null,
+        WHATSAPP_API_KEY: InternalWhatsappkey,
+        WHATSAPP_SESSION_ID: InternalSessionId,
+      };
+
+      try {
+        await api.post("/internal/alert-mechanism/all", bulkPayload);
+        alert("Internal alerts created for all scenarios!");
+        resetInternalForm();
+        fetchInternalAlerts();
+      } catch (err) {
+        console.error(err);
+        alert("Error creating alerts for all scenarios.");
+      }
+      return;
+    }
+
     const payload = {
       client_id: selectedClient,
       alert_category: "internal",
@@ -546,6 +578,35 @@ export default function ManageAlertsEscalations() {
     if (!selectedClient) return alert("Please select a client first.");
     if (!escalationAlertOn) return alert("Please select Alert On.");
     if (!selectedTemplate) return alert("Please select a template.");
+
+    // === Bulk mode: create one alert per Level-1 scenario ===
+    if (String(selectedLevel1) === "__all__") {
+      if (editingEscalationAlertId)
+        return alert("Cannot use 'All' while editing. Cancel edit first.");
+
+      try {
+        await api.post("/escalation/alert-mechanism/all", {
+          client_id: selectedClient,
+          alert_on: escalationAlertOn,
+          template_name: selectedTemplate,
+          template_text: callerTemplateText,
+          template_id: escalationTemplateId,
+          person_name: escalationPersonName,
+          phone: escalationPersonPhone,
+          email: escalationPersonEmail || null,
+          tat: escalationTAT,
+          WHATSAPP_API_KEY: escalationWhatsappkey,
+          WHATSAPP_SESSION_ID: escalationSessionId,
+        });
+        alert("Escalation alerts created for all scenarios!");
+        resetEscalationForm();
+        fetchEscalationAlerts();
+      } catch (err) {
+        console.error(err);
+        alert("Error creating alerts for all scenarios.");
+      }
+      return;
+    }
 
     const payload = {
       client_id: selectedClient,
@@ -971,16 +1032,14 @@ export default function ManageAlertsEscalations() {
                   CLOSE LOOPING
                 </button>
 
-                {/* CLIENT ALERT button commented out
-                <button
+                {/* <button
                   className={`list-group-item list-group-item-action fw-semibold ${
                     activeAlertSection === "clientalert" ? "active" : ""
                   }`}
                   onClick={() => setActiveAlertSection("clientalert")}
                 >
                   CLIENT ALERT
-                </button>
-               */}
+                </button> */}
               </div>
             </div>
 
@@ -1014,9 +1073,9 @@ export default function ManageAlertsEscalations() {
                             >
                               <option value="">Select</option>
                               <option value="SMS">SMS</option>
-                              <option value="Email">Email</option>
+                              {/* <option value="Email">Email</option> */}
                               <option value="WhatsApp">WhatsApp</option>
-                              <option value="All">All</option>
+                              {/* <option value="All">All</option> */}
                             </select>
                           </div>
 
@@ -1237,6 +1296,7 @@ export default function ManageAlertsEscalations() {
                               }
                             >
                               <option value="">Select Level 1</option>
+                              <option value="__all__">All</option>
                               {level1Categories.map((cat) => (
                                 <option key={cat.id} value={cat.id}>
                                   {cat.ecrName}
@@ -1246,7 +1306,7 @@ export default function ManageAlertsEscalations() {
                           </div>
 
                           {/* Level 2 */}
-                          {level2Categories.length > 0 && (
+                          {selectedLevel1 !== "__all__" && level2Categories.length > 0 && (
                             <div className="col-md-3">
                               <label className="form-label fw-semibold">
                                 Sub Scenario
@@ -1269,7 +1329,7 @@ export default function ManageAlertsEscalations() {
                           )}
 
                           {/* Level 3 */}
-                          {level3Categories.length > 0 && (
+                          {selectedLevel1 !== "__all__" && level3Categories.length > 0 && (
                             <div className="col-md-3">
                               <label className="form-label fw-semibold">
                                 Sub Scenario 3
@@ -1292,7 +1352,7 @@ export default function ManageAlertsEscalations() {
                           )}
 
                           {/* Level 4 */}
-                          {level4Categories.length > 0 && (
+                          {selectedLevel1 !== "__all__" && level4Categories.length > 0 && (
                             <div className="col-md-3">
                               <label className="form-label fw-semibold">
                                 Sub Scenario 4
@@ -1315,7 +1375,7 @@ export default function ManageAlertsEscalations() {
                           )}
 
                           {/* Level 5 */}
-                          {level5Categories.length > 0 && (
+                          {selectedLevel1 !== "__all__" && level5Categories.length > 0 && (
                             <div className="col-md-3">
                               <label className="form-label fw-semibold">
                                 Sub Scenario 5
@@ -1573,6 +1633,7 @@ export default function ManageAlertsEscalations() {
                               }
                             >
                               <option value="">Select Level 1</option>
+                              <option value="__all__">All</option>
                               {level1Categories.map((cat) => (
                                 <option key={cat.id} value={cat.id}>
                                   {cat.ecrName}
@@ -1582,7 +1643,7 @@ export default function ManageAlertsEscalations() {
                           </div>
 
                           {/* Level 2 */}
-                          {level2Categories.length > 0 && (
+                          {selectedLevel1 !== "__all__" && level2Categories.length > 0 && (
                             <div className="col-md-3">
                               <label className="form-label fw-semibold">
                                 Sub Scenario
@@ -1605,7 +1666,7 @@ export default function ManageAlertsEscalations() {
                           )}
 
                           {/* Level 3 */}
-                          {level3Categories.length > 0 && (
+                          {selectedLevel1 !== "__all__" && level3Categories.length > 0 && (
                             <div className="col-md-3">
                               <label className="form-label fw-semibold">
                                 Sub Scenario 3
@@ -1628,7 +1689,7 @@ export default function ManageAlertsEscalations() {
                           )}
 
                           {/* Level 4 */}
-                          {level4Categories.length > 0 && (
+                          {selectedLevel1 !== "__all__" && level4Categories.length > 0 && (
                             <div className="col-md-3">
                               <label className="form-label fw-semibold">
                                 Sub Scenario 4
@@ -1651,7 +1712,7 @@ export default function ManageAlertsEscalations() {
                           )}
 
                           {/* Level 5 */}
-                          {level5Categories.length > 0 && (
+                          {selectedLevel1 !== "__all__" && level5Categories.length > 0 && (
                             <div className="col-md-3">
                               <label className="form-label fw-semibold">
                                 Sub Scenario 5
@@ -2051,10 +2112,10 @@ export default function ManageAlertsEscalations() {
                       </div>
                     )}
 
-                    {/* CLIENT ALERT section commented out
-                    {activeAlertSection === "clientalert" && (
+
+                    {/* {activeAlertSection === "clientalert" && (
                       <div>
-                        === Client Alert form ===
+
                         <form className="row g-4">
                           <div className="col-md-4">
                             <label className="form-label fw-semibold">
@@ -2139,7 +2200,7 @@ export default function ManageAlertsEscalations() {
                           </div>
                         </form>
 
-                        === Client Alerts Table ===
+
                         <div
                           className="table-responsive mt-4"
                           style={{ maxHeight: 500, overflowY: "auto" }}
@@ -2196,8 +2257,8 @@ export default function ManageAlertsEscalations() {
                           </table>
                         </div>
                       </div>
-                    )}
-                  */}
+                    )} */}
+                 
                   </div>
                 </div>
               )}
