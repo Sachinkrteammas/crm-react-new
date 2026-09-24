@@ -646,6 +646,22 @@ def slot_wise_utilization(
         client_list_cond = f"ClientId IN ({clientID})"
 
     # ------------------ LOOP SLOT WISE (HOURLY) ------------------
+    login_sql = text("""
+    SELECT
+        user,
+        event,
+        event_date
+    FROM vicidial_user_log
+    WHERE event_date < :to_dt
+    AND event IN ('LOGIN','LOGOUT')
+    ORDER BY user,event_date
+    """)
+
+    login_rows = db2.execute(
+        login_sql,
+        {"to_dt": to_dt.strftime("%Y-%m-%d %H:%M:%S")}
+    ).fetchall()
+
     cur = from_dt
     while cur < to_dt:
         date_label = cur.strftime("%Y-%m-%d")
@@ -660,25 +676,6 @@ def slot_wise_utilization(
         datearray.append(date_label)
         timearray.append(time_label)
         datetimeArray.setdefault(date_label, []).append(time_label)
-
-        login_sql = text("""
-        SELECT
-            user,
-            event,
-            event_date
-        FROM vicidial_user_log
-        WHERE event_date < :slot_end
-        AND event IN ('LOGIN','LOGOUT')
-        ORDER BY user,event_date
-        """)
-
-        login_rows = db2.execute(
-            login_sql,
-            {
-                "slot_start": start_time,
-                "slot_end": end_time
-            }
-        ).fetchall()
 
         qry = text(f"""
             SELECT 
@@ -805,6 +802,9 @@ def slot_wise_utilization(
             for e in events:
 
                 if e.event_date < slot_start:
+                    continue
+
+                if e.event_date >= slot_end:
                     continue
 
                 if e.event.upper() == "LOGIN":
