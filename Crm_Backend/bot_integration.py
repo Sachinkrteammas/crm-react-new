@@ -807,18 +807,37 @@ async def save_vicidial_lead(
 
     data = await request.json()
 
+    phone_number = (data.get("phone_number") or "").strip()
+
+    if not phone_number:
+        raise HTTPException(400, "phone_number is required")
+
+    # Default rank - existing behavior
+    rank = 0
+
+    # Apply rank only for client 700
+    if client_id == "700":
+        address3 = (data.get("address3") or "")
+
+        if address3 == "Payment Failure":
+            rank = 1
+        elif address3 == "Subscription Creation":
+            rank = 2
+        elif address3 == "Subscription Expired":
+            rank = 3
+
     try:
         db2.execute(text("""
             INSERT INTO vicidial_list (
                 phone_number, title, first_name, middle_initial, last_name, status,list_id,
                 address1, address2, address3, city, state, province, phone_code, called_since_last_reset, gmt_offset_now,
                 postal_code, country_code, gender, date_of_birth, entry_date, modify_date,
-                alt_phone, email, comments
+                alt_phone, email, comments, rank
             ) VALUES (
                 :phone_number, :title, :first_name, :middle_initial, :last_name, :status,:list_id,
                 :address1, :address2, :address3, :city, :state, :province, :phone_code, :called_since_last_reset, :gmt_offset_now,
                 :postal_code, :country_code, :gender, :date_of_birth,  NOW(), NOW(),
-                :alt_phone, :email, :comments
+                :alt_phone, :email, :comments, :rank
             )
         """), {
             "phone_number": data.get("phone_number") or "",
@@ -850,7 +869,9 @@ async def save_vicidial_lead(
             "alt_phone": data.get("alt_phone") or "",
             "email": data.get("email") or "",
 
-            "comments": data.get("comments") or ""
+            "comments": data.get("comments") or "",
+
+            "rank": rank
         })
 
         db2.commit()
