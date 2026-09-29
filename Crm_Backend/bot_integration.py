@@ -818,12 +818,13 @@ async def save_vicidial_lead(
     # Apply rank only for client 700
     if client_id == "700":
         address3 = (data.get("address3") or "")
+        normalized_address3 = "".join(address3.split()).lower()
 
-        if address3 == "Payment Failure":
+        if normalized_address3 == "paymentfailure":
             rank = 1
-        elif address3 == "Subscription Creation":
+        elif normalized_address3 == "subscriptioncreation":
             rank = 2
-        elif address3 == "Subscription Expired":
+        elif normalized_address3 == "subscriptionexpired":
             rank = 3
 
     try:
