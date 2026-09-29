@@ -366,6 +366,7 @@ async def sync_webhook(
 
     inserted = 0
     errors = 0
+    vicidial_list_ids = []
 
     # 2️⃣ Insert into ob_campaign_data + vicidial_list
     for record in records:
@@ -427,10 +428,12 @@ async def sync_webhook(
             placeholders = ", ".join([f":{k}" for k in insert_cols])
             col_names = ", ".join(insert_cols)
 
-            db2.execute(text(f"""
+            vic_result = db2.execute(text(f"""
                 INSERT INTO vicidial_list ({col_names})
                 VALUES ({placeholders})
             """), vicidial_data)
+
+            vicidial_list_ids.append(vic_result.lastrowid)
 
             inserted += 1
 
@@ -447,8 +450,9 @@ async def sync_webhook(
         "inserted": inserted,
         "errors": errors,
         "total": len(records),
-        "allocation_id": allocation_id,
-        "allocation_name": allocation_name
+        # "allocation_id": allocation_id,
+        # "allocation_name": allocation_name,
+        "id": vicidial_list_ids[-1] if vicidial_list_ids else None,
     }
 
 
