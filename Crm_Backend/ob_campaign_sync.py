@@ -24,6 +24,11 @@ class SyncConfigSave(BaseModel):
     column_mapping: dict
 
 
+class SecurityPhraseUpdate(BaseModel):
+    lead_id: int
+    security_phrase: str
+
+
 # -------------------- Helpers --------------------
 def generate_allocation_name(campaign_name: str) -> str:
     now = datetime.now()
@@ -517,4 +522,48 @@ def get_webhook_info(config_id: int, db: Session = Depends(get_db4)):
     except HTTPException:
         raise
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# -------------------- 7. Update vicidial_list Security Phrase --------------------
+@router.put("/vicidial-list/security-phrase")
+def update_security_phrase(
+    payload: SecurityPhraseUpdate,
+    db2: Session = Depends(get_db2)
+):
+    try:
+        lead_id = payload.lead_id
+        security_phrase = payload.security_phrase
+
+        existing = db2.execute(text("""
+            SELECT lead_id FROM vicidial_list
+            WHERE lead_id = :lead_id
+            LIMIT 1
+        """), {"lead_id": lead_id}).fetchone()
+
+        if not existing:
+            raise HTTPException(status_code=404, detail="Lead not found in vicidial_list")
+
+        db2.execute(text("""
+            UPDATE vicidial_list
+            SET security_phrase = :security_phrase,
+            WHERE lead_id = :lead_id
+        """), {
+            "lead_id": lead_id,
+            "security_phrase": security_phrase
+        })
+
+        db2.commit()
+
+        return {
+            "status": "success",
+            "message": "Security phrase updated successfully",
+            "lead_id": lead_id,
+            "security_phrase": security_phrase
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        db2.rollback()
         raise HTTPException(status_code=500, detail=str(e))

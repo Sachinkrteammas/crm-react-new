@@ -97,6 +97,7 @@ from pd_call_allocation import router as pd_call_allocation_router
 from campaign_sub_type import router as campaign_sub_type_router
 from invoice_tool import router as invoice_tool_router
 from ob_campaign_sync import router as ob_campaign_sync_router
+from mapple_webhook import router as mapple_webhook_router
 from whatsapp_reports_api import router as whatsapp_reports_router
 from whatsapp_report_engine import run_report, REPORT_HANDLERS
 
@@ -191,6 +192,7 @@ app.include_router(router)
 app.include_router(pd_call_allocation_router, tags=["PD Call Allocation"], dependencies=[Depends(verify_token)])
 app.include_router(campaign_sub_type_router, tags=["Campaign Sub Type"], dependencies=[Depends(verify_token)])
 app.include_router(ob_campaign_sync_router, tags=["OB Campaign Sync"])
+app.include_router(mapple_webhook_router, tags=["Mapple Data Webhook"])
 app.include_router(whatsapp_reports_router, prefix="/whatsapp-reports", tags=["WhatsApp Reports"], dependencies=[Depends(verify_token)])
 
 # ✅ Create a function that runs the API logic automatically
