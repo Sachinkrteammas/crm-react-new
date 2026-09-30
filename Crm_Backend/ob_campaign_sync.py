@@ -389,25 +389,6 @@ async def sync_webhook(
                 errors += 1
                 continue
 
-            # Skip if phone already exists in this list
-            existing_row = db2.execute(text("""
-                SELECT lead_id FROM vicidial_list
-                WHERE list_id = :list_id
-                AND RIGHT(phone_number, 10) = :phone_key
-                LIMIT 1
-            """), {
-                "list_id": list_id,
-                "phone_key": phone[-10:]
-            }).fetchone()
-
-            if existing_row:
-                return {
-                    "status": "duplicate",
-                    "message": f"Phone number {phone} already exists in list {list_id}",
-                    "phone_number": phone,
-                    "id": None
-                }
-
             # Insert into ob_campaign_data (db4)
             ob_result = db.execute(text("""
                 INSERT INTO ob_campaign_data
