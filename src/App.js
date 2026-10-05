@@ -151,6 +151,7 @@ import SLASlotWise from "./pages/SLA_Slot_wise";
 import RealtimeAgentMapWithClients from "./pages/Realtime_agent_map";
 import OverallAgentSkills from "./pages/overall_agent_skills";
 import CampaignWiseAgentSkill from "./pages/campaign_wise_agent_skills";
+import AgentClientSkills from "./pages/AgentClientSkills";
 import AgentAprExport from "./pages/Agent_apr";
 import AgentAprExportOld from "./pages/Agent_apr_old";
 import DashboardAnest from "./pages/DashboardAnest";
@@ -465,6 +466,7 @@ function App() {
               <Route path="/AbandonReports/client_live_agent" element={<RealtimeAgentMapWithClients />} />
               <Route path="/AbandonReports/skill_wise_excel" element={<OverallAgentSkills />} />
               <Route path="/AbandonReports/agent_wise_skill_excel" element={<CampaignWiseAgentSkill />} />
+              <Route path="/AbandonReports/agent_client_skills" element={<AgentClientSkills />} />
               <Route path="/AbandonReports/agent_apr" element={<AgentAprExport />} />
               <Route path="/AbandonReports/agent_apr_old" element={<AgentAprExportOld />} />
               <Route path="/DashboardAnest" element={<DashboardAnest />} />

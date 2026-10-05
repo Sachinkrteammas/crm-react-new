@@ -4081,3 +4081,106 @@ WHERE t2.user != 'VDCL'
 
     return StreamingResponse(buffer, media_type="application/vnd.ms-excel", headers=headers)
 
+
+# ================= AGENT -> CLIENT SKILL MAPPING =================
+@router.get("/agent-client-skills")
+def agent_client_skills(
+    format: str = Query("json", description="json | excel"),
+    db: Session = Depends(get_db4),
+):
+    """
+    Active agents with the clients they are skilled on.
+
+    ClientRights on agent_master holds a comma separated list of
+    registration_master.company_id values.
+
+    format=json   -> [{ username, agentName, clientSkilled, totalClientSkilled }]
+    format=excel  -> xlsx download
+    """
+    agent_rows = db.execute(text("""
+        SELECT username, displayname, ClientRights
+        FROM agent_master
+        WHERE status = 'A'
+        ORDER BY displayname ASC
+    """)).mappings().all()
+
+    agent_usernames: List[str] = []
+    agent_names: List[str] = []
+    agent_client_ids: List[List[int]] = []
+
+    for row in agent_rows:
+        ids: List[int] = []
+        for raw in (row["ClientRights"] or "").split(","):
+            raw = raw.strip()
+            if raw.isdigit():
+                cid = int(raw)
+                if cid not in ids:
+                    ids.append(cid)
+        agent_usernames.append(row["username"])
+        agent_names.append(row["displayname"])
+        agent_client_ids.append(ids)
+
+    all_client_ids = sorted({cid for ids in agent_client_ids for cid in ids})
+
+    client_name_map: Dict[int, str] = {}
+    if all_client_ids:
+        placeholders = ", ".join(f":cid_{i}" for i in range(len(all_client_ids)))
+        client_params = {f"cid_{i}": cid for i, cid in enumerate(all_client_ids)}
+        client_rows = db.execute(
+            text(f"""
+                SELECT company_id, company_name
+                FROM registration_master
+                WHERE company_id IN ({placeholders})
+            """),
+            client_params
+        ).mappings().all()
+
+        for c in client_rows:
+            client_name_map[int(c["company_id"])] = c["company_name"]
+
+    result: List[Dict[str, Any]] = []
+    for username, agent_name, ids in zip(agent_usernames, agent_names, agent_client_ids):
+        client_names = [
+            client_name_map.get(cid, str(cid))
+            for cid in ids
+            if cid in client_name_map
+        ]
+        result.append({
+            "username": username,
+            "agentName": agent_name,
+            "clientSkilled": client_names,
+            "totalClientSkilled": len(client_names),
+        })
+
+    if format.lower() == "excel":
+        import pandas as pd
+
+        df = pd.DataFrame(
+            [
+                {
+                    "Username": r["username"],
+                    "Agent Name": r["agentName"],
+                    "Client Skilled": ", ".join(r["clientSkilled"]),
+                    "Total Client Skilled": r["totalClientSkilled"],
+                }
+                for r in result
+            ],
+            columns=["Username", "Agent Name", "Client Skilled", "Total Client Skilled"],
+        )
+
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Agent Client Skills")
+
+        output.seek(0)
+
+        file_name = f"Agent_Client_Skills_{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+
+        return StreamingResponse(
+            output,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{file_name}"'}
+        )
+
+    return result
+
