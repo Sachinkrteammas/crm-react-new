@@ -416,3 +416,155 @@ def export_agent_excel(
             "Content-Disposition": f'attachment; filename="{file_name}"'
         }
     )
+
+
+@router.get("/client_wise_agent_skills/export")
+def export_client_wise_agent_skills(
+    db: Session = Depends(get_db4),   # Main DB
+    db2: Session = Depends(get_db2),  # Vicidial DB
+):
+    """
+    Client wise skilled agents. Same data source as
+    /agent_wise_skill_excel/export but not split by campaign -
+    one row per client with all its agents in a single cell.
+    """
+    # ----------------------------------
+    # 1️⃣ Fetch all active DD clients + their campaigns
+    # ----------------------------------
+    client_query = text("""
+        SELECT
+            r.company_id AS company_id,
+            r.Company_name AS company_name,
+            i.campaign_name AS campaign_name
+        FROM registration_master r
+        JOIN ingroup_campaign_master i
+            ON r.company_id = i.client_id
+        WHERE r.status = 'A'
+          AND r.is_dd_client = '1'
+          AND i.camp_type IS NULL
+        ORDER BY r.Company_name ASC
+    """)
+
+    client_rows = db.execute(client_query).mappings().all()
+
+    # company_id -> company_name, and the campaigns belonging to it
+    clients: Dict[int, Dict[str, Any]] = {}
+
+    for r in client_rows:
+        cid = int(r["company_id"])
+
+        if cid not in clients:
+            clients[cid] = {
+                "company_name": r["company_name"],
+                "campaigns": [],
+            }
+
+        if r["campaign_name"] not in clients[cid]["campaigns"]:
+            clients[cid]["campaigns"].append(r["campaign_name"])
+
+    # ----------------------------------
+    # 2️⃣ Campaign -> Vicidial users mapping
+    # ----------------------------------
+    vicidial_rows = db2.execute(text("""
+        SELECT user, closer_campaigns
+        FROM vicidial_users
+        WHERE closer_campaigns IS NOT NULL
+          AND closer_campaigns != ''
+    """)).mappings().all()
+
+    campaign_users: Dict[str, List[str]] = {}
+
+    for r in vicidial_rows:
+        for campaign in r["closer_campaigns"].split():
+            campaign = campaign.strip()
+            if not campaign or campaign == "-":
+                continue
+            campaign_users.setdefault(campaign, []).append(r["user"])
+
+    # ----------------------------------
+    # 3️⃣ Clients -> unique agents (dedup across campaigns)
+    # ----------------------------------
+    client_agents: Dict[int, List[str]] = {}
+
+    for cid, client in clients.items():
+        usernames: List[str] = []
+        for campaign in client["campaigns"]:
+            for user in campaign_users.get(campaign, []):
+                if user not in usernames:
+                    usernames.append(user)
+        client_agents[cid] = usernames
+
+    # ----------------------------------
+    # 4️⃣ Fetch agent display names
+    # ----------------------------------
+    all_users = list({u for users in client_agents.values() for u in users})
+
+    agents_map: Dict[str, str] = {}
+
+    if all_users:
+        placeholders = ", ".join(f":u_{i}" for i in range(len(all_users)))
+        user_params = {f"u_{i}": u for i, u in enumerate(all_users)}
+
+        agents_query = text(f"""
+            SELECT username, displayname
+            FROM agent_master
+            WHERE username IN ({placeholders})
+              AND status = 'A'
+              AND processname = 'Shared IB'
+        """)
+
+        rows = db.execute(agents_query, user_params).mappings().all()
+
+        for r in rows:
+            agents_map[r["username"]] = r["displayname"]
+
+    # ----------------------------------
+    # 5️⃣ Excel preparation
+    # ----------------------------------
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "client_skilled_agents"
+
+    headers = ["Sno", "Client Name", "Agent Count", "Agent Name"]
+
+    header_fill = PatternFill(start_color="317EAC", end_color="317EAC", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    # ----------------------------------
+    # 6️⃣ Write data rows
+    # ----------------------------------
+    row_num = 2
+    sno = 1
+
+    for cid, client in clients.items():
+        display_names = [
+            agents_map[u]
+            for u in client_agents[cid]
+            if u in agents_map
+        ]
+
+        ws.cell(row=row_num, column=1, value=sno)
+        ws.cell(row=row_num, column=2, value=client["company_name"])
+        ws.cell(row=row_num, column=3, value=len(display_names))
+        ws.cell(row=row_num, column=4, value=", ".join(display_names))
+
+        row_num += 1
+        sno += 1
+
+    # ----------------------------------
+    # 7️⃣ Save & return Excel
+    # ----------------------------------
+    tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+    wb.save(tmp_file.name)
+
+    return FileResponse(
+        path=tmp_file.name,
+        filename="Client_Skilled_Agents.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
