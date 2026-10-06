@@ -510,25 +510,26 @@ def get_webhook_info(config_id: int, db: Session = Depends(get_db4)):
 @router.put("/vicidial-list/security-phrase")
 def update_security_phrase(
     payload: SecurityPhraseUpdate,
-    db2: Session = Depends(get_db2)
+    db2: Session = Depends(get_db4)
 ):
     try:
         lead_id = payload.lead_id
         security_phrase = payload.security_phrase
 
         existing = db2.execute(text("""
-            SELECT lead_id FROM vicidial_list
-            WHERE lead_id = :lead_id
+            SELECT id FROM mapple_data
+            WHERE id = :lead_id
             LIMIT 1
         """), {"lead_id": lead_id}).fetchone()
 
         if not existing:
-            raise HTTPException(status_code=404, detail="Lead not found in vicidial_list")
+            raise HTTPException(status_code=404, detail="Lead not found in mapple_data")
 
         db2.execute(text("""
-            UPDATE vicidial_list
+            UPDATE mapple_data
             SET security_phrase = :security_phrase,
-            WHERE lead_id = :lead_id
+                inserted = 1
+            WHERE id = :lead_id
         """), {
             "lead_id": lead_id,
             "security_phrase": security_phrase
