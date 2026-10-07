@@ -31,7 +31,7 @@ from field_master import router as field_master_router
 from close_field import router as close_field_router
 from vicidial_list import router as vicidial_list_router
 from templates import router as templates_router
-# from client_alert import router as client_alert_router, scheduled_monthly_usage_alerts
+from client_alert import router as client_alert_router, scheduled_monthly_usage_alerts
 from fortum_dashboard import router as fortum_dashboard_router
 from outbound_dashboard import router as outbound_dashboard_router
 from call_scenario import router as call_scenario_router
@@ -134,7 +134,7 @@ app.include_router(field_master_router, dependencies=[Depends(verify_token)])
 app.include_router(close_field_router, dependencies=[Depends(verify_token)])
 app.include_router(vicidial_list_router, prefix="/dialer", tags=["Vicidial List"], dependencies=[Depends(verify_token)])
 app.include_router(templates_router, tags=["Templates"], dependencies=[Depends(verify_token)])
-# app.include_router(client_alert_router, tags=["Client Alert"], dependencies=[Depends(verify_token)])
+app.include_router(client_alert_router, tags=["Client Alert"], dependencies=[Depends(verify_token)])
 app.include_router(fortum_dashboard_router, tags=["Fortum Dashboard"], dependencies=[Depends(verify_token)])
 app.include_router(outbound_dashboard_router, tags=["OutBound Dashboard"], dependencies=[Depends(verify_token)])
 app.include_router(call_scenario_router, tags=["Call Scenario"], dependencies=[Depends(verify_token)])
@@ -553,7 +553,7 @@ scheduler.add_job(pull_salesforce_leads, "interval", minutes=5)
 scheduler.add_job(run_abandoned_call_sms, "interval", minutes=1)
 scheduler.add_job(scheduled_pending_alerts, "interval", minutes=3, max_instances=1)
 scheduler.add_job(sync_recordings, "cron", hour=1, minute=30)
-# scheduler.add_job(scheduled_monthly_usage_alerts, "cron", hour=11, minute=56, max_instances=1)  # monthly usage alerts (once per month per client)
+scheduler.add_job(scheduled_monthly_usage_alerts, "cron", hour=8, minute=0, max_instances=1)  # monthly usage alerts (once per month per client)
 scheduler.add_job(get_call_followups, "interval", minutes=30)
 scheduler.add_job(scheduled_escalation_checks, "interval", minutes=10, max_instances=1)
 scheduler.add_job(scheduled_close_loop_checks, "interval", minutes=16, max_instances=1)  # close-loop SMS alerts

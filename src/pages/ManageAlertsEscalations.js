@@ -71,12 +71,12 @@ export default function ManageAlertsEscalations() {
   const [closeLoopTemplateText, setCloseLoopTemplateText] = useState("");
 
   // Client Alert-specific state
-  // const [clientAlerts, setClientAlerts] = useState([]);
-  // const [editingClientAlertId, setEditingClientAlertId] = useState(null);
-  // const [clientAlertType, setClientAlertType] = useState("");
-  // const [clientAlertPercent, setClientAlertPercent] = useState("");
-  // const [clientAlertEmailTo, setClientAlertEmailTo] = useState("");
-  // const [clientAlertEmailCc, setClientAlertEmailCc] = useState("");
+  const [clientAlerts, setClientAlerts] = useState([]);
+  const [editingClientAlertId, setEditingClientAlertId] = useState(null);
+  const [clientAlertType, setClientAlertType] = useState("");
+  const [clientAlertPercent, setClientAlertPercent] = useState("");
+  const [clientAlertEmailTo, setClientAlertEmailTo] = useState("");
+  const [clientAlertEmailCc, setClientAlertEmailCc] = useState("");
 
   const [activeSubTab, setActiveSubTab] = useState("caller");
 
@@ -872,82 +872,82 @@ export default function ManageAlertsEscalations() {
 
   // -------------------- Client Alert --------------------
 
-  // const fetchClientAlerts = async () => {
-  //   if (!selectedClient) return;
-  //   try {
-  //     const res = await api.get("/client-alert/alert-mechanism", {
-  //       params: { client_id: selectedClient },
-  //     });
-  //     setClientAlerts(res.data);
-  //   } catch (err) {
-  //     console.error(err);
-  //     alert("Error fetching client alerts.");
-  //   }
-  // };
+  const fetchClientAlerts = async () => {
+    if (!selectedClient) return;
+    try {
+      const res = await api.get("/client-alert/alert-mechanism", {
+        params: { client_id: selectedClient },
+      });
+      setClientAlerts(res.data);
+    } catch (err) {
+      console.error(err);
+      alert("Error fetching client alerts.");
+    }
+  };
 
-  // useEffect(() => {
-  //   if (selectedClient) fetchClientAlerts();
-  // }, [selectedClient]);
+  useEffect(() => {
+    if (selectedClient) fetchClientAlerts();
+  }, [selectedClient]);
 
-  // const resetClientAlertForm = () => {
-  //   setEditingClientAlertId(null);
-  //   setClientAlertType("");
-  //   setClientAlertPercent("");
-  //   setClientAlertEmailTo("");
-  //   setClientAlertEmailCc("");
-  //   fetchClientAlerts();
-  // };
+  const resetClientAlertForm = () => {
+    setEditingClientAlertId(null);
+    setClientAlertType("");
+    setClientAlertPercent("");
+    setClientAlertEmailTo("");
+    setClientAlertEmailCc("");
+    fetchClientAlerts();
+  };
 
-  // const handleClientAlertAdd = async () => {
-  //   if (!selectedClient) return alert("Please select a client first.");
-  //   if (!clientAlertType) return alert("Please select Alert Type.");
+  const handleClientAlertAdd = async () => {
+    if (!selectedClient) return alert("Please select a client first.");
+    if (!clientAlertType) return alert("Please select Alert Type.");
 
-  //   const payload = {
-  //     client_id: selectedClient,
-  //     alert_type: clientAlertType,
-  //     percent: clientAlertPercent !== "" ? Number(clientAlertPercent) : null,
-  //     email_to: clientAlertEmailTo || null,
-  //     email_cc: clientAlertEmailCc || null,
-  //   };
+    const payload = {
+      client_id: selectedClient,
+      alert_type: clientAlertType,
+      percent: clientAlertPercent !== "" ? Number(clientAlertPercent) : null,
+      email_to: clientAlertEmailTo || null,
+      email_cc: clientAlertEmailCc || null,
+    };
 
-  //   try {
-  //     if (editingClientAlertId) {
-  //       await api.put(
-  //         `/client-alert/alert-mechanism/${editingClientAlertId}`,
-  //         payload
-  //       );
-  //       alert("Client alert updated successfully!");
-  //     } else {
-  //       await api.post("/client-alert/alert-mechanism", payload);
-  //       alert("Client alert added successfully!");
-  //     }
-  //     resetClientAlertForm();
-  //   } catch (err) {
-  //     console.error(err);
-  //     alert("Error saving client alert.");
-  //   }
-  // };
+    try {
+      if (editingClientAlertId) {
+        await api.put(
+          `/client-alert/alert-mechanism/${editingClientAlertId}`,
+          payload
+        );
+        alert("Client alert updated successfully!");
+      } else {
+        await api.post("/client-alert/alert-mechanism", payload);
+        alert("Client alert added successfully!");
+      }
+      resetClientAlertForm();
+    } catch (err) {
+      console.error(err);
+      alert("Error saving client alert.");
+    }
+  };
 
-  // const handleClientAlertEdit = (alert) => {
-  //   setEditingClientAlertId(alert.id);
-  //   setClientAlertType(alert.alert_type || "");
-  //   setClientAlertPercent(alert.percent ?? "");
-  //   setClientAlertEmailTo(alert.email_to || "");
-  //   setClientAlertEmailCc(alert.email_cc || "");
-  // };
+  const handleClientAlertEdit = (alert) => {
+    setEditingClientAlertId(alert.id);
+    setClientAlertType(alert.alert_type || "");
+    setClientAlertPercent(alert.percent ?? "");
+    setClientAlertEmailTo(alert.email_to || "");
+    setClientAlertEmailCc(alert.email_cc || "");
+  };
 
-  // const handleClientAlertDelete = async (alertId) => {
-  //   if (!window.confirm("Are you sure you want to delete this alert?")) return;
-  //   try {
-  //     await api.delete(`/client-alert/alert-mechanism/${alertId}`);
-  //     alert("Client alert deleted successfully!");
-  //     fetchClientAlerts();
-  //     if (editingClientAlertId === alertId) resetClientAlertForm();
-  //   } catch (err) {
-  //     console.error(err);
-  //     alert("Error deleting client alert.");
-  //   }
-  // };
+  const handleClientAlertDelete = async (alertId) => {
+    if (!window.confirm("Are you sure you want to delete this alert?")) return;
+    try {
+      await api.delete(`/client-alert/alert-mechanism/${alertId}`);
+      alert("Client alert deleted successfully!");
+      fetchClientAlerts();
+      if (editingClientAlertId === alertId) resetClientAlertForm();
+    } catch (err) {
+      console.error(err);
+      alert("Error deleting client alert.");
+    }
+  };
 
   // -------------------- Tabs --------------------
 
@@ -1032,14 +1032,14 @@ export default function ManageAlertsEscalations() {
                   CLOSE LOOPING
                 </button>
 
-                {/* <button
+                <button
                   className={`list-group-item list-group-item-action fw-semibold ${
                     activeAlertSection === "clientalert" ? "active" : ""
                   }`}
                   onClick={() => setActiveAlertSection("clientalert")}
                 >
                   CLIENT ALERT
-                </button> */}
+                </button>
               </div>
             </div>
 
@@ -2113,7 +2113,7 @@ export default function ManageAlertsEscalations() {
                     )}
 
 
-                    {/* {activeAlertSection === "clientalert" && (
+                    {activeAlertSection === "clientalert" && (
                       <div>
 
                         <form className="row g-4">
@@ -2257,7 +2257,7 @@ export default function ManageAlertsEscalations() {
                           </table>
                         </div>
                       </div>
-                    )} */}
+                    )}
                  
                   </div>
                 </div>
