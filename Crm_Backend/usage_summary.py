@@ -110,6 +110,7 @@ def get_client_invoice_usage(
                 ob_total +
                 sms_total +
                 email_total +
+                whatsapp_sms_total +
                 ivr_total) AS total_usage
         FROM billing_consume_daily_new
         WHERE client_id = :client_id
@@ -166,6 +167,7 @@ def get_client_invoice_usage(
                 ob_total +
                 sms_total +
                 email_total +
+                whatsapp_sms_total +
                 ivr_total
                 ) AS credit_consumption
         FROM billing_consume_daily_new
