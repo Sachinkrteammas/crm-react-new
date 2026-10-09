@@ -154,7 +154,7 @@ const ManageAllocations = () => {
     payload.append("ClientId", activeClientId);
     payload.append("CampaignId", form.campaignId);
     payload.append("AllocationName", form.allocationName);
-    payload.append("list_id", form.list_id);
+    if (form.type === "pd") payload.append("list_id", form.list_id);
     payload.append("upload_type", form.type);
     payload.append("DialerConnectionPage", dialerPage);
     if (form.file) payload.append("file", form.file);

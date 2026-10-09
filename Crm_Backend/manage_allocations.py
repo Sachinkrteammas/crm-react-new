@@ -65,7 +65,7 @@ def create_allocation(
     AllocationName: str = Form(...),
     upload_type: str = Form(...),
     DialerConnectionPage: int = Form(...),
-    list_id: int = Form(...),
+    list_id: Optional[int] = Form(None),
     file: UploadFile = File(...),
     db: Session = Depends(get_db4),
     db2: Session = Depends(get_db2)
