@@ -321,6 +321,7 @@ class DashboardDay(BaseModel):
 class DashboardFullResp(BaseModel):
     days:             List[DashboardDay]
     total_tagged:     int
+    callback_total_tagged: int
     total_abandon_cb: int
 
 

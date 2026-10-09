@@ -39,6 +39,7 @@ const Dashboard = () => {
     Unique_abandon: 0,
     tagged: 0,
     abandon_callback: 0,
+    callback_tagged: 0,
   });
 
   const [previousData, setPreviousData] = useState({
@@ -49,6 +50,7 @@ const Dashboard = () => {
     Unique_abandon: 0,
     tagged: 0,
     abandon_callback: 0,
+    callback_tagged: 0,
   });
 
   const [data, setData] = useState([
@@ -190,7 +192,7 @@ const [rlChartData, setRlChartData] = useState([]);
         to_date: toDate || null,
       };
 
-      const { days, total_tagged, total_abandon_cb } = await getDashboardReport(
+      const { days, total_tagged, callback_total_tagged, total_abandon_cb } = await getDashboardReport(
         payload
       );
 
@@ -208,6 +210,7 @@ const [rlChartData, setRlChartData] = useState([]);
         Unique_abandon,
         tagged: total_tagged,
         abandon_callback: total_abandon_cb,
+        callback_tagged: callback_total_tagged ?? 0,
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -228,7 +231,7 @@ const [rlChartData, setRlChartData] = useState([]);
 
       const res = await api.post("/dashboard/dashboard_report_previous", payload);
 
-      const { days, total_tagged, total_abandon_cb } = res.data;
+      const { days, total_tagged, callback_total_tagged, total_abandon_cb } = res.data;
 
       const answered = days.reduce((sum, d) => sum + (d.Answered ?? 0), 0);
       const abandon = days.reduce((sum, d) => sum + (d.Abandon ?? 0), 0);
@@ -244,6 +247,7 @@ const [rlChartData, setRlChartData] = useState([]);
         Unique_abandon,
         tagged: total_tagged ?? 0,
         abandon_callback: total_abandon_cb ?? 0,
+        callback_tagged: callback_total_tagged ?? 0,
       });
 
     } catch (err) {
@@ -455,6 +459,7 @@ const [rlChartData, setRlChartData] = useState([]);
     Unique_abandon: 0,
     tagged: 0,
     abandon_callback: 0,
+    callback_tagged: 0,
   });
     setData([{ name: "Answered", value: 0 }, { name: "Abandon", value: 0 }]);
     setCallData([]);
@@ -492,6 +497,7 @@ const [rlChartData, setRlChartData] = useState([]);
   const uniqueAbandonChange = getPercentChange(dashboardData.Unique_abandon, previousData.Unique_abandon);
   const taggedChange = getPercentChange(dashboardData.tagged, previousData.tagged);
   const abandonCallbackChange = getPercentChange(dashboardData.abandon_callback, previousData.abandon_callback);
+  const callbackTaggedChange = getPercentChange(dashboardData.callback_tagged, previousData.callback_tagged);
 
 
   return (
@@ -645,6 +651,27 @@ const [rlChartData, setRlChartData] = useState([]);
                     <h5 className="card-title mb-1">Tagged Calls</h5>
                     <h4 className="mb-0">
                       {dashboardData.tagged.toLocaleString()}
+                    </h4>
+                  </div>
+                </div>
+              </div>
+
+              {/* CallBack Tagged Call */}
+              <div className="col">
+                <div className="card h-100">
+                  <div className="card-body d-flex flex-column justify-content-between">
+                    <div className="d-flex align-items-center justify-content-between mb-3">
+                      <div className="badge p-2 bg-label-info rounded">
+                        <i className="icon-base ti tabler-phone-check icon-28px"></i>
+                      </div>
+                      <small className={`fw-medium ${callbackTaggedChange >= 0 ? "text-success" : "text-danger"}`}>
+                        {callbackTaggedChange >= 0 ? "+" : ""}
+                        {callbackTaggedChange}%
+                      </small>
+                    </div>
+                    <h5 className="card-title mb-1">CallBack Tagged Calls</h5>
+                    <h4 className="mb-0">
+                      {dashboardData.callback_tagged.toLocaleString()}
                     </h4>
                   </div>
                 </div>

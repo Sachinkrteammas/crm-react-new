@@ -91,6 +91,7 @@ def get_dashboard_report(
             WHERE ClientId = :cid
               AND DATE(calldate) BETWEEN :from_date AND :to_date
               AND CallType <> 'Upload'
+              AND (Field40 = 0 OR Field40 IS NULL)
         """)
         tag_params = {
             "cid": req.company_id,
@@ -105,10 +106,41 @@ def get_dashboard_report(
             WHERE cm.ClientId = :cid
               AND {cond}
               AND cm.CallType <> 'Upload'
+              AND (cm.Field40 = 0 OR cm.Field40 IS NULL)
         """)
         tag_params = {"cid": req.company_id}
 
     total_tagged = db_main.execute(tag_sql, tag_params).scalar() or 0
+
+    # 4.1) Total Callback Tagged Calls
+    if vt == "Custom":
+        callback_tag_sql = text("""
+            SELECT COUNT(Id) AS total_tagged
+            FROM call_master
+            WHERE ClientId = :cid
+                AND DATE(calldate) BETWEEN :from_date AND :to_date
+                AND CallType <> 'Upload'
+                AND Field40 = 1
+        """)
+        callback_tag_params = {
+            "cid": req.company_id,
+            "from_date": req.from_date,
+            "to_date": req.to_date,
+        }
+    else:
+        cond = date_cond.replace("t2.call_date", "cm.calldate")
+        callback_tag_sql = text(f"""
+            SELECT COUNT(cm.Id) AS total_tagged
+            FROM call_master cm
+            WHERE cm.ClientId = :cid
+                AND {cond}
+                AND cm.CallType <> 'Upload'
+                AND cm.Field40 = 1
+        """)
+        callback_tag_params = {"cid": req.company_id}
+
+    callback_total_tagged = db_main.execute(callback_tag_sql, callback_tag_params).scalar() or 0
+
 
     # 5) Total Abandon Call Back
     if vt == "Custom":
@@ -139,6 +171,7 @@ def get_dashboard_report(
     return DashboardFullResp(
         days=days,
         total_tagged=total_tagged,
+        callback_total_tagged=callback_total_tagged,
         total_abandon_cb=total_abandon_cb
     )
 
@@ -227,6 +260,7 @@ def get_dashboard_report_previous(
             WHERE ClientId = :cid
               AND DATE(calldate) BETWEEN :from_date AND :to_date
               AND CallType <> 'Upload'
+              AND (Field40 = 0 OR Field40 IS NULL)
         """)
         tag_params = {
             "cid": req.company_id,
@@ -241,10 +275,41 @@ def get_dashboard_report_previous(
             WHERE cm.ClientId = :cid
               AND {cond}
               AND cm.CallType <> 'Upload'
+              AND (cm.Field40 = 0 OR cm.Field40 IS NULL)
         """)
         tag_params = {"cid": req.company_id}
 
     total_tagged = db_main.execute(tag_sql, tag_params).scalar() or 0
+
+    # 4.1) Total Callback Tagged Calls
+    if vt == "Custom":
+        callback_tag_sql = text("""
+            SELECT COUNT(Id) AS total_tagged
+            FROM call_master
+            WHERE ClientId = :cid
+                AND DATE(calldate) BETWEEN :from_date AND :to_date
+                AND CallType <> 'Upload'
+                AND Field40 = 1
+        """)
+        callback_tag_params = {
+            "cid": req.company_id,
+            "from_date": req.from_date,
+            "to_date": req.to_date,
+        }
+    else:
+        cond = date_cond.replace("t2.call_date", "cm.calldate")
+        callback_tag_sql = text(f"""
+            SELECT COUNT(cm.Id) AS total_tagged
+            FROM call_master cm
+            WHERE cm.ClientId = :cid
+                AND {cond}
+                AND cm.CallType <> 'Upload'
+                AND cm.Field40 = 1
+        """)
+        callback_tag_params = {"cid": req.company_id}
+
+    callback_total_tagged = db_main.execute(callback_tag_sql, callback_tag_params).scalar() or 0
+
 
     # 5) Total Abandon Call Back
     if vt == "Custom":
@@ -275,6 +340,7 @@ def get_dashboard_report_previous(
     return DashboardFullResp(
         days=days,
         total_tagged=total_tagged,
+        callback_total_tagged=callback_total_tagged,
         total_abandon_cb=total_abandon_cb
     )
 
