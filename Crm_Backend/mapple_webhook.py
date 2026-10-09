@@ -302,24 +302,24 @@ async def send_data(
 
             values["phone_number"] = phone
 
-            # Skip if this phone is already saved for the list
-            existing = db.execute(text("""
-                SELECT id FROM mapple_data
-                WHERE list_id = :list_id
-                AND RIGHT(phone_number, 10) = :phone_key
-                LIMIT 1
-            """), {
-                "list_id": list_id,
-                "phone_key": phone[-10:]
-            }).fetchone()
+            # # Skip if this phone is already saved for the list
+            # existing = db.execute(text("""
+            #     SELECT id FROM mapple_data
+            #     WHERE list_id = :list_id
+            #     AND RIGHT(phone_number, 10) = :phone_key
+            #     LIMIT 1
+            # """), {
+            #     "list_id": list_id,
+            #     "phone_key": phone[-10:]
+            # }).fetchone()
 
-            if existing:
-                return {
-                    "status": "duplicate",
-                    "message": f"Phone number {phone} already exists in list {list_id}",
-                    "phone_number": phone,
-                    "id": None,
-                }
+            # if existing:
+            #     return {
+            #         "status": "duplicate",
+            #         "message": f"Phone number {phone} already exists in list {list_id}",
+            #         "phone_number": phone,
+            #         "id": None,
+            #     }
 
             cols = ["client_id", "campaign_id", "campaign_name", "list_id",
                     "inserted", "created_at"]
