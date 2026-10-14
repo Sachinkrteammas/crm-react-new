@@ -108,8 +108,10 @@ useEffect(() => {
       // console.log("🔹 user_type:", user_type, "companyId:", companyId, "auth_person:", auth_person);
 
       let url = "";
-      if (user_type === "Super-Admin" || user_type === "Admin") {
+      if (user_type === "Super-Admin") {
         url = `/dynamic_menu/pages/dynamic-menu/0`;
+      } else if (user_type === "Admin") {
+        url = `/dynamic_menu/pages/dynamic-menu/1?name=${encodeURIComponent(auth_person)}`;
       } else if (user_type === "Client" && companyId && auth_person) {
         url = `/dynamic_menu/pages/dynamic-menu/${companyId}?name=${encodeURIComponent(auth_person)}`;
       } else {

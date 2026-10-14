@@ -60,6 +60,40 @@ def get_dynamic_menu(company_id: int, name: Optional[str] = Query(None, descript
         # return [dict(row) for row in rows]
         return build_menu_tree(rows)
 
+    # 🔹 Case: Admin user → use tbl_user permissions
+    if company_id == 1:
+        rights_query = text("""
+            SELECT user_right_new 
+            FROM tbl_user 
+            WHERE name = :name
+        """)
+        rights_row = db.execute(rights_query, {"name": name}).mappings().first()
+
+        if not rights_row or not rights_row["user_right_new"]:
+            raise HTTPException(status_code=404, detail="No user rights found for admin")
+
+        allowed_ids = [
+            int(x) for x in rights_row["user_right_new"].split(",")
+            if x.strip().isdigit()
+        ]
+
+        if not allowed_ids:
+            raise HTTPException(status_code=403, detail="No valid page access")
+
+        ids_tuple = tuple(allowed_ids) if len(allowed_ids) > 1 else (allowed_ids[0],)
+
+        query = text("""
+            SELECT id, page_name, page_url, parent_id, priority
+            FROM pages_master2
+            WHERE id IN :ids
+            ORDER BY priority ASC
+        """)
+        rows = db.execute(query, {"ids": ids_tuple}).mappings().all()
+
+        if not rows:
+            raise HTTPException(status_code=404, detail="No pages found")
+
+        return build_menu_tree(rows)
     # ✅ Case 2: Client (companyId > 0)
     rights_query = text("""
         SELECT user_right_new FROM logincreation_master WHERE create_id = :company_id AND name = :name
