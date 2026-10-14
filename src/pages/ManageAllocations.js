@@ -150,6 +150,13 @@ const ManageAllocations = () => {
       return alert("Please select List Id for PD type");
     }
 
+    if (form.file) {
+      const fileText = await form.file.text();
+      if (!fileText.trim()) {
+        return alert("Uploaded file is blank. Please upload a valid CSV file.");
+      }
+    }
+
     const payload = new FormData();
     payload.append("ClientId", activeClientId);
     payload.append("CampaignId", form.campaignId);
