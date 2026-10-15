@@ -97,7 +97,7 @@ from pd_call_allocation import router as pd_call_allocation_router
 from campaign_sub_type import router as campaign_sub_type_router
 from invoice_tool import router as invoice_tool_router
 from ob_campaign_sync import router as ob_campaign_sync_router
-from mapple_webhook import router as mapple_webhook_router
+from mapple_webhook import router as mapple_webhook_router, push_old_mapple_data
 from whatsapp_reports_api import router as whatsapp_reports_router
 from whatsapp_report_engine import run_report, REPORT_HANDLERS
 
@@ -543,6 +543,7 @@ def run_crystal_eod_930pm():
 scheduler = BackgroundScheduler()
 #scheduler.add_job(scheduled_call_summary, "cron", hour=21, minute=30)  # every day 9:30 PM
 scheduler.add_job(scheduled_daily_billing, "cron", hour=3, minute=0)   # every day 3:00 AM
+scheduler.add_job(push_old_mapple_data, "cron", hour=7, minute=0)  # push old mapple_data rows
 scheduler.add_job(run_report_scheduler, "interval", minutes=1)
 scheduler.add_job(pull_salesforce_leads, "interval", minutes=5)
 # scheduler.add_job(run_cdr_scheduler, 'cron', hour=13, minute=15)

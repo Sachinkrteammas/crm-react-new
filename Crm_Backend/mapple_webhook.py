@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from datetime import datetime
 from typing import Optional
-from database import get_db4
+from database import get_db2, get_db4
 
 SECRET_KEY = "dialdesk"
 
@@ -359,3 +359,141 @@ async def send_data(
         "total": len(records),
         "id": row_id,
     }
+
+
+# -------------------- 6. Scheduler: push old mapple_data rows --------------------
+# Picks mapple_data rows (inserted = 0) whose extra_column6 date is at least
+# 299 days older than today, and saves them into ob_allocation_name,
+# ob_campaign_data and vicidial_list (same shape as the OB webhook), then
+# marks the row inserted = 1.
+
+def _push_mapple_row(db: Session, db2: Session, row: dict) -> bool:
+    row = dict(row)
+
+    campaign_name = row.get("campaign_name") or f"Campaign{row.get('campaign_id')}"
+    now = datetime.now()
+    allocation_name = f"{campaign_name}_{now.day}{now.strftime('%b')}"
+
+    allocation = db.execute(text("""
+        SELECT id FROM ob_allocation_name
+        WHERE ClientId = :client_id
+        AND CampaignId = :campaign_id
+        AND AllocationName = :allocation_name
+        AND AllocationStatus = 'A'
+        LIMIT 1
+    """), {
+        "client_id": row.get("client_id"),
+        "campaign_id": row.get("campaign_id"),
+        "allocation_name": allocation_name,
+    }).fetchone()
+
+    if allocation:
+        allocation_id = allocation[0]
+    else:
+        result = db.execute(text("""
+            INSERT INTO ob_allocation_name
+            (ClientId, CampaignId, AllocationName, CreateDate, TotalCount, list_id, upload_type, AllocationStatus)
+            VALUES (:ClientId, :CampaignId, :AllocationName, :CreateDate, :TotalCount, :list_id, 'pd', 'A')
+        """), {
+            "ClientId": row.get("client_id"),
+            "CampaignId": row.get("campaign_id"),
+            "AllocationName": allocation_name,
+            "CreateDate": now,
+            "TotalCount": len(LEAD_COLUMNS),
+            "list_id": row.get("list_id"),
+        })
+        allocation_id = result.lastrowid
+
+    field_values = {f"Field{i}": row.get(col) for i, col in enumerate(LEAD_COLUMNS, start=1)}
+
+    phone = str(field_values.get("Field1") or row.get("phone_number") or "").strip()
+    if not phone:
+        return False
+
+    ob_result = db.execute(text("""
+        INSERT INTO ob_campaign_data
+        (AllocationId, CreationDate,
+         Field1, Field2, Field3, Field4, Field5,
+         Field6, Field7, Field8, Field9, Field10,
+         Field11, Field12, Field13, Field14, Field15,
+         Field16, Field17, Field18, Field19, Field20,
+         Field21, Field22, Field23, Field24, Field25)
+        VALUES (:AllocationId, :CreationDate,
+                :Field1, :Field2, :Field3, :Field4, :Field5,
+                :Field6, :Field7, :Field8, :Field9, :Field10,
+                :Field11, :Field12, :Field13, :Field14, :Field15,
+                :Field16, :Field17, :Field18, :Field19, :Field20,
+                :Field21, :Field22, :Field23, :Field24, :Field25)
+    """), {
+        "AllocationId": allocation_id,
+        "CreationDate": now,
+        **field_values,
+    })
+    source_id = ob_result.lastrowid
+
+    vicidial_data = {
+        "list_id": row.get("list_id"),
+        "status": "NEW",
+        "called_since_last_reset": "N",
+        "phone_code": "1",
+        "gmt_offset_now": "5.50",
+        "source_id": str(source_id),
+        "entry_date": now,
+    }
+    for col in LEAD_COLUMNS:
+        if not col.startswith("extra_column"):
+            vicidial_data[col] = row.get(col) or ""
+
+    insert_cols = list(vicidial_data.keys())
+    db2.execute(text(
+        f"INSERT INTO vicidial_list ({', '.join(insert_cols)}) "
+        f"VALUES ({', '.join(':' + c for c in insert_cols)})"
+    ), vicidial_data)
+
+    db.execute(text("""
+        UPDATE mapple_data
+        SET inserted = 1, updated_at = NOW()
+        WHERE id = :id
+    """), {"id": row.get("id")})
+
+    return True
+
+
+def push_old_mapple_data():
+    """Scheduler job: forward old mapple_data rows into the OB tables."""
+    db_gen = get_db4()
+    db = next(db_gen)
+    db2_gen = get_db2()
+    db2 = next(db2_gen)
+
+    pushed = 0
+    try:
+        rows = db.execute(text("""
+            SELECT * FROM mapple_data
+            WHERE inserted = 0
+            AND extra_column6 IS NOT NULL
+            AND extra_column6 <> ''
+            AND STR_TO_DATE(extra_column6, '%Y-%m-%d') <= DATE_SUB(CURDATE(), INTERVAL 299 DAY)
+            LIMIT 500
+        """)).mappings().all()
+
+        for row in rows:
+            try:
+                if _push_mapple_row(db, db2, row):
+                    db.commit()
+                    db2.commit()
+                    pushed += 1
+                else:
+                    db.rollback()
+                    db2.rollback()
+            except Exception:
+                db.rollback()
+                db2.rollback()
+                continue
+
+        print(f"✅ Mapple push scheduler: pushed {pushed} row(s)")
+    except Exception as e:
+        print(f"❌ Mapple push scheduler failed: {e}")
+    finally:
+        db.close()
+        db2.close()
