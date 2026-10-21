@@ -6,6 +6,15 @@ import api from "../api";
 
 const C2PCDRReports = () => {
 
+  // ============================================
+  // Logged In User
+  // ============================================
+
+  const userType = localStorage.getItem("user_type");
+  const companyId = localStorage.getItem("company_id");
+
+  const isClient = userType === "Client" && !!companyId;
+
   const [queues, setQueues] = useState([]);
   const [selectedQueue, setSelectedQueue] = useState("");
 
@@ -36,7 +45,12 @@ const C2PCDRReports = () => {
     try {
 
       const response = await api.get(
-        "/api/webhook/c2p_cdr_queues"
+        "/api/webhook/c2p_cdr_queues",
+        {
+          params: isClient
+            ? { client_id: companyId }
+            : {},
+        }
       );
 
       if (response.data.status) {
@@ -100,6 +114,7 @@ const C2PCDRReports = () => {
             start_date: formatDate(dates.startDate),
             end_date: formatDate(dates.endDate),
             queue_name: selectedQueue,
+            ...(isClient ? { client_id: companyId } : {}),
           },
         }
       );
@@ -138,6 +153,7 @@ const C2PCDRReports = () => {
           start_date: formatDate(dates.startDate),
           end_date: formatDate(dates.endDate),
           queue_name: selectedQueue,
+          ...(isClient ? { client_id: companyId } : {}),
         },
       }
     );

@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, HTTPException, Depends, Body, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, bindparam
 from database import get_db4
 from datetime import datetime, time, date
 from pydantic import BaseModel
@@ -448,12 +448,76 @@ async def save_cdr(
         )
 
 
+################################# C2p Client Queue Helpers ########################
+
+def split_c2p_campaign_queues(raw_value):
+    """Convert registration_master.c2p_cdr_campaign value into a clean list of queue names."""
+    if raw_value is None:
+        return []
+
+    if isinstance(raw_value, (list, tuple, set)):
+        items = list(raw_value)
+    else:
+        items = str(raw_value).split(",")
+
+    queues = []
+    seen = set()
+
+    for item in items:
+
+        value = str(item).strip().strip("'").strip('"').strip()
+
+        if not value:
+            continue
+
+        if value.lower() in ("null", "none", "nan"):
+            continue
+
+        key = value.lower()
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+        queues.append(value)
+
+    return queues
+
+
+def get_client_c2p_queues(db, client_id):
+    """Fetch the queue names configured for a client from registration_master.c2p_cdr_campaign."""
+    query = text("""
+        SELECT c2p_cdr_campaign
+        FROM registration_master
+        WHERE company_id = :client_id
+        LIMIT 1
+    """)
+
+    row = db.execute(query, {"client_id": client_id}).fetchone()
+
+    if not row:
+        return []
+
+    return split_c2p_campaign_queues(row[0])
+
+
 ################################# C2p Report ########################
 @router.get("/c2p_cdr_queues")
 def c2p_cdr_queues(
+    client_id: Optional[int] = Query(None),
     db: Session = Depends(get_db4)
 ):
     try:
+
+        if client_id is not None:
+
+            client_queues = get_client_c2p_queues(db, client_id)
+
+            return {
+                "status": True,
+                "total": len(client_queues),
+                "queues": client_queues
+            }
 
         query = text("""
             SELECT DISTINCT queue_name
@@ -496,6 +560,7 @@ def c2p_cdr(
     start_date: date = Query(...),
     end_date: date = Query(...),
     queue_name: str = Query(None),
+    client_id: Optional[int] = Query(None),
     db: Session = Depends(get_db4)
 ):
     try:
@@ -531,6 +596,17 @@ def c2p_cdr(
             "end_date": end_date
         }
 
+        if client_id is not None:
+
+            client_queues = get_client_c2p_queues(db, client_id)
+
+            if client_queues:
+                base_query += " AND queue_name IN :client_queues"
+                params["client_queues"] = client_queues
+            else:
+                base_query += " AND CAST(client_id AS UNSIGNED) = :client_id"
+                params["client_id"] = client_id
+
         if queue_name:
             base_query += " AND queue_name = :queue_name"
             params["queue_name"] = queue_name
@@ -538,6 +614,9 @@ def c2p_cdr(
         base_query += " ORDER BY date_time DESC"
 
         query = text(base_query)
+
+        if "client_queues" in params:
+            query = query.bindparams(bindparam("client_queues", expanding=True))
 
         records = db.execute(query, params).mappings().all()
 
