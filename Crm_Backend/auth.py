@@ -919,3 +919,37 @@ def receive_webhook(
     except Exception as exc:
         db.rollback()
         return {"message": f"Error: {exc}"}
+
+
+
+
+@router.get("/mapple-data/")
+def get_mapple_data_by_date(
+    date: str = Query(..., description="Date in YYYY-MM-DD format"),
+    db: Session = Depends(get_db4)
+):
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid date format. Use YYYY-MM-DD"
+        )
+
+    try:
+        query = text("""
+            SELECT *
+            FROM mapple_data
+            WHERE DATE(created_at) = :date
+            ORDER BY id ASC
+        """)
+        rows = db.execute(query, {"date": date}).mappings().all()
+        data = [dict(row) for row in rows]
+        return {
+            "date": date,
+            "count": len(data),
+            "data": data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
