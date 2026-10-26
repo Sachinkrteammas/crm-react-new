@@ -783,3 +783,139 @@ def dd_html_old(
     """
 
     return html_content
+
+
+
+@router.get("/webhook")
+def receive_webhook(
+    callernumber: str = Query(default=""),
+    date: str = Query(default=""),
+    time: str = Query(default=""),
+    agentnumber: str = Query(default=""),
+    calllogid: str = Query(default=""),
+    call_status: str = Query(default=""),
+    db: Session = Depends(get_db4),
+):
+    # Step 1: Validate required parameters
+    if not callernumber or not date or not time or not calllogid:
+        return {"message": "Missing required parameters!"}
+
+    try:
+        # Step 2: Insert or update call_logs
+        query_call_logs = text("""
+            INSERT INTO call_logs
+            (
+                callernumber,
+                call_date,
+                call_time,
+                agentnumber,
+                calllogid,
+                call_status
+            )
+            VALUES
+            (
+                :callernumber,
+                :call_date,
+                :call_time,
+                :agentnumber,
+                :calllogid,
+                :call_status
+            )
+            ON DUPLICATE KEY UPDATE
+                agentnumber = IF(
+                    :agentnumber_check != '',
+                    :agentnumber_update,
+                    agentnumber
+                ),
+                call_status = IF(
+                    :status_check != '',
+                    :status_update,
+                    call_status
+                )
+        """)
+
+        db.execute(
+            query_call_logs,
+            {
+                "callernumber": callernumber,
+                "call_date": date,
+                "call_time": time,
+                "agentnumber": agentnumber,
+                "calllogid": calllogid,
+                "call_status": call_status,
+                "agentnumber_check": agentnumber,
+                "agentnumber_update": agentnumber,
+                "status_check": call_status,
+                "status_update": call_status,
+            },
+        )
+
+        # Step 3: If call is MISSED, insert abandoned call
+        if call_status.upper() == "MISSED":
+            query_aband = text("""
+                INSERT INTO aband_call_master
+                (
+                    ClientId,
+                    CompanyName,
+                    PhoneNo,
+                    DidNo,
+                    LeadId,
+                    CallDate,
+                    EntryDate,
+                    AbandNoCount
+                )
+                VALUES
+                (
+                    :client_id,
+                    :company_name,
+                    :phone_no,
+                    :did_no,
+                    :lead_id,
+                    :call_date,
+                    NOW(),
+                    :aband_count
+                )
+            """)
+
+            try:
+                db.execute(
+                    query_aband,
+                    {
+                        "client_id": "663",
+                        "company_name": "SAATVIK GREEN ENERGY LIMITED",
+                        "phone_no": callernumber,
+                        "did_no": "3774313",
+                        "lead_id": calllogid,
+                        "call_date": f"{date} {time}",
+                        "aband_count": 1,
+                    },
+                )
+
+            except Exception as exc:
+                # Preserve the PHP behavior: abandoned insert error
+                # is returned, while the general success message remains.
+                db.rollback()
+
+                return {
+                    "message": "Webhook received and data saved successfully!",
+                    "aband_message": f"Error: {exc}",
+                }
+
+        # Step 4: Commit successful database operations
+        db.commit()
+
+        if call_status.upper() == "MISSED":
+            return {
+                "message": (
+                    "MISSED call processed successfully. "
+                    "Webhook received and data saved successfully!"
+                )
+            }
+
+        return {
+            "message": "Webhook received and data saved successfully!"
+        }
+
+    except Exception as exc:
+        db.rollback()
+        return {"message": f"Error: {exc}"}
