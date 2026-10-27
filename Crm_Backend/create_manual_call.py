@@ -529,6 +529,7 @@ def close_looping(
         close_sub_action = payload.get("CloseLoopCate2")
         remarks = payload.get("closelooping_remarks")
         follow_up_date  = payload.get("FollowupDate")
+        case_close_by = payload.get("CaseCloseBy")
 
         update_query = text("""
             UPDATE call_master
@@ -537,6 +538,7 @@ def close_looping(
                 CloseLoopCate2 = :cate2,
                 closelooping_remarks = :remark,
                 FollowupDate = :follow_up_date,
+                CaseCloseBy = :case_close_by,
                 CloseLoopingDate = NOW()
             WHERE ClientId = :client_id
               AND SrNo = :call_id
@@ -548,7 +550,8 @@ def close_looping(
             "cate1": close_action,
             "cate2": close_sub_action,
             "remark": remarks,
-            "follow_up_date": follow_up_date
+            "follow_up_date": follow_up_date,
+            "case_close_by": case_close_by
         })
 
         db.commit()

@@ -535,7 +535,8 @@ const handleSubmit = async () => {
           : subAction,
 
       FollowupDate: followupDate ? followupDate : null,
-      closelooping_remarks: form["REMARKS"] || null
+      closelooping_remarks: form["REMARKS"] || null,
+      CaseCloseBy: localStorage.getItem("username") || null
     };
 
     // 🔥 API Call
@@ -1172,6 +1173,11 @@ useEffect(() => {
                           type="date"
                           style={commonInputStyle}
                           name={field.label}
+                          min={
+                            field.label === "FOLLOW UP DATE"
+                              ? new Date().toLocaleDateString("en-CA")
+                              : undefined
+                          }
                           value={form[field.label] || ""}
                           onChange={handleChange}
                         />
