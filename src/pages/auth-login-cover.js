@@ -54,7 +54,7 @@ const AuthLoginCover = () => {
         const saved = localStorage.getItem("userData");
         // console.log("✅ Confirmed saved userData:", saved);
         setSuccessMessage("");
-        navigate("/dashboard");
+        navigate("/NewInboundDashboard");
       }, 1000); // wait 1 second instead of 500ms
       
     } catch (err) {

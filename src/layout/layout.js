@@ -445,7 +445,7 @@ useEffect(() => {
 
 
           <div className="app-brand demo">
-            <Link to="/dashboard" className="app-brand-link">
+            <Link to="/NewInboundDashboard" className="app-brand-link">
               {/* <img
                 src="/assets/img/branding/logo.DialDesk.png"   // <-- replace with your actual filename in public folder
                 alt="Company Logo"
@@ -489,11 +489,11 @@ useEffect(() => {
             {/* Dashboard */}
             <li
               className={`menu-item ${
-                location.pathname === "/dashboard" || location.pathname === "/outbound_dashboard" ? "active" : ""
+                location.pathname === "/NewInboundDashboard" || location.pathname === "/outbound_dashboard" ? "active" : ""
               }`}
             >
               <Link
-                to="/dashboard"
+                to="/NewInboundDashboard"
                 className="menu-link"
                 onClick={handleMenuLinkClick}
               >

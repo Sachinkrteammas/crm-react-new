@@ -5,7 +5,8 @@ from schemas import *
 from database import get_db2, get_db4
 from datetime import date, datetime, timedelta
 from typing import List, Dict, Any
-
+from pydantic import BaseModel
+from typing import List, Dict, Any, Optional
 
 router = APIRouter()
 
@@ -885,3 +886,538 @@ def get_ticket_by_source(
         close=row["close"] or 0,
         as_on_date=row["as_on_date"]
     ) for row in rows]
+
+
+#Schema
+class InboundKpiRequest(BaseModel):
+    company_id: int
+    start_date: str
+    end_date: str
+    view_type: Optional[str] = None
+    from_date: Optional[str] = None
+    to_date: Optional[str] = None
+
+class InboundKpiResponse(BaseModel):
+    totalCallsOffered: int
+    answeredCalls: int
+    abandonedCalls: int
+    alPercent: float
+    slPercent: float
+    connectedCallbacks: int
+    finalAlPercent: float
+    finalUniqueAlPercent: float
+    uniqueCallsOffered: int
+    uniqueAnswered: int
+    uniqueAbandoned: int
+
+# ---------- Inbound KPI Summary ----------
+@router.post("/inbound/kpi-summary", response_model=InboundKpiResponse)
+def get_inbound_kpi_summary(
+    req: InboundKpiRequest,
+    db: Session = Depends(get_db2),
+    db_main: Session = Depends(get_db4),
+):
+    # Fetch campaign ids
+    camp = db_main.execute(
+        text("SELECT campaignid FROM registration_master WHERE company_id=:cid"),
+        {"cid": req.company_id}
+    ).scalar_one_or_none()
+    if not camp:
+        raise HTTPException(404, "Company ID not found")
+    campaign_list = [c.strip().strip("'") for c in camp.split(",")]
+
+    # Date condition
+    vt = req.view_type or "Custom"
+    if vt == "Today":
+        date_cond = "DATE(t2.call_date) = CURDATE()"
+    elif vt == "Yesterday":
+        date_cond = "DATE(t2.call_date) = SUBDATE(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Weekly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 6 DAY) AND CURDATE()"
+    elif vt == "Monthly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 30 DAY) AND CURDATE()"
+    else:
+        date_cond = "DATE(t2.call_date) BETWEEN :from_date AND :to_date"
+
+    params = {"cids": tuple(campaign_list)}
+    if vt == "Custom":
+        params["from_date"] = req.from_date or req.start_date
+        params["to_date"] = req.to_date or req.end_date
+
+    # Main KPI query
+    sql = f"""
+        SELECT
+            COUNT(*) AS total_offered,
+            SUM(IF(t2.user <> 'VDCL', 1, 0)) AS answered,
+            SUM(IF(t2.user = 'VDCL', 1, 0)) AS abandoned,
+            COUNT(DISTINCT t2.phone_number) AS unique_offered,
+            COUNT(DISTINCT CASE WHEN t2.user <> 'VDCL' THEN t2.phone_number END) AS unique_answered,
+            COUNT(DISTINCT CASE WHEN t2.user = 'VDCL' THEN t2.phone_number END) AS unique_abandoned
+        FROM asterisk.vicidial_closer_log t2
+        WHERE {date_cond}
+          AND t2.campaign_id IN :cids
+          AND t2.term_reason <> 'AFTERHOURS'
+          AND t2.lead_id IS NOT NULL
+    """
+    row = db.execute(text(sql), params).mappings().first()
+
+    total_offered = row["total_offered"] or 0
+    answered = row["answered"] or 0
+    abandoned = row["abandoned"] or 0
+    unique_offered = row["unique_offered"] or 0
+    unique_answered = row["unique_answered"] or 0
+    unique_abandoned = row["unique_abandoned"] or 0
+
+    al_percent = round((answered / total_offered) * 100, 1) if total_offered > 0 else 0
+
+    # SL% - calls answered within 20 seconds
+    sl_sql = f"""
+        SELECT
+            SUM(IF(t2.user <> 'VDCL' AND TIMESTAMPDIFF(SECOND, t2.call_date, 
+                (SELECT MIN(event_time) FROM asterisk.vicidial_agent_log 
+                 WHERE uniqueid = t2.uniqueid AND user = t2.user)) <= 20, 1, 0)) AS sl_count
+        FROM asterisk.vicidial_closer_log t2
+        WHERE {date_cond}
+          AND t2.campaign_id IN :cids
+          AND t2.term_reason <> 'AFTERHOURS'
+          AND t2.lead_id IS NOT NULL
+    """
+    sl_row = db.execute(text(sl_sql), params).mappings().first()
+    sl_count = sl_row["sl_count"] or 0
+    sl_percent = round((sl_count / total_offered) * 100, 1) if total_offered > 0 else 0
+
+    # Connected callbacks
+    cb_params = {"cid": req.company_id}
+    if vt == "Custom":
+        cb_date_cond = "DATE(Callbackdate) BETWEEN :from_date AND :to_date"
+        cb_params["from_date"] = req.from_date or req.start_date
+        cb_params["to_date"] = req.to_date or req.end_date
+    else:
+        cb_date_cond = date_cond.replace("t2.call_date", "Callbackdate")
+    
+    cb_sql = text(f"""
+        SELECT COUNT(DISTINCT PhoneNumber) AS connected_callbacks
+        FROM aband_call_master
+        WHERE ClientId = :cid AND {cb_date_cond}
+    """)
+    cb_row = db_main.execute(cb_sql, cb_params).mappings().first()
+    connected_callbacks = cb_row["connected_callbacks"] or 0
+
+    final_al = round(((answered + connected_callbacks) / total_offered) * 100, 1) if total_offered > 0 else 0
+    final_unique_al = round(((unique_answered + connected_callbacks) / unique_offered) * 100, 1) if unique_offered > 0 else 0
+
+    return InboundKpiResponse(
+        totalCallsOffered=total_offered,
+        answeredCalls=answered,
+        abandonedCalls=abandoned,
+        alPercent=al_percent,
+        slPercent=sl_percent,
+        connectedCallbacks=connected_callbacks,
+        finalAlPercent=final_al,
+        finalUniqueAlPercent=final_unique_al,
+        uniqueCallsOffered=unique_offered,
+        uniqueAnswered=unique_answered,
+        uniqueAbandoned=unique_abandoned,
+    )
+
+
+# ---------- Call Funnel ----------
+@router.post("/inbound/call-funnel")
+def get_call_funnel(
+    req: InboundKpiRequest,
+    db: Session = Depends(get_db2),
+    db_main: Session = Depends(get_db4),
+):
+    kpi = get_inbound_kpi_summary(req, db, db_main)
+    total = kpi.totalCallsOffered
+    
+    return {
+        "totalOffered": total,
+        "answeredCalls": kpi.answeredCalls,
+        "abandonedCalls": kpi.abandonedCalls,
+        "connectedCallbacks": kpi.connectedCallbacks,
+        "answerRate": round((kpi.answeredCalls / total) * 100, 1) if total > 0 else 0,
+        "abandonRate": round((kpi.abandonedCalls / total) * 100, 1) if total > 0 else 0,
+        "callbackRate": round((kpi.connectedCallbacks / total) * 100, 1) if total > 0 else 0,
+    }
+
+
+# ---------- Performance Trend ----------
+@router.post("/inbound/performance-trend")
+def get_performance_trend(
+    req: InboundKpiRequest,
+    db: Session = Depends(get_db2),
+    db_main: Session = Depends(get_db4),
+):
+    camp = db_main.execute(
+        text("SELECT campaignid FROM registration_master WHERE company_id=:cid"),
+        {"cid": req.company_id}
+    ).scalar_one_or_none()
+    if not camp:
+        raise HTTPException(404, "Company ID not found")
+    campaign_list = [c.strip().strip("'") for c in camp.split(",")]
+
+    vt = req.view_type or "Custom"
+    if vt == "Today":
+        date_cond = "DATE(t2.call_date) = CURDATE()"
+    elif vt == "Yesterday":
+        date_cond = "DATE(t2.call_date) = SUBDATE(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Weekly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 6 DAY) AND CURDATE()"
+    elif vt == "Monthly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 30 DAY) AND CURDATE()"
+    else:
+        date_cond = "DATE(t2.call_date) BETWEEN :from_date AND :to_date"
+
+    params = {"cids": tuple(campaign_list)}
+    if vt == "Custom":
+        params["from_date"] = req.from_date or req.start_date
+        params["to_date"] = req.to_date or req.end_date
+
+    sql = f"""
+        SELECT
+            DATE(t2.call_date) AS day,
+            COUNT(*) AS offered,
+            SUM(IF(t2.user <> 'VDCL', 1, 0)) AS answered,
+            SUM(IF(t2.user = 'VDCL', 1, 0)) AS abandoned
+        FROM asterisk.vicidial_closer_log t2
+        WHERE {date_cond}
+          AND t2.campaign_id IN :cids
+          AND t2.term_reason <> 'AFTERHOURS'
+          AND t2.lead_id IS NOT NULL
+        GROUP BY DATE(t2.call_date)
+        ORDER BY DATE(t2.call_date)
+    """
+    rows = db.execute(text(sql), params).mappings().fetchall()
+
+    trend = []
+    for r in rows:
+        day = r["day"].isoformat() if hasattr(r["day"], "isoformat") else str(r["day"])
+        offered = r["offered"] or 0
+        answered = r["answered"] or 0
+        abandoned = r["abandoned"] or 0
+        trend.append({
+            "day": day,
+            "offered": offered,
+            "answered": answered,
+            "abandoned": abandoned,
+            "alPercent": round((answered / offered) * 100, 1) if offered > 0 else 0,
+            "taggingPercent": 0,  # Will be populated if tagging data exists
+        })
+
+    # Averages
+    if trend:
+        avg_offered = round(sum(t["offered"] for t in trend) / len(trend))
+        avg_answered = round(sum(t["answered"] for t in trend) / len(trend))
+        avg_al = round(sum(t["alPercent"] for t in trend) / len(trend), 1)
+    else:
+        avg_offered = avg_answered = avg_al = 0
+
+    return {
+        "trend": trend,
+        "averages": {
+            "avgOffered": avg_offered,
+            "avgAnswered": avg_answered,
+            "avgAlPercent": avg_al,
+        },
+    }
+
+
+# ---------- Tagging ----------
+@router.post("/inbound/tagging")
+def get_tagging(
+    req: InboundKpiRequest,
+    db: Session = Depends(get_db2),
+    db_main: Session = Depends(get_db4),
+):
+    kpi = get_inbound_kpi_summary(req, db, db_main)
+    
+    # Get tagged calls from call_master
+    params = {"cid": req.company_id}
+    vt = req.view_type or "Custom"
+    
+    if vt == "Today":
+        date_cond = "DATE(calldate) = CURDATE()"
+    elif vt == "Yesterday":
+        date_cond = "DATE(calldate) = SUBDATE(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Weekly":
+        date_cond = "DATE(calldate) BETWEEN SUBDATE(CURDATE(), INTERVAL 6 DAY) AND CURDATE()"
+    elif vt == "Monthly":
+        date_cond = "DATE(calldate) BETWEEN SUBDATE(CURDATE(), INTERVAL 30 DAY) AND CURDATE()"
+    else:
+        date_cond = "DATE(calldate) BETWEEN :from_date AND :to_date"
+        params["from_date"] = req.from_date or req.start_date
+        params["to_date"] = req.to_date or req.end_date
+
+    tag_sql = text(f"""
+        SELECT COUNT(*) AS tagged_count
+        FROM call_master
+        WHERE ClientId = :cid
+          AND {date_cond}
+          AND CallType <> 'Upload'
+    """)
+    tagged_count = db_main.execute(tag_sql, params).scalar() or 0
+
+    # Email tickets
+    email_sql = text(f"""
+        SELECT COUNT(*) AS email_count
+        FROM call_master
+        WHERE ClientId = :cid
+          AND {date_cond}
+          AND CallType = 'Email'
+    """)
+    email_count = db_main.execute(email_sql, params).scalar() or 0
+
+    # WhatsApp tickets
+    wa_sql = text(f"""
+        SELECT COUNT(*) AS wa_count
+        FROM call_master
+        WHERE ClientId = :cid
+          AND {date_cond}
+          AND CallType = 'WhatsApp'
+    """)
+    wa_count = db_main.execute(wa_sql, params).scalar() or 0
+
+    total_calls = kpi.answeredCalls + kpi.connectedCallbacks
+    tagged_percent = round((tagged_count / total_calls) * 100, 1) if total_calls > 0 else 0
+
+    return {
+        "totalCalls": total_calls,
+        "answered": kpi.answeredCalls,
+        "callbacks": kpi.connectedCallbacks,
+        "taggedCount": tagged_count,
+        "taggedPercent": tagged_percent,
+        "emailTickets": email_count,
+        "whatsappTickets": wa_count,
+    }
+
+
+# ---------- Tickets by Source ----------
+@router.post("/inbound/tickets-by-source")
+def get_tickets_by_source(
+    req: InboundKpiRequest,
+    db: Session = Depends(get_db4),
+):
+    params = {"cid": req.company_id}
+    vt = req.view_type or "Custom"
+
+    if vt == "Today":
+        date_cond = "CallDate >= CURDATE() AND CallDate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Yesterday":
+        date_cond = "CallDate >= SUBDATE(CURDATE(), INTERVAL 1 DAY) AND CallDate < CURDATE()"
+    elif vt == "Weekly":
+        date_cond = "CallDate >= SUBDATE(CURDATE(), INTERVAL 6 DAY) AND CallDate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Monthly":
+        date_cond = "CallDate >= SUBDATE(CURDATE(), INTERVAL 30 DAY) AND CallDate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"
+    else:
+        date_cond = "CallDate >= :from_date AND CallDate < DATE_ADD(:to_date, INTERVAL 1 DAY)"
+        params["from_date"] = req.from_date or req.start_date
+        params["to_date"] = req.to_date or req.end_date
+
+    sql = text(f"""
+        SELECT
+            CallType AS source,
+            COUNT(*) AS total,
+            SUM(CASE WHEN CloseLoopingDate IS NULL THEN 1 ELSE 0 END) AS open,
+            SUM(CASE WHEN CloseLoopingDate IS NOT NULL THEN 1 ELSE 0 END) AS closed,
+            ROUND(
+                SUM(CASE WHEN CloseLoopingDate IS NOT NULL THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 
+                1
+            ) AS closedInTat
+        FROM call_master
+        WHERE ClientId = :cid AND {date_cond}
+        GROUP BY CallType
+        ORDER BY total DESC
+    """)
+    rows = db.execute(sql, params).mappings().fetchall()
+
+    return [{
+        "source": r["source"] or "Unknown",
+        "total": r["total"] or 0,
+        "open": r["open"] or 0,
+        "closed": r["closed"] or 0,
+        "closedInTat": r["closedInTat"] or 0,
+    } for r in rows]
+
+
+# ---------- Tickets by Type ----------
+@router.post("/inbound/tickets-by-type")
+def get_tickets_by_type(
+    req: InboundKpiRequest,
+    db: Session = Depends(get_db4),
+):
+    params = {"cid": req.company_id}
+    vt = req.view_type or "Custom"
+
+    if vt == "Today":
+        date_cond = "CallDate >= CURDATE() AND CallDate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Yesterday":
+        date_cond = "CallDate >= SUBDATE(CURDATE(), INTERVAL 1 DAY) AND CallDate < CURDATE()"
+    elif vt == "Weekly":
+        date_cond = "CallDate >= SUBDATE(CURDATE(), INTERVAL 6 DAY) AND CallDate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Monthly":
+        date_cond = "CallDate >= SUBDATE(CURDATE(), INTERVAL 30 DAY) AND CallDate < DATE_ADD(CURDATE(), INTERVAL 1 DAY)"
+    else:
+        date_cond = "CallDate >= :from_date AND CallDate < DATE_ADD(:to_date, INTERVAL 1 DAY)"
+        params["from_date"] = req.from_date or req.start_date
+        params["to_date"] = req.to_date or req.end_date
+
+    # Get top categories
+    sql = text(f"""
+        SELECT
+            Category1 AS type,
+            COUNT(*) AS value
+        FROM call_master
+        WHERE ClientId = :cid AND {date_cond}
+        GROUP BY Category1
+        ORDER BY value DESC
+        LIMIT 5
+    """)
+    rows = db.execute(sql, params).mappings().fetchall()
+
+    total = sum(r["value"] for r in rows) if rows else 1
+
+    return [{
+        "type": r["type"] or "Other",
+        "value": r["value"] or 0,
+        "percent": round((r["value"] / total) * 100, 1) if total > 0 else 0,
+    } for r in rows]
+
+
+# ---------- Open Tickets by Age ----------
+@router.post("/inbound/open-tickets-by-age")
+def get_open_tickets_by_age(
+    req: InboundKpiRequest,
+    db: Session = Depends(get_db4),
+):
+    sql = text("""
+        SELECT
+            CASE
+                WHEN DATEDIFF(NOW(), CallDate) = 0 THEN 'Today'
+                WHEN DATEDIFF(NOW(), CallDate) <= 1 THEN '1 day'
+                WHEN DATEDIFF(NOW(), CallDate) <= 3 THEN '2-3 days'
+                WHEN DATEDIFF(NOW(), CallDate) <= 7 THEN '4-7 days'
+                WHEN DATEDIFF(NOW(), CallDate) <= 15 THEN '8-15 days'
+                ELSE '15+ days'
+            END AS age_range,
+            COUNT(*) AS value
+        FROM call_master
+        WHERE ClientId = :cid
+          AND CloseLoopingDate IS NULL
+        GROUP BY age_range
+        ORDER BY MIN(CallDate)
+    """)
+    rows = db.execute(sql, {"cid": req.company_id}).mappings().fetchall()
+
+    return [{
+        "range": r["age_range"],
+        "value": r["value"] or 0,
+    } for r in rows]
+
+
+# ---------- Calls by Hour ----------
+@router.post("/inbound/calls-by-hour")
+def get_calls_by_hour(
+    req: InboundKpiRequest,
+    db: Session = Depends(get_db2),
+    db_main: Session = Depends(get_db4),
+):
+    camp = db_main.execute(
+        text("SELECT campaignid FROM registration_master WHERE company_id=:cid"),
+        {"cid": req.company_id}
+    ).scalar_one_or_none()
+    if not camp:
+        raise HTTPException(404, "Company ID not found")
+    campaign_list = [c.strip().strip("'") for c in camp.split(",")]
+
+    vt = req.view_type or "Custom"
+    if vt == "Today":
+        date_cond = "DATE(t2.call_date) = CURDATE()"
+    elif vt == "Yesterday":
+        date_cond = "DATE(t2.call_date) = SUBDATE(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Weekly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 6 DAY) AND CURDATE()"
+    elif vt == "Monthly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 30 DAY) AND CURDATE()"
+    else:
+        date_cond = "DATE(t2.call_date) BETWEEN :from_date AND :to_date"
+
+    params = {"cids": tuple(campaign_list)}
+    if vt == "Custom":
+        params["from_date"] = req.from_date or req.start_date
+        params["to_date"] = req.to_date or req.end_date
+
+    sql = f"""
+        SELECT
+            HOUR(t2.call_date) AS hour,
+            SUM(IF(t2.user <> 'VDCL', 1, 0)) AS answered,
+            SUM(IF(t2.user = 'VDCL', 1, 0)) AS abandoned
+        FROM asterisk.vicidial_closer_log t2
+        WHERE {date_cond}
+          AND t2.campaign_id IN :cids
+          AND t2.term_reason <> 'AFTERHOURS'
+          AND t2.lead_id IS NOT NULL
+        GROUP BY HOUR(t2.call_date)
+        ORDER BY hour
+    """
+    rows = db.execute(text(sql), params).mappings().fetchall()
+
+    return [{
+        "hour": f"{r['hour']:02d}:00",
+        "answered": r["answered"] or 0,
+        "abandoned": r["abandoned"] or 0,
+    } for r in rows]
+
+
+# ---------- Drop Reasons ----------
+@router.post("/inbound/drop-reasons")
+def get_drop_reasons(
+    req: InboundKpiRequest,
+    db: Session = Depends(get_db2),
+    db_main: Session = Depends(get_db4),
+):
+    camp = db_main.execute(
+        text("SELECT campaignid FROM registration_master WHERE company_id=:cid"),
+        {"cid": req.company_id}
+    ).scalar_one_or_none()
+    if not camp:
+        raise HTTPException(404, "Company ID not found")
+    campaign_list = [c.strip().strip("'") for c in camp.split(",")]
+
+    vt = req.view_type or "Custom"
+    if vt == "Today":
+        date_cond = "DATE(t2.call_date) = CURDATE()"
+    elif vt == "Yesterday":
+        date_cond = "DATE(t2.call_date) = SUBDATE(CURDATE(), INTERVAL 1 DAY)"
+    elif vt == "Weekly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 6 DAY) AND CURDATE()"
+    elif vt == "Monthly":
+        date_cond = "DATE(t2.call_date) BETWEEN SUBDATE(CURDATE(), INTERVAL 30 DAY) AND CURDATE()"
+    else:
+        date_cond = "DATE(t2.call_date) BETWEEN :from_date AND :to_date"
+
+    params = {"cids": tuple(campaign_list)}
+    if vt == "Custom":
+        params["from_date"] = req.from_date or req.start_date
+        params["to_date"] = req.to_date or req.end_date
+
+    sql = f"""
+        SELECT
+            COALESCE(term_reason, 'Unknown') AS reason,
+            COUNT(*) AS value
+        FROM asterisk.vicidial_closer_log t2
+        WHERE {date_cond}
+          AND t2.campaign_id IN :cids
+          AND t2.user = 'VDCL'
+          AND t2.term_reason <> 'AFTERHOURS'
+          AND t2.lead_id IS NOT NULL
+        GROUP BY term_reason
+        ORDER BY value DESC
+        LIMIT 5
+    """
+    rows = db.execute(text(sql), params).mappings().fetchall()
+
+    return [{
+        "reason": r["reason"],
+        "value": r["value"] or 0,
+    } for r in rows]
