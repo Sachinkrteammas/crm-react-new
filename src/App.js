@@ -202,6 +202,9 @@ import AllocationVicidialList from "./pages/allocation_vicidiallist";
 import MappleDataWebhook from "./pages/mapple_data_webhook";
 
 import WhatsAppReports from "./pages/WhatsAppReports";
+// import C2PFunnelDashboard from "./pages/C2PFunnelDashboard";
+// import ReportScheduler from "./pages/ReportScheduler";
+import NewInboundDashboard from "./pages/NewInboundDashboard";
 
 
 
@@ -516,6 +519,11 @@ function App() {
               <Route path="/allocation-vicidiallist" element={<AllocationVicidialList />} />
               <Route path="/mapple-data-webhook" element={<MappleDataWebhook />} />
               <Route path="/whatsapp-reports" element={<WhatsAppReports />} />
+              {/* <Route path="/C2PFunnelDashboard" element={<C2PFunnelDashboard />} />
+              <Route path="/report-scheduler" element={<ReportScheduler />} /> */}
+              <Route path="/NewInboundDashboard" element={<NewInboundDashboard/>}/>
+              
+
               <></>
           </Route>
       </Route>
