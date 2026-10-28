@@ -380,7 +380,7 @@ const NewOutboundDashboard = () => {
 
           <div className="d-flex align-items-end flex-wrap gap-2">
             {/* ✅ Switch Dashboard */}
-            <div>
+            {/* <div>
               <label className="form-label fw-semibold mb-1">
                 Switch Dashboard
               </label>
@@ -417,7 +417,7 @@ const NewOutboundDashboard = () => {
                   </li>
                 </ul>
               </div>
-            </div>
+            </div> */}
 
             {(userType === "Super-Admin" || userType === "Admin") && (
               <div>
