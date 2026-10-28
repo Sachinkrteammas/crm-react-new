@@ -425,13 +425,34 @@ const C2PCDRReports = () => {
                       <td>{item.agent_number}</td>
                       <td>{item.customer_call_setup_time}</td>
 
-                      <td>
+                      {/* <td>
                         {item.recording ? (
                           <audio controls>
                             <source
                               src={item.recording}
                               type="audio/mpeg"
                             />
+                          </audio>
+                        ) : (
+                          "-"
+                        )}
+                      </td> */}
+                      <td>
+                        {item.recording ? (
+                          <audio
+                            controls
+                            preload="none"
+                            key={item.recording}
+                          >
+                            <source
+                              src={item.recording}
+                              type={
+                                item.recording.toLowerCase().endsWith(".wav")
+                                  ? "audio/wav"
+                                  : "audio/mpeg"
+                              }
+                            />
+                            Your browser does not support audio playback.
                           </audio>
                         ) : (
                           "-"

@@ -567,6 +567,7 @@ def c2p_cdr(
 
         base_query = """
             SELECT
+                date_time,
                 customer_name,
                 customer_number,
                 did_clid,
@@ -620,13 +621,41 @@ def c2p_cdr(
 
         records = db.execute(query, params).mappings().all()
 
+        data = []
+
+        for record in records:
+            row = dict(record)
+
+            recording_url = row.get("recording")
+            date_time = row.get("date_time")
+
+            if recording_url and "192.168.3.8" in recording_url:
+                # Get the filename from the original recording URL
+                filename = recording_url.rsplit("/", 1)[-1]
+
+                # Replace .wav with .mp3 if the filename ends with .wav
+                if filename.lower().endswith(".wav"):
+                    filename = filename[:-4] + ".mp3"
+
+                # Build the date-based Google Cloud Storage URL
+                if date_time:
+                    recording_date = date_time.strftime("%Y/%m/%d")
+
+                    row["recording"] = (
+                        "https://storage.googleapis.com/"
+                        "dialer_recordings_2026/vaishali/"
+                        f"{recording_date}/{filename}"
+                    )
+
+            data.append(row)
+
         return {
             "status": True,
             "start_date": str(start_date),
             "end_date": str(end_date),
             "queue_name": queue_name,
             "total_records": len(records),
-            "data": records
+            "data": data
         }
 
     except Exception as e:
