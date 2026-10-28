@@ -572,6 +572,7 @@ def c2p_cdr(
                 customer_number,
                 did_clid,
                 created_on,
+                duration,
                 queue_name,
                 call_direction,
                 call_status,

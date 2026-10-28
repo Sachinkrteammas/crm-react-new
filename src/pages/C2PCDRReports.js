@@ -393,6 +393,7 @@ const C2PCDRReports = () => {
                   <th>Customer Number</th>
                   <th>DID CLID</th>
                   <th>Created On</th>
+                  <th>Duration (Sec.)</th>
                   <th>Queue Name</th>
                   <th>Call Direction</th>
                   <th>Call Status</th>
@@ -415,7 +416,8 @@ const C2PCDRReports = () => {
                       <td>{item.customer_name}</td>
                       <td>{item.customer_number}</td>
                       <td>{item.did_clid}</td>
-                      <td>{item.created_on}</td>
+                      <td>{item.date_time}</td>
+                      <td>{item.duration}</td>
                       <td>{item.queue_name}</td>
                       <td>{item.call_direction}</td>
                       <td>{item.call_status}</td>
