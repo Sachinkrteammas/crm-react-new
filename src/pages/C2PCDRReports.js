@@ -25,6 +25,7 @@ const C2PCDRReports = () => {
 
   const [cdrData, setCdrData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [customerSearch, setCustomerSearch] = useState("");
 
   // ============================================
   // Pagination
@@ -220,21 +221,76 @@ const C2PCDRReports = () => {
   // Pagination Logic
   // ============================================
 
+  const getPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages + 2) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+      return pages;
+    }
+
+    let startPage = Math.max(2, currentPage - 2);
+    let endPage = Math.min(totalPages - 1, currentPage + 2);
+
+    if (currentPage <= 3) {
+      startPage = 2;
+      endPage = Math.min(totalPages - 1, 6);
+    } else if (currentPage >= totalPages - 2) {
+      startPage = Math.max(2, totalPages - 5);
+      endPage = totalPages - 1;
+    }
+
+    pages.push(1);
+
+    if (startPage > 2) {
+      pages.push("...");
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    if (endPage < totalPages - 1) {
+      pages.push("...");
+    }
+
+    pages.push(totalPages);
+
+    return pages;
+  };
+
+    
+  // Filter records by Customer Number
+  const filteredData = useMemo(() => {
+    const searchValue = customerSearch.trim().toLowerCase();
+
+    if (!searchValue) {
+      return cdrData;
+    }
+
+    return cdrData.filter((item) =>
+      String(item.customer_number ?? "")
+        .toLowerCase()
+        .includes(searchValue)
+    );
+  }, [cdrData, customerSearch]);
+
   const totalPages = Math.ceil(
-    cdrData.length / recordsPerPage
+    filteredData.length / recordsPerPage
   );
 
   const paginatedData = useMemo(() => {
+    const startIndex = (currentPage - 1) * recordsPerPage;
 
-    const startIndex =
-      (currentPage - 1) * recordsPerPage;
-
-    return cdrData.slice(
+    return filteredData.slice(
       startIndex,
       startIndex + recordsPerPage
     );
+  }, [filteredData, currentPage]);
 
-  }, [cdrData, currentPage]);
 
   return (
     <div className="row">
@@ -371,16 +427,31 @@ const C2PCDRReports = () => {
 
         <div className="card shadow-sm">
 
-          <div className="card-header d-flex justify-content-between">
-
+          <div className="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
             <h6 className="mb-0">
               CDR Data
             </h6>
 
-            <span>
-              Total Records: {cdrData.length}
-            </span>
+            <div className="d-flex align-items-center gap-3 flex-wrap">
 
+              <input
+                type="text"
+                className="form-control"
+                style={{ width: "250px" }}
+                placeholder="Search Customer Number..."
+                value={customerSearch}
+                onChange={(e) => {
+                  setCustomerSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+              
+              <span className="text-nowrap">
+                Total Records: {filteredData.length}
+              </span>
+
+              
+            </div>
           </div>
 
           <div className="card-body table-responsive">
@@ -483,77 +554,64 @@ const C2PCDRReports = () => {
                 PAGINATION
             ============================================ */}
 
+                        
             {totalPages > 1 && (
-
               <div className="d-flex justify-content-end mt-3">
-
                 <nav>
-
                   <ul className="pagination">
 
-                    <li
-                      className={`page-item ${
-                        currentPage === 1
-                          ? "disabled"
-                          : ""
-                      }`}
-                    >
+                    {/* Previous */}
+                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
                       <button
                         className="page-link"
-                        onClick={() =>
-                          setCurrentPage(currentPage - 1)
-                        }
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((prev) => prev - 1)}
                       >
                         Previous
                       </button>
                     </li>
 
-                    {[...Array(totalPages)].map(
-                      (_, index) => (
-                        <li
-                          key={index}
-                          className={`page-item ${
-                            currentPage === index + 1
-                              ? "active"
-                              : ""
-                          }`}
-                        >
+                    {/* Limited page numbers */}
+                    {getPageNumbers().map((page, index) => (
+                      <li
+                        key={`${page}-${index}`}
+                        className={`page-item ${
+                          page === currentPage ? "active" : ""
+                        } ${page === "..." ? "disabled" : ""}`}
+                      >
+                        {page === "..." ? (
+                          <span className="page-link">...</span>
+                        ) : (
                           <button
                             className="page-link"
-                            onClick={() =>
-                              setCurrentPage(index + 1)
-                            }
+                            onClick={() => setCurrentPage(page)}
                           >
-                            {index + 1}
+                            {page}
                           </button>
-                        </li>
-                      )
-                    )}
+                        )}
+                      </li>
+                    ))}
 
+                    {/* Next */}
                     <li
                       className={`page-item ${
-                        currentPage === totalPages
-                          ? "disabled"
-                          : ""
+                        currentPage === totalPages ? "disabled" : ""
                       }`}
                     >
                       <button
                         className="page-link"
-                        onClick={() =>
-                          setCurrentPage(currentPage + 1)
-                        }
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage((prev) => prev + 1)}
                       >
                         Next
                       </button>
                     </li>
 
                   </ul>
-
                 </nav>
-
               </div>
-
             )}
+
 
           </div>
 
