@@ -221,6 +221,7 @@ def get_campaigns_by_client(client_id: int, db: Session = Depends(get_db4)):
             CampaignName
         FROM ob_campaign
         WHERE ClientId = :client
+        AND CampaignStatus != 'D'
         ORDER BY CampaignName
     """)
     rows = db.execute(q, {"client": client_id}).fetchall()
