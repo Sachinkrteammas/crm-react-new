@@ -628,27 +628,64 @@ def c2p_cdr(
             row = dict(record)
 
             recording_url = row.get("recording")
-            date_time = row.get("date_time")
 
             if recording_url and "192.168.3.8" in recording_url:
+
                 # Get the filename from the original recording URL
                 filename = recording_url.rsplit("/", 1)[-1]
 
-                # Replace .wav with .mp3 if the filename ends with .wav
-                if filename.lower().endswith(".wav"):
-                    filename = filename[:-4] + ".mp3"
+                # Extract date (YYYYMMDD) from filename
+                filename_parts = filename.split("_")
 
-                # Build the date-based Google Cloud Storage URL
-                if date_time:
-                    recording_date = date_time.strftime("%Y/%m/%d")
+                if len(filename_parts) > 1:
+                    recording_date_raw = filename_parts[1].split("-")[0]
 
-                    row["recording"] = (
-                        "https://storage.googleapis.com/"
-                        "dialer_recordings_2026/vaishali/"
-                        f"{recording_date}/{filename}"
-                    )
+                    # Convert YYYYMMDD into YYYY/MM/DD
+                    if len(recording_date_raw) == 8 and recording_date_raw.isdigit():
+                        recording_date = (
+                            f"{recording_date_raw[:4]}/"
+                            f"{recording_date_raw[4:6]}/"
+                            f"{recording_date_raw[6:8]}"
+                        )
+
+                        # Replace .wav with .mp3
+                        if filename.lower().endswith(".wav"):
+                            filename = filename[:-4] + ".mp3"
+
+                        # Build Google Cloud Storage URL
+                        row["recording"] = (
+                            "https://storage.googleapis.com/"
+                            "dialer_recordings_2026/vaishali/"
+                            f"{recording_date}/{filename}"
+                        )
 
             data.append(row)
+
+        # for record in records:
+        #     row = dict(record)
+
+        #     recording_url = row.get("recording")
+        #     date_time = row.get("date_time")
+
+        #     if recording_url and "192.168.3.8" in recording_url:
+        #         # Get the filename from the original recording URL
+        #         filename = recording_url.rsplit("/", 1)[-1]
+
+        #         # Replace .wav with .mp3 if the filename ends with .wav
+        #         if filename.lower().endswith(".wav"):
+        #             filename = filename[:-4] + ".mp3"
+
+        #         # Build the date-based Google Cloud Storage URL
+        #         if date_time:
+        #             recording_date = date_time.strftime("%Y/%m/%d")
+
+        #             row["recording"] = (
+        #                 "https://storage.googleapis.com/"
+        #                 "dialer_recordings_2026/vaishali/"
+        #                 f"{recording_date}/{filename}"
+        #             )
+
+        #     data.append(row)
 
         return {
             "status": True,
