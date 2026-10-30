@@ -298,7 +298,7 @@ const C2PCDRReports = () => {
       <div className="col-12">
 
         <h3 className="mb-4">
-          C2P CDR Reports
+          CDR Report
         </h3>
 
         {/* ============================================
