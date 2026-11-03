@@ -67,6 +67,8 @@ def get_close_fields_scenarios(client_id: int, db: Session = Depends(get_db4)):
             "id": fid,
             "Scenario": f.get("FieldName"),
             "Label": field_number,
+            "FieldType": f.get("FieldType"),
+            "FieldValidation": f.get("FieldValidation"),
             "children": children
         })
 

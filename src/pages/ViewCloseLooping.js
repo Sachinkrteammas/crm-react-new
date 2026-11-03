@@ -75,6 +75,63 @@ const includeCurrentValue = (value, list) => {
   return list;
 };
 
+// ----------------------------
+// Date field helpers
+// ----------------------------
+const pad2 = (n) => String(n).padStart(2, "0");
+
+const toISODate = (date) =>
+  `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+
+// Field ko date maan-na hai ya nahi:
+// 1) admin me FieldValidation/FieldType "Datepicker" ho
+// 2) ya field name me "Date" word ho (Complaint closure Date, Date of revert from Sales, etc.)
+const isDateField = (label, meta = {}) => {
+  const validation = String(meta.FieldValidation || "").toLowerCase().replace(/\s+/g, "");
+  const type = String(meta.FieldType || "").toLowerCase().replace(/\s+/g, "");
+
+  if (validation === "datepicker" || validation === "date") return true;
+  if (type === "datepicker" || type === "date") return true;
+
+  const words = String(label || "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+
+  return words.includes("date") || words.includes("dates") || words.includes("dt");
+};
+
+// Stored value ko <input type="date"> ke liye YYYY-MM-DD me badalta hai.
+// Supports: Date object, "YYYY-MM-DDTHH:mm:ss", "YYYY-MM-DD", "DD-MM-YYYY", "DD/MM/YYYY"
+const toDateInputValue = (value) => {
+  if (value === null || value === undefined || value === "") return "";
+
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return toISODate(value);
+  }
+
+  const str = String(value).trim();
+  if (!str) return "";
+
+  let match = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    return `${match[1]}-${pad2(match[2])}-${pad2(match[3])}`;
+  }
+
+  match = str.match(/^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/);
+  if (match) {
+    let [, day, month, year] = match;
+    if (year.length === 2) year = `20${year}`;
+    return `${year}-${pad2(month)}-${pad2(day)}`;
+  }
+
+  const parsed = new Date(str);
+  if (!isNaN(parsed.getTime())) return toISODate(parsed);
+
+  return "";
+};
+
 
   const loadLevel1 = async (clientId) => {
     return await api
@@ -449,14 +506,20 @@ const handleSubmit = async () => {
     dynamicFields.forEach((f) => {
       const backendKey = `Field${f.fieldNumber}`;   // field1, field2, field3...
       const formKey = f.FieldName;                 // "Mobile Number", "Address", etc.
+      const rawValue = form[formKey];
 
-      payload[backendKey] = form[formKey] ?? null;
+      payload[backendKey] = isDateField(formKey, f)
+        ? toDateInputValue(rawValue) || null
+        : rawValue ?? null;
     });
 
     // 🔥🔥🔥 MAP CLOSE FIELD SCENARIOS (CField columns)
     closeFieldScenarios.forEach((sc) => {
       const backendKey = `CField${sc.Label}`;   // CField1, CField2, CField3...
-      payload[backendKey] = form[sc.Scenario] ?? null;
+      const rawValue = form[sc.Scenario];
+      payload[backendKey] = isDateField(sc.Scenario, sc)
+        ? toDateInputValue(rawValue) || null
+        : rawValue ?? null;
     });
 
     // ✅ Add mapped Category fields for backend
@@ -578,7 +641,10 @@ const handleCloseFieldScenariosUpdate = async () => {
   try {
     const payload = {};
     closeFieldScenarios.forEach((sc) => {
-      payload[`CField${sc.Label}`] = form[sc.Scenario] ?? null;
+      const rawValue = form[sc.Scenario];
+      payload[`CField${sc.Label}`] = isDateField(sc.Scenario, sc)
+        ? toDateInputValue(rawValue) || null
+        : rawValue ?? null;
     });
 
     const res = await api.put(
@@ -1016,22 +1082,23 @@ useEffect(() => {
                   <th className="p-2 text-left font-semibold border">VALUE</th>
                 </tr>
 
-                {labels.map((label, index) => (
-                  // <React.Fragment key={label}>
-                    <tr className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
+                {labels.map((label, index) => {
+                  const isDate = isDateField(label);
+                  return (
+                    <tr key={label} className={index % 2 === 0 ? "bg-gray-50" : "bg-white"}>
                       <td className="border p-2">{label}</td>
                       <td className="border p-2">
                         <input
-                          type="text"
+                          type={isDate ? "date" : "text"}
                           name={label}
-                          value={form[label] || ""}
+                          value={isDate ? toDateInputValue(form[label]) : form[label] || ""}
                           onChange={handleChange}
                           style={commonInputStyle}
                         />
                       </td>
                     </tr>
-
-                  ))}    
+                  );
+                })}    
 
                     {/* {label === "Email ID" && ( */}
                       <tr>
@@ -1085,36 +1152,47 @@ useEffect(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  {closeFieldScenarios.map((sc) => (
-                    <tr key={sc.id}>
-                      <td className="border p-2">{sc.Scenario}</td>
-                      <td className="border p-2">
-                        {sc.children && sc.children.length > 0 ? (
-                          <select
-                            style={selectStyle}
-                            name={sc.Scenario}
-                            value={form[sc.Scenario] || ""}
-                            onChange={handleChange}
-                          >
-                            <option value="">Select {sc.Scenario}</option>
-                            {sc.children.map((child) => (
-                              <option key={child.id} value={child.Scenario}>
-                                {child.Scenario}
-                              </option>
-                            ))}
-                          </select>
-                        ) : (
-                          <input
-                            type="text"
-                            name={sc.Scenario}
-                            value={form[sc.Scenario] || ""}
-                            onChange={handleChange}
-                            style={commonInputStyle}
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {closeFieldScenarios.map((sc) => {
+                    const isDate = isDateField(sc.Scenario, sc);
+                    return (
+                      <tr key={sc.id}>
+                        <td className="border p-2">{sc.Scenario}</td>
+                        <td className="border p-2">
+                          {sc.children && sc.children.length > 0 ? (
+                            <select
+                              style={selectStyle}
+                              name={sc.Scenario}
+                              value={form[sc.Scenario] || ""}
+                              onChange={handleChange}
+                            >
+                              <option value="">Select {sc.Scenario}</option>
+                              {sc.children.map((child) => (
+                                <option key={child.id} value={child.Scenario}>
+                                  {child.Scenario}
+                                </option>
+                              ))}
+                            </select>
+                          ) : isDate ? (
+                            <input
+                              type="date"
+                              name={sc.Scenario}
+                              value={toDateInputValue(form[sc.Scenario])}
+                              onChange={handleChange}
+                              style={commonInputStyle}
+                            />
+                          ) : (
+                            <input
+                              type="text"
+                              name={sc.Scenario}
+                              value={form[sc.Scenario] || ""}
+                              onChange={handleChange}
+                              style={commonInputStyle}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 
