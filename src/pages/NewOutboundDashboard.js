@@ -12,9 +12,6 @@ import {
   Clock,
   Trophy,
   TrendingDown,
-  PhoneForwarded,
-  PhoneIncoming,
-  ArrowUpRight,
 } from "lucide-react";
 
 import {
@@ -30,8 +27,6 @@ import {
   Cell,
 } from "recharts";
 import api from "../api";
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
 
 /* ---------------- STYLES ---------------- */
 const cardStyle = {
@@ -44,8 +39,6 @@ const titleStyle = { fontSize: 20, fontWeight: 700, color: "#111827" };
 const subtitleStyle = { fontSize: 13, color: "#6b7280" };
 const kpiLabel = { fontSize: 13, color: "#6b7280", marginBottom: 4 };
 const kpiValue = { fontSize: 26, fontWeight: 700, color: "#111827" };
-const trendUp = { fontSize: 12, color: "#00b894", fontWeight: 600 };
-const trendDown = { fontSize: 12, color: "#ef4444", fontWeight: 600 };
 const dropColors = [
   "#ef4444",
   "#f97316",
@@ -91,7 +84,7 @@ const PageLoader = () => (
 );
 
 /* ---------------- KPI CARD ---------------- */
-const Kpi = ({ label, value, sub, trend, down, icon, color }) => (
+const Kpi = ({ label, value, sub, icon, color }) => (
   <div className="col-12 col-sm-6 col-lg-3">
     <div
       style={{
@@ -121,7 +114,6 @@ const Kpi = ({ label, value, sub, trend, down, icon, color }) => (
       <div style={kpiLabel}>{label}</div>
       <div style={kpiValue}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: "#6b7280" }}>{sub}</div>}
-      <div style={down ? trendDown : trendUp}>{trend}</div>
     </div>
   </div>
 );
@@ -147,7 +139,6 @@ const NewOutboundDashboard = () => {
 
   const [clients, setClients] = useState([]);
 
-  // ✅ Pre-fill from navState
   const [selectedClient, setSelectedClient] = useState(
     navState?.client ? String(navState.client) : companyId || ""
   );
@@ -155,19 +146,37 @@ const NewOutboundDashboard = () => {
   const [endDate, setEndDate] = useState(navState?.end_date || today);
   const [loading, setLoading] = useState(false);
 
-  const [kpi, setKpi] = useState(null);
-  const [funnel, setFunnel] = useState(null);
-  const [trend, setTrend] = useState([]);
-  const [trendAvg, setTrendAvg] = useState({});
-  const [efficiency, setEfficiency] = useState(null);
-  const [agents, setAgents] = useState([]);
-  const [drops, setDrops] = useState([]);
+  // ✅ raw CDR rows (jo c2p_cdr se aate hain)
+  const [rows, setRows] = useState([]);
 
   const activeCompanyId =
     userType === "Super-Admin" || userType === "Admin"
       ? selectedClient
       : companyId;
 
+  // ============================================
+  // ✅ DATE FORMAT HELPER (YYYY-MM-DD)
+  // ============================================
+  const formatDate = (dateValue) => {
+    if (!dateValue) return "";
+
+    // Agar already YYYY-MM-DD string hai
+    if (typeof dateValue === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      return dateValue;
+    }
+
+    const d = new Date(dateValue);
+    if (isNaN(d.getTime())) return "";
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // ============================================
+  // Clients fetch (Admin / Super-Admin)
+  // ============================================
   useEffect(() => {
     const fetchClients = async () => {
       try {
@@ -188,7 +197,6 @@ const NewOutboundDashboard = () => {
     }
   }, [userType]);
 
-  /* ✅ Navigate back to Inbound */
   const goToInbound = () => {
     navigate("/new-inbound-dashboard", {
       state: {
@@ -200,52 +208,9 @@ const NewOutboundDashboard = () => {
     });
   };
 
-  const buildPayload = () => ({
-    company_id: Number(activeCompanyId),
-    start_date: startDate,
-    end_date: endDate,
-  });
-
-  /* ---------------- API CALLS ---------------- */
-  const fetchKpi = () =>
-    api
-      .post("/outbound/kpi-summary", null, { params: buildPayload() })
-      .then((r) => setKpi(r.data))
-      .catch((e) => console.error("kpi-summary error", e));
-
-  const fetchFunnel = () =>
-    api
-      .post("/outbound/call-funnel", null, { params: buildPayload() })
-      .then((r) => setFunnel(r.data))
-      .catch((e) => console.error("call-funnel error", e));
-
-  const fetchTrend = () =>
-    api
-      .post("/outbound/performance-trend", null, { params: buildPayload() })
-      .then((r) => {
-        setTrend(r.data?.trend || []);
-        setTrendAvg(r.data?.averages || {});
-      })
-      .catch((e) => console.error("performance-trend error", e));
-
-  const fetchEfficiency = () =>
-    api
-      .post("/outbound/efficiency-metrics", null, { params: buildPayload() })
-      .then((r) => setEfficiency(r.data))
-      .catch((e) => console.error("efficiency-metrics error", e));
-
-  const fetchAgents = () =>
-    api
-      .post("/outbound/agent-performance", null, { params: buildPayload() })
-      .then((r) => setAgents(r.data || []))
-      .catch((e) => console.error("agent-performance error", e));
-
-  const fetchDrops = () =>
-    api
-      .post("/outbound/drop-reasons", null, { params: buildPayload() })
-      .then((r) => setDrops(r.data || []))
-      .catch((e) => console.error("drop-reasons error", e));
-
+  // ============================================
+  // ✅ DATA FETCH: sirf /api/webhook/c2p_cdr se
+  // ============================================
   const handleViewClick = async () => {
     if (
       (userType === "Super-Admin" || userType === "Admin") &&
@@ -260,23 +225,31 @@ const NewOutboundDashboard = () => {
     }
 
     setLoading(true);
+    setRows([]);
+
     try {
-      await Promise.all([
-        fetchKpi(),
-        fetchFunnel(),
-        fetchTrend(),
-        fetchEfficiency(),
-        fetchAgents(),
-        fetchDrops(),
-      ]);
+      const res = await api.get("/api/webhook/c2p_cdr", {
+        params: {
+          start_date: formatDate(startDate),
+          end_date: formatDate(endDate),
+          queue_name: "",
+          client_id: activeCompanyId,
+        },
+      });
+
+      if (res.data?.status) {
+        setRows(res.data.data || []);
+      } else {
+        setRows([]);
+      }
     } catch (e) {
-      console.error("Dashboard API error", e);
+      console.error("C2P CDR fetch error", e);
+      setRows([]);
     } finally {
       setLoading(false);
     }
   };
 
-  /* ✅ Auto-load when navigated from Inbound */
   useEffect(() => {
     if (!activeCompanyId) return;
     if (navState?.client || navState?.autoLoad) {
@@ -285,21 +258,143 @@ const NewOutboundDashboard = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCompanyId]);
 
-  /* ---------------- Derived ---------------- */
-  const agentPerformance = agents.map((a) => ({
+  // ============================================
+  // ✅ DERIVED: raw rows -> dashboard metrics
+  // ============================================
+  const isConnected = (r) => {
+    const s = String(r.call_status || "").toLowerCase();
+    return (
+      s.includes("answer") ||
+      s.includes("connect") ||
+      s === "success" ||
+      s === "completed"
+    );
+  };
+
+  const isQualified = (r) => {
+    const t = String(r.call_type || "").toLowerCase();
+    const s = String(r.call_status || "").toLowerCase();
+    return t.includes("qualified") || s.includes("qualified");
+  };
+
+  const total = rows.length;
+
+  const connectedRows = rows.filter(isConnected);
+  const qualifiedRows = rows.filter(isQualified);
+
+  const uniqueNumbers = new Set(
+    rows.map((r) => r.customer_number).filter(Boolean)
+  );
+
+  const kpi = {
+    totalDataAssigned: uniqueNumbers.size,
+    uniqueNumbersDialed: uniqueNumbers.size,
+    totalAttempts: total,
+    avgAttemptsPerNumber:
+      uniqueNumbers.size > 0
+        ? (total / uniqueNumbers.size).toFixed(2)
+        : 0,
+    connectedCalls: connectedRows.length,
+    connectionRate:
+      total > 0 ? ((connectedRows.length * 100) / total).toFixed(1) : 0,
+    qualifiedLeads: qualifiedRows.length,
+  };
+
+  const funnel = {
+    totaldata: uniqueNumbers.size,
+    uniqueDialed: uniqueNumbers.size,
+    connectedCalls: connectedRows.length,
+    qualifiedLeads: qualifiedRows.length,
+    dialRate: uniqueNumbers.size > 0 ? 100 : 0,
+    connectRate:
+      uniqueNumbers.size > 0
+        ? Number(
+            ((connectedRows.length * 100) / uniqueNumbers.size).toFixed(1)
+          )
+        : 0,
+    outcomeRate:
+      connectedRows.length > 0
+        ? Number(
+            ((qualifiedRows.length * 100) / connectedRows.length).toFixed(1)
+          )
+        : 0,
+  };
+
+  // ---- Trend: group by date ----
+  const byDate = {};
+  rows.forEach((r) => {
+    const day = String(r.date_time || "").split(" ")[0] || "N/A";
+    if (!byDate[day]) byDate[day] = { day, attempts: 0, connect: 0, outcome: 0 };
+    byDate[day].attempts += 1;
+    if (isConnected(r)) byDate[day].connect += 1;
+    if (isQualified(r)) byDate[day].outcome += 1;
+  });
+
+  const trend = Object.values(byDate)
+    .sort((a, b) => a.day.localeCompare(b.day))
+    .map((d) => ({
+      day: d.day,
+      attempts: d.attempts,
+      connect:
+        d.attempts > 0 ? Number(((d.connect * 100) / d.attempts).toFixed(1)) : 0,
+      outcome:
+        d.attempts > 0 ? Number(((d.outcome * 100) / d.attempts).toFixed(1)) : 0,
+    }));
+
+  const trendAvg = {
+    avgAttempts:
+      trend.length > 0
+        ? Math.round(
+            trend.reduce((s, t) => s + t.attempts, 0) / trend.length
+          )
+        : 0,
+    avgConnect:
+      trend.length > 0
+        ? (
+            trend.reduce((s, t) => s + t.connect, 0) / trend.length
+          ).toFixed(1)
+        : 0,
+    avgOutcome:
+      trend.length > 0
+        ? (
+            trend.reduce((s, t) => s + t.outcome, 0) / trend.length
+          ).toFixed(1)
+        : 0,
+  };
+
+  // ---- Agent-wise ----
+  const byAgent = {};
+  rows.forEach((r) => {
+    const agent = r.agent_name || r.agent_username || "Unknown";
+    if (!byAgent[agent])
+      byAgent[agent] = {
+        agent,
+        calls: 0,
+        connect: 0,
+        outcome: 0,
+        talkSec: 0,
+      };
+    const a = byAgent[agent];
+    a.calls += 1;
+    if (isConnected(r)) a.connect += 1;
+    if (isQualified(r)) a.outcome += 1;
+    a.talkSec += Number(r.duration || 0);
+  });
+
+  const agentPerformance = Object.values(byAgent).map((a) => ({
     name: a.agent,
     calls: a.calls,
-    connection: a.connection,
-    outcome: a.outcome,
-    aht: `${Math.floor((a.ahtSec || 0) / 60)}:${String(
-      (a.ahtSec || 0) % 60
-    ).padStart(2, "0")}`,
-    status:
-      a.outcome >= 30
-        ? "Excellent"
-        : a.outcome >= 20
-        ? "Average"
-        : "Needs Improvement",
+    connection:
+      a.calls > 0 ? Number(((a.connect * 100) / a.calls).toFixed(1)) : 0,
+    outcome:
+      a.calls > 0 ? Number(((a.outcome * 100) / a.calls).toFixed(1)) : 0,
+    ahtSec: a.calls > 0 ? Math.round(a.talkSec / a.calls) : 0,
+  }));
+
+  const agentData = agentPerformance.map((a) => ({
+    name: a.name,
+    talk: a.ahtSec,
+    wrap: 0,
   }));
 
   const totalAgents = agentPerformance.length;
@@ -324,12 +419,37 @@ const NewOutboundDashboard = () => {
         ).toFixed(1)
       : "0.0";
 
-  const agentData =
-    efficiency?.agents?.map((a) => ({
-      name: a.agent,
-      talk: a.talkSec,
-      wrap: a.wrapSec,
-    })) || [];
+  // ---- Efficiency overall ----
+  const totalTalk = rows.reduce((s, r) => s + Number(r.duration || 0), 0);
+  const totalWrap = rows.reduce(
+    (s, r) => s + Number(r.customer_call_setup_time || 0),
+    0
+  );
+  const avgTalk = total > 0 ? Math.round(totalTalk / total) : 0;
+  const avgWrap = total > 0 ? Math.round(totalWrap / total) : 0;
+  const avgAHT = avgTalk + avgWrap;
+
+  const efficiency = {
+    overall: {
+      avgAHTSec: avgAHT,
+      avgTalkTimeSec: avgTalk,
+      avgWrapUpTimeSec: avgWrap,
+    },
+  };
+
+  // ---- Drop reasons ----
+  const byStatus = {};
+  rows
+    .filter((r) => !isConnected(r))
+    .forEach((r) => {
+      const reason = r.call_status || "Unknown";
+      byStatus[reason] = (byStatus[reason] || 0) + 1;
+    });
+
+  const drops = Object.entries(byStatus)
+    .map(([reason, value]) => ({ reason, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
 
   const totalDrops = drops.reduce((sum, d) => sum + d.value, 0);
   const dropBreakdown = drops.map((d, i) => ({
@@ -337,32 +457,6 @@ const NewOutboundDashboard = () => {
     percent: totalDrops ? Math.round((d.value * 100) / totalDrops) : 0,
     color: dropColors[i % dropColors.length],
   }));
-
-  const downloadPdExcel = async () => {
-    try {
-      const response = await api.post("/outbound/pd-data", null, {
-        params: {
-          company_id: Number(activeCompanyId),
-          start_date: startDate,
-          end_date: endDate,
-        },
-      });
-      const rows = response.data.data || [];
-      const worksheet = XLSX.utils.json_to_sheet(rows);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "PD Calls");
-      const excelBuffer = XLSX.write(workbook, {
-        bookType: "xlsx",
-        type: "array",
-      });
-      const blob = new Blob([excelBuffer], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      });
-      saveAs(blob, `PD_Calls_${startDate}_${endDate}.xlsx`);
-    } catch (e) {
-      console.error("PD download error", e);
-    }
-  };
 
   return (
     <div>
@@ -379,46 +473,6 @@ const NewOutboundDashboard = () => {
           </div>
 
           <div className="d-flex align-items-end flex-wrap gap-2">
-            {/* ✅ Switch Dashboard */}
-            {/* <div>
-              <label className="form-label fw-semibold mb-1">
-                Switch Dashboard
-              </label>
-              <div className="dropdown">
-                <button
-                  className="btn btn-outline-primary btn-sm dropdown-toggle d-flex align-items-center gap-2"
-                  type="button"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                  style={{ minWidth: 180 }}
-                >
-                  <PhoneForwarded size={14} />
-                  Outbound (current)
-                </button>
-                <ul className="dropdown-menu" style={{ minWidth: 220 }}>
-                  <li>
-                    <button
-                      className="dropdown-item d-flex align-items-center gap-2"
-                      onClick={goToInbound}
-                    >
-                      <PhoneIncoming size={14} />
-                      Inbound Dashboard
-                      <ArrowUpRight
-                        size={12}
-                        style={{ marginLeft: "auto", opacity: 0.6 }}
-                      />
-                    </button>
-                  </li>
-                  <li>
-                    <button className="dropdown-item d-flex align-items-center gap-2 active">
-                      <PhoneCall size={14} />
-                      Outbound Dashboard
-                    </button>
-                  </li>
-                </ul>
-              </div>
-            </div> */}
-
             {(userType === "Super-Admin" || userType === "Admin") && (
               <div>
                 <label className="form-label fw-semibold mb-1">
@@ -475,16 +529,19 @@ const NewOutboundDashboard = () => {
       <div className="row g-3 mb-3">
         <Kpi
           label="Total Data Assigned"
-          value={kpi?.totalDataAssigned?.toLocaleString() || "—"}
+          value={kpi.totalDataAssigned.toLocaleString()}
           icon={<Users size={18} />}
           color="#2563eb"
         />
         <Kpi
           label="Unique Numbers Dialed"
-          value={kpi?.uniqueNumbersDialed?.toLocaleString() || "—"}
+          value={kpi.uniqueNumbersDialed.toLocaleString()}
           sub={
-            kpi && kpi.totalDataAssigned
-              ? `${((kpi.uniqueNumbersDialed * 100) / kpi.totalDataAssigned).toFixed(1)}% of total`
+            kpi.totalDataAssigned
+              ? `${(
+                  (kpi.uniqueNumbersDialed * 100) /
+                  kpi.totalDataAssigned
+                ).toFixed(1)}% of total`
               : ""
           }
           icon={<Phone size={18} />}
@@ -492,28 +549,13 @@ const NewOutboundDashboard = () => {
         />
         <Kpi
           label="Total Attempts"
-          value={kpi?.totalAttempts?.toLocaleString() || "—"}
-          sub={
-            <div className="flex gap-3 text-xs mt-1">
-              <span
-                className="text-blue-600 font-medium cursor-pointer"
-                onClick={downloadPdExcel}
-              >
-                PD: {kpi?.pdCount?.toLocaleString() || 0} 📥
-              </span>
-              <span className="text-gray-500">/</span>
-              <span className="text-purple-600 font-medium">
-                Manual: {kpi?.manual_count?.toLocaleString() || 0}
-              </span>
-            </div>
-          }
+          value={kpi.totalAttempts.toLocaleString()}
           icon={<Hash size={18} />}
           color="#00b894"
         />
         <Kpi
           label="Avg Attempts / Number"
-          value={kpi?.avgAttemptsPerNumber || "—"}
-          down
+          value={kpi.avgAttemptsPerNumber}
           icon={<BarChart3 size={18} />}
           color="#f59e0b"
         />
@@ -523,29 +565,32 @@ const NewOutboundDashboard = () => {
       <div className="row g-3 mb-4">
         <Kpi
           label="Connected Calls"
-          value={kpi?.connectedCalls?.toLocaleString() || "—"}
-          sub={kpi ? `${kpi.connectionRate}% connection rate` : ""}
+          value={kpi.connectedCalls.toLocaleString()}
+          sub={`${kpi.connectionRate}% connection rate`}
           icon={<PhoneCall size={18} />}
           color="#00b894"
         />
         <Kpi
           label="Connection Rate"
-          value={kpi ? `${kpi.connectionRate}%` : "—"}
+          value={`${kpi.connectionRate}%`}
           icon={<TrendingUp size={18} />}
           color="#2563eb"
         />
         <Kpi
           label="Qualified Leads"
-          value={kpi?.qualifiedLeads?.toLocaleString() || "—"}
+          value={kpi.qualifiedLeads.toLocaleString()}
           icon={<Target size={18} />}
           color="#06b6d4"
         />
         <Kpi
           label="Outcome Conversion"
           value={
-            kpi && kpi.connectedCalls
-              ? `${((kpi.qualifiedLeads * 100) / kpi.connectedCalls).toFixed(1)}%`
-              : "—"
+            kpi.connectedCalls > 0
+              ? `${(
+                  (kpi.qualifiedLeads * 100) /
+                  kpi.connectedCalls
+                ).toFixed(1)}%`
+              : "0%"
           }
           sub="Of connected calls"
           icon={<CheckCircle size={18} />}
@@ -559,10 +604,22 @@ const NewOutboundDashboard = () => {
           <div style={{ ...cardStyle, padding: 18, height: "100%" }}>
             <div style={{ fontWeight: 600, marginBottom: 18 }}>Call Funnel</div>
             {[
-              { label: "Total Assigned", val: funnel?.totaldata || "—", pct: 100 },
-              { label: "Unique Dialed", val: funnel?.uniqueDialed || "—", pct: funnel?.dialRate },
-              { label: "Connected Calls", val: funnel?.connectedCalls || "—", pct: funnel?.connectRate },
-              { label: "Qualified Leads", val: funnel?.qualifiedLeads || "—", pct: funnel?.outcomeRate },
+              { label: "Total Assigned", val: funnel.totaldata, pct: 100 },
+              {
+                label: "Unique Dialed",
+                val: funnel.uniqueDialed,
+                pct: funnel.dialRate,
+              },
+              {
+                label: "Connected Calls",
+                val: funnel.connectedCalls,
+                pct: funnel.connectRate,
+              },
+              {
+                label: "Qualified Leads",
+                val: funnel.qualifiedLeads,
+                pct: funnel.outcomeRate,
+              },
             ].map((f, i) => (
               <div key={i} style={{ marginBottom: 18 }}>
                 <div
@@ -636,18 +693,16 @@ const NewOutboundDashboard = () => {
             >
               <div>
                 Dial Rate
-                <div style={{ fontWeight: 700 }}>{funnel?.dialRate || 0}%</div>
+                <div style={{ fontWeight: 700 }}>{funnel.dialRate}%</div>
               </div>
               <div>
                 Connect Rate
-                <div style={{ fontWeight: 700 }}>
-                  {funnel?.connectRate || 0}%
-                </div>
+                <div style={{ fontWeight: 700 }}>{funnel.connectRate}%</div>
               </div>
               <div>
                 Outcome Rate
                 <div style={{ fontWeight: 700, color: "#059669" }}>
-                  {funnel?.outcomeRate || 0}%
+                  {funnel.outcomeRate}%
                 </div>
               </div>
             </div>
@@ -714,20 +769,18 @@ const NewOutboundDashboard = () => {
             >
               <div>
                 Avg Attempts
-                <div style={{ fontWeight: 700 }}>
-                  {trendAvg?.avgAttempts || "—"}
-                </div>
+                <div style={{ fontWeight: 700 }}>{trendAvg.avgAttempts}</div>
               </div>
               <div>
                 Avg Connect
                 <div style={{ fontWeight: 700, color: "#2563eb" }}>
-                  {trendAvg?.avgConnect || "—"}%
+                  {trendAvg.avgConnect}%
                 </div>
               </div>
               <div>
                 Avg Outcome
                 <div style={{ fontWeight: 700, color: "#9333ea" }}>
-                  {trendAvg?.avgOutcome || "—"}%
+                  {trendAvg.avgOutcome}%
                 </div>
               </div>
             </div>
@@ -746,22 +799,29 @@ const NewOutboundDashboard = () => {
               {[
                 {
                   label: "AHT",
-                  value: efficiency
-                    ? `${Math.floor(efficiency.overall.avgAHTSec / 60)}:${String(efficiency.overall.avgAHTSec % 60).padStart(2, "0")}`
-                    : "—",
+                  value: `${Math.floor(
+                    efficiency.overall.avgAHTSec / 60
+                  )}:${String(efficiency.overall.avgAHTSec % 60).padStart(
+                    2,
+                    "0"
+                  )}`,
                 },
                 {
                   label: "Talk Time",
-                  value: efficiency
-                    ? `${Math.floor(efficiency.overall.avgTalkTimeSec / 60)}:${String(efficiency.overall.avgTalkTimeSec % 60).padStart(2, "0")}`
-                    : "—",
+                  value: `${Math.floor(
+                    efficiency.overall.avgTalkTimeSec / 60
+                  )}:${String(
+                    efficiency.overall.avgTalkTimeSec % 60
+                  ).padStart(2, "0")}`,
                   highlight: true,
                 },
                 {
                   label: "Wrap-up",
-                  value: efficiency
-                    ? `${Math.floor(efficiency.overall.avgWrapUpTimeSec / 60)}:${String(efficiency.overall.avgWrapUpTimeSec % 60).padStart(2, "0")}`
-                    : "—",
+                  value: `${Math.floor(
+                    efficiency.overall.avgWrapUpTimeSec / 60
+                  )}:${String(
+                    efficiency.overall.avgWrapUpTimeSec % 60
+                  ).padStart(2, "0")}`,
                 },
               ].map((m, i) => (
                 <div
@@ -799,7 +859,7 @@ const NewOutboundDashboard = () => {
               ))}
             </div>
             <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>
-              Agent-wise Breakdown
+              Agent-wise Talk Time
             </div>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={agentData}>
@@ -807,7 +867,6 @@ const NewOutboundDashboard = () => {
                 <YAxis />
                 <Tooltip />
                 <Bar dataKey="talk" fill="#0d9488" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="wrap" fill="#94a3b8" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
             <div
@@ -819,8 +878,7 @@ const NewOutboundDashboard = () => {
                 marginTop: 8,
               }}
             >
-              <Legend color="#0d9488" label="Talk" />
-              <Legend color="#94a3b8" label="Wrap" />
+              <Legend color="#0d9488" label="Talk Time (sec)" />
             </div>
           </div>
         </div>
@@ -830,61 +888,84 @@ const NewOutboundDashboard = () => {
             <div style={{ fontWeight: 600, marginBottom: 16 }}>
               Top Drop Reasons
             </div>
-            <ResponsiveContainer width="100%" height={230}>
-              <BarChart data={drops} layout="vertical" margin={{ left: 40 }}>
-                <XAxis type="number" />
-                <YAxis dataKey="reason" type="category" />
-                <Tooltip />
-                <Bar dataKey="value">
-                  {drops.map((d, i) => (
-                    <Cell
-                      key={i}
-                      fill={
-                        ["#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16"][
-                          i
-                        ]
-                      }
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-            <div
-              style={{
-                borderTop: "1px solid #e5e7eb",
-                marginTop: 12,
-                paddingTop: 10,
-                fontSize: 12,
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 10,
-              }}
-            >
-              <strong style={{ marginRight: 6 }}>Issue Breakdown</strong>
-              {dropBreakdown.map((d, idx) => (
-                <span
-                  key={idx}
+            {drops.length > 0 ? (
+              <>
+                <ResponsiveContainer width="100%" height={230}>
+                  <BarChart
+                    data={drops}
+                    layout="vertical"
+                    margin={{ left: 40 }}
+                  >
+                    <XAxis type="number" />
+                    <YAxis dataKey="reason" type="category" />
+                    <Tooltip />
+                    <Bar dataKey="value">
+                      {drops.map((d, i) => (
+                        <Cell
+                          key={i}
+                          fill={
+                            [
+                              "#ef4444",
+                              "#f97316",
+                              "#f59e0b",
+                              "#eab308",
+                              "#84cc16",
+                            ][i]
+                          }
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <div
                   style={{
+                    borderTop: "1px solid #e5e7eb",
+                    marginTop: 12,
+                    paddingTop: 10,
+                    fontSize: 12,
                     display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "4px 8px",
-                    borderRadius: 12,
-                    background: "#f8fafc",
+                    flexWrap: "wrap",
+                    gap: 10,
                   }}
                 >
-                  <span
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: d.color,
-                    }}
-                  />
-                  {d.reason} {d.percent}%
-                </span>
-              ))}
-            </div>
+                  <strong style={{ marginRight: 6 }}>Issue Breakdown</strong>
+                  {dropBreakdown.map((d, idx) => (
+                    <span
+                      key={idx}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        padding: "4px 8px",
+                        borderRadius: 12,
+                        background: "#f8fafc",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: d.color,
+                        }}
+                      />
+                      {d.reason} {d.percent}%
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div
+                style={{
+                  padding: 40,
+                  textAlign: "center",
+                  color: "#9ca3af",
+                  fontSize: 13,
+                }}
+              >
+                No drop reasons found
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -918,127 +999,163 @@ const NewOutboundDashboard = () => {
                 Top Performers
               </div>
             </div>
-            <table
-              style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}
-            >
-              <thead>
-                <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                  <th align="left">Agent Name</th>
-                  <th align="right">Calls Made</th>
-                  <th align="right">Connection Rate</th>
-                  <th align="right">Outcome Rate</th>
-                  <th align="right">Avg Handling Time</th>
-                  <th align="right">Performance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {agentPerformance.map((a, idx) => {
-                  const isTop = a.status === "Excellent";
-                  const isPoor = a.status === "Needs Improvement";
-                  return (
-                    <tr
-                      key={idx}
-                      style={{
-                        background: isTop
-                          ? "#f0fdf4"
-                          : isPoor
-                          ? "#fef2f2"
-                          : "#fff",
-                        borderBottom: "1px solid #e5e7eb",
-                      }}
-                    >
-                      <td style={{ padding: "10px 6px" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 10,
-                          }}
-                        >
+
+            {agentPerformance.length > 0 ? (
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontSize: 13,
+                }}
+              >
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #e5e7eb" }}>
+                    <th align="left">Agent Name</th>
+                    <th align="right">Calls Made</th>
+                    <th align="right">Connection Rate</th>
+                    <th align="right">Outcome Rate</th>
+                    <th align="right">Avg Handling Time</th>
+                    <th align="right">Performance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {agentPerformance.map((a, idx) => {
+                    const status =
+                      a.outcome >= 30
+                        ? "Excellent"
+                        : a.outcome >= 20
+                        ? "Average"
+                        : "Needs Improvement";
+                    const isTop = status === "Excellent";
+                    const isPoor = status === "Needs Improvement";
+                    return (
+                      <tr
+                        key={idx}
+                        style={{
+                          background: isTop
+                            ? "#f0fdf4"
+                            : isPoor
+                            ? "#fef2f2"
+                            : "#fff",
+                          borderBottom: "1px solid #e5e7eb",
+                        }}
+                      >
+                        <td style={{ padding: "10px 6px" }}>
                           <div
                             style={{
-                              width: 32,
-                              height: 32,
-                              borderRadius: "50%",
-                              background: "#ccfbf1",
-                              color: "#0f766e",
-                              fontWeight: 700,
-                              fontSize: 12,
                               display: "flex",
                               alignItems: "center",
-                              justifyContent: "center",
+                              gap: 10,
                             }}
                           >
-                            {a.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
+                            <div
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: "50%",
+                                background: "#ccfbf1",
+                                color: "#0f766e",
+                                fontWeight: 700,
+                                fontSize: 12,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              {a.name
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")}
+                            </div>
+                            <div style={{ fontWeight: 600 }}>
+                              {a.name}
+                              {isTop && (
+                                <Trophy
+                                  size={14}
+                                  color="#f59e0b"
+                                  style={{ marginLeft: 6 }}
+                                />
+                              )}
+                            </div>
                           </div>
-                          <div style={{ fontWeight: 600 }}>
-                            {a.name}
-                            {isTop && (
-                              <Trophy
-                                size={14}
-                                color="#f59e0b"
-                                style={{ marginLeft: 6 }}
-                              />
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td align="left">{a.calls.toLocaleString()}</td>
-                      <td
-                        align="left"
-                        style={{
-                          color: a.connection >= 50 ? "#16a34a" : "#dc2626",
-                        }}
-                      >
-                        {a.connection}%{" "}
-                        {a.connection >= 50 ? (
-                          <TrendingUp size={14} style={{ verticalAlign: "middle" }} />
-                        ) : (
-                          <TrendingDown size={14} style={{ verticalAlign: "middle" }} />
-                        )}
-                      </td>
-                      <td
-                        align="left"
-                        style={{
-                          color: a.outcome >= 25 ? "#16a34a" : "#dc2626",
-                        }}
-                      >
-                        {a.outcome}%{" "}
-                        {a.outcome >= 25 ? (
-                          <TrendingUp size={14} />
-                        ) : (
-                          <TrendingDown size={14} />
-                        )}
-                      </td>
-                      <td align="left">{a.aht}</td>
-                      <td align="left">
-                        <span
+                        </td>
+                        <td align="left">{a.calls.toLocaleString()}</td>
+                        <td
+                          align="left"
                           style={{
-                            padding: "4px 10px",
-                            borderRadius: 999,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            background:
-                              a.status === "Excellent"
-                                ? "#16a34a"
-                                : a.status === "Needs Improvement"
-                                ? "#dc2626"
-                                : "#f3f4f6",
                             color:
-                              a.status === "Average" ? "#111827" : "#fff",
+                              a.connection >= 50 ? "#16a34a" : "#dc2626",
                           }}
                         >
-                          {a.status}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                          {a.connection}%{" "}
+                          {a.connection >= 50 ? (
+                            <TrendingUp
+                              size={14}
+                              style={{ verticalAlign: "middle" }}
+                            />
+                          ) : (
+                            <TrendingDown
+                              size={14}
+                              style={{ verticalAlign: "middle" }}
+                            />
+                          )}
+                        </td>
+                        <td
+                          align="left"
+                          style={{
+                            color: a.outcome >= 25 ? "#16a34a" : "#dc2626",
+                          }}
+                        >
+                          {a.outcome}%{" "}
+                          {a.outcome >= 25 ? (
+                            <TrendingUp size={14} />
+                          ) : (
+                            <TrendingDown size={14} />
+                          )}
+                        </td>
+                        <td align="left">
+                          {`${Math.floor(a.ahtSec / 60)}:${String(
+                            a.ahtSec % 60
+                          ).padStart(2, "0")}`}
+                        </td>
+                        <td align="left">
+                          <span
+                            style={{
+                              padding: "4px 10px",
+                              borderRadius: 999,
+                              fontSize: 12,
+                              fontWeight: 600,
+                              background:
+                                status === "Excellent"
+                                  ? "#16a34a"
+                                  : status === "Needs Improvement"
+                                  ? "#dc2626"
+                                  : "#f3f4f6",
+                              color:
+                                status === "Average" ? "#111827" : "#fff",
+                            }}
+                          >
+                            {status}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div
+                style={{
+                  padding: 40,
+                  textAlign: "center",
+                  color: "#9ca3af",
+                  fontSize: 13,
+                }}
+              >
+                No agent data found
+              </div>
+            )}
+
             <div
               style={{
                 marginTop: 16,

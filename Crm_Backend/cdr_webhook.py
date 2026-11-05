@@ -485,9 +485,16 @@ def split_c2p_campaign_queues(raw_value):
 
 
 def get_client_c2p_queues(db, client_id):
-    """Fetch the queue names configured for a client from registration_master.c2p_cdr_campaign."""
+    """
+    Fetch the queue names configured for a client.
+
+    Strategy:
+      1. Try registration_master.c2p_cdr_campaign (preferred).
+      2. If empty/null, derive prefix from company_name (e.g. "F1 INFO..." -> "F1")
+         and match against cdr_webhook_logs.queue_name LIKE 'F1%'.
+    """
     query = text("""
-        SELECT c2p_cdr_campaign
+        SELECT c2p_cdr_campaign, company_name
         FROM registration_master
         WHERE company_id = :client_id
         LIMIT 1
@@ -498,7 +505,38 @@ def get_client_c2p_queues(db, client_id):
     if not row:
         return []
 
-    return split_c2p_campaign_queues(row[0])
+    configured_queues = split_c2p_campaign_queues(row[0])
+
+    if configured_queues:
+        return configured_queues
+
+    # ✅ FALLBACK: c2p_cdr_campaign is empty
+    company_name = (row[1] or "").strip().upper()
+
+    if not company_name:
+        return []
+
+    # Take first token before space: "F1 INFO..." -> "F1"
+    prefix = company_name.split()[0]
+
+    if not prefix:
+        return []
+
+    fallback_query = text("""
+        SELECT DISTINCT queue_name
+        FROM cdr_webhook_logs
+        WHERE queue_name LIKE :prefix
+          AND queue_name IS NOT NULL
+          AND queue_name != ''
+          AND LOWER(queue_name) != 'null'
+        ORDER BY queue_name
+    """)
+
+    fallback_rows = db.execute(
+        fallback_query, {"prefix": f"{prefix}%"}
+    ).fetchall()
+
+    return [r[0] for r in fallback_rows if r[0]]
 
 
 ################################# C2p Report ########################
@@ -529,7 +567,6 @@ def c2p_cdr_queues(
 
         result = db.execute(query).fetchall()
 
-        #queue_names = [row[0] for row in result]
         queue_names = sorted({
             row[0].strip()
             for row in result
@@ -660,32 +697,6 @@ def c2p_cdr(
                         )
 
             data.append(row)
-
-        # for record in records:
-        #     row = dict(record)
-
-        #     recording_url = row.get("recording")
-        #     date_time = row.get("date_time")
-
-        #     if recording_url and "192.168.3.8" in recording_url:
-        #         # Get the filename from the original recording URL
-        #         filename = recording_url.rsplit("/", 1)[-1]
-
-        #         # Replace .wav with .mp3 if the filename ends with .wav
-        #         if filename.lower().endswith(".wav"):
-        #             filename = filename[:-4] + ".mp3"
-
-        #         # Build the date-based Google Cloud Storage URL
-        #         if date_time:
-        #             recording_date = date_time.strftime("%Y/%m/%d")
-
-        #             row["recording"] = (
-        #                 "https://storage.googleapis.com/"
-        #                 "dialer_recordings_2026/vaishali/"
-        #                 f"{recording_date}/{filename}"
-        #             )
-
-        #     data.append(row)
 
         return {
             "status": True,
